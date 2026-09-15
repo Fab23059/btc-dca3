@@ -486,12 +486,30 @@ function renderTranches(t,cur){
   box.innerHTML=`<table><thead><tr><th>Datum</th><th>Kurs</th><th>BTC</th><th>Invest.</th><th>Wert</th><th>G/V</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+// ---- Cache-Helfer fuer Kursreihen (gegen "nicht abrufbar") ----
+function pcGet(key,ttl){ try{ const o=JSON.parse(localStorage.getItem(key)); if(o&&(Date.now()-o.ts)<ttl) return o.data; }catch(e){} return null; }
+function pcStale(key){ try{ const o=JSON.parse(localStorage.getItem(key)); return o?o.data:null; }catch(e){ return null; } }
+function pcSet(key,data){ try{ localStorage.setItem(key,JSON.stringify({ts:Date.now(),data})); }catch(e){} }
+
+// ---- Feine Kursreihe fuer den Geld-Graphen (viele Punkte, gleichbleibend) ----
+let portCache={};
+async function fetchFineSeries(days){
+  let agg=1; if(days>7&&days<=31) agg=4; else if(days>31) agg=12;
+  const limit=Math.min(2000, Math.max(24, Math.ceil(24*days/agg)+2));
+  const key="btcdca_port_"+days+"_"+agg;
+  const cached=pcGet(key, 20*60000); if(cached) return cached;
+  try{ const j=await getJSON(`https://min-api.cryptocompare.com/data/v2/histohour?fsym=BTC&tsym=EUR&limit=${limit}&aggregate=${agg}`); if(j.Response==="Success"&&j.Data&&j.Data.Data){ const a=j.Data.Data.filter(d=>d.close>0).map(d=>({t:d.time*1000,c:d.close})); if(a.length){ pcSet(key,a); return a; } } }catch(e){}
+  try{ if(days<=365){ const j=await getJSON(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=eur&days=${days}`); if(j.prices&&j.prices.length){ const a=j.prices.map(p=>({t:p[0],c:p[1]})); pcSet(key,a); return a; } } }catch(e){}
+  return pcStale(key);
+}
+async function ensurePortSeries(days){ if(portCache[days]) return; const s=await fetchFineSeries(days); portCache[days]=(s&&s.length)?s:[]; if(portCache[days].length && ui.mode==="live") render(); }
+
 function renderChart(t,cur,totalBtc,investedGross,value){
   const ctx=document.getElementById("chart").getContext("2d");
   const accent="#f7931a", muted="#8a8a92";
   if(!t.length){ if(chart){chart.destroy();chart=null;} ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.fillStyle=muted; ctx.font="14px system-ui"; ctx.textAlign="center"; ctx.fillText("Noch keine Daten \u2013 Start am 08.06.2026", ctx.canvas.width/2/(window.devicePixelRatio||1), 80); return; }
   if(typeof Chart==="undefined") return;
-  let labels=[], datasets=[];
+  let labels=[], datasets=[]; let liveSeries=null;
   const rangeDays = (ui.range && ui.range!=="all") ? +ui.range : null;
   const winStart = rangeDays ? Date.now()-rangeDays*86400000 : -Infinity;
   if(ui.mode==="milestones"){
@@ -504,17 +522,33 @@ function renderChart(t,cur,totalBtc,investedGross,value){
                 {label:"Wert",data:wert,borderColor:accent,borderWidth:2.5,pointRadius:2.5,stepped:true,backgroundColor:"rgba(247,147,26,.12)",fill:true}];
     } else { const cb=tv.map(x=>x.cumBtc).concat([totalBtc]); datasets=[{label:"BTC gesamt",data:cb,borderColor:accent,borderWidth:2.5,pointRadius:2.5,stepped:true,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
   } else {
-    const startMs=Math.max(t[0].ts, winStart===-Infinity?t[0].ts:winStart), today=Date.now(); const days=[],inv=[],wert=[],cb=[]; let lastClose=t[0].price;
-    for(let ms=startMs; ms<=today+1; ms+=86400000){ const d=new Date(ms); const k=keyOf(d); if(state.daily[k]!=null) lastClose=state.daily[k]; let b=0,iv=0; for(const x of t){ if(x.ts<=ms){ b=x.cumBtc; iv=x.cumEur; } } days.push(shortLabel(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate())); inv.push(iv); wert.push(b*lastClose); cb.push(b); }
-    if(cur!=null && wert.length) wert[wert.length-1]=cb[cb.length-1]*cur;   // Endpunkt = Live-Kurs
-    labels=days;
-    if(ui.unit==="eur"){ datasets=[{label:"Investiert",data:inv,borderColor:muted,borderDash:[5,4],borderWidth:1.5,pointRadius:0,stepped:true,fill:false},{label:"Wert",data:wert,borderColor:accent,borderWidth:2,pointRadius:0,tension:.12,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
-    else { datasets=[{label:"BTC gesamt",data:cb,borderColor:accent,borderWidth:2,pointRadius:0,stepped:true,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
+    const days = rangeDays || Math.max(1, Math.ceil((Date.now()-t[0].ts)/86400000));
+    const startMs = Math.max(t[0].ts, winStart===-Infinity?t[0].ts:winStart);
+    const fine = (portCache[days] && portCache[days].length) ? portCache[days].filter(p=>p.t>=startMs) : null;
+    if(fine && fine.length>2){
+      liveSeries=fine;
+      const lab=p=>{const d=new Date(p.t); return d.getDate()+"."+(d.getMonth()+1)+".";};
+      const wert=fine.map(p=>btcHeldAt(p.t,t)*p.c);
+      const inv=fine.map(p=>investedAt(p.t,t));
+      const cb=fine.map(p=>btcHeldAt(p.t,t));
+      if(cur!=null && wert.length) wert[wert.length-1]=btcHeldAt(Date.now(),t)*cur;
+      labels=fine.map(lab);
+      if(ui.unit==="eur"){ datasets=[{label:"Investiert",data:inv,borderColor:muted,borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false},{label:"Wert",data:wert,borderColor:accent,borderWidth:2,pointRadius:0,tension:.15,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
+      else { datasets=[{label:"BTC gesamt",data:cb,borderColor:accent,borderWidth:2,pointRadius:0,tension:.15,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
+    } else {
+      ensurePortSeries(days);
+      const today=Date.now(); const daysArr=[],inv=[],wert=[],cb=[]; let lastClose=t[0].price;
+      for(let ms=startMs; ms<=today+1; ms+=86400000){ const d=new Date(ms); const k=keyOf(d); if(state.daily[k]!=null) lastClose=state.daily[k]; let b=0,iv=0; for(const x of t){ if(x.ts<=ms){ b=x.cumBtc; iv=x.cumEur; } } daysArr.push(shortLabel(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate())); inv.push(iv); wert.push(b*lastClose); cb.push(b); }
+      if(cur!=null && wert.length) wert[wert.length-1]=cb[cb.length-1]*cur;
+      labels=daysArr;
+      if(ui.unit==="eur"){ datasets=[{label:"Investiert",data:inv,borderColor:muted,borderDash:[5,4],borderWidth:1.5,pointRadius:0,stepped:true,fill:false},{label:"Wert",data:wert,borderColor:accent,borderWidth:2,pointRadius:0,tension:.12,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
+      else { datasets=[{label:"BTC gesamt",data:cb,borderColor:accent,borderWidth:2,pointRadius:0,stepped:true,backgroundColor:"rgba(247,147,26,.12)",fill:true}]; }
+    }
   }
   const isEur=ui.unit==="eur";
   if(chart) chart.destroy();
   chart=new Chart(ctx,{ type:"line", data:{labels,datasets}, options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
-    plugins:{ legend:{labels:{color:"#cfcfd6",boxWidth:14,font:{size:12}}}, tooltip:{backgroundColor:"#101015",borderColor:"#26262c",borderWidth:1,titleColor:"#8a8a92",bodyColor:"#ececee",callbacks:{label:c=>` ${c.dataset.label}: ${isEur?eur(c.parsed.y):btcf(c.parsed.y)}`}}, zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:"x"},pan:{enabled:true,mode:"x"}}},
+    plugins:{ legend:{labels:{color:"#cfcfd6",boxWidth:14,font:{size:12}}}, tooltip:{backgroundColor:"#101015",borderColor:"#26262c",borderWidth:1,titleColor:"#8a8a92",bodyColor:"#ececee",callbacks:{title:items=>{ if(liveSeries&&items[0]&&liveSeries[items[0].dataIndex]) return new Date(liveSeries[items[0].dataIndex].t).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); return items[0]?items[0].label:""; }, label:c=>` ${c.dataset.label}: ${isEur?eur(c.parsed.y):btcf(c.parsed.y)}`}}, zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:"x"},pan:{enabled:true,mode:"x"}}},
     scales:{ x:{grid:{color:"#1c1c22"},afterBuildTicks:a=>{const t=a.ticks,n=t.length;if(n>8){const s=Math.ceil(n/7),k=[];for(let i=0;i<n;i+=s)k.push(t[i]);if(k[k.length-1]!==t[n-1])k.push(t[n-1]);a.ticks=k;}},ticks:{color:"#8a8a92",font:{size:10}}}, y:{grid:{color:"#1c1c22"},ticks:{color:"#8a8a92",font:{size:10},callback:v=>isEur?Math.round(v)+"\u00A0\u20AC":(+v).toFixed(4)}} } } });
 }
 
@@ -525,10 +559,14 @@ const RANGES = {
   "5y":{cc:{ep:"histoday",limit:260,agg:7},cg:1825}, "10y":{cc:{ep:"histoday",limit:520,agg:7},cg:3650},
 };
 function fmtPriceLabel(ts,range){ const d=new Date(ts); if(range==="1h"||range==="1d") return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); if(range==="1w"||range==="1m"||range==="1y") return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}); return d.toLocaleDateString("de-DE",{month:"2-digit",year:"2-digit"}); }
+const PC_TTL={"1h":5*60000,"1d":15*60000,"1w":30*60000,"1m":2*3600000,"1y":12*3600000,"2y":12*3600000,"5y":24*3600000,"10y":24*3600000};
 async function priceSeries(range){
+  const key="btcdca_pc_"+range; const ttl=PC_TTL[range]||3600000;
+  const cached=pcGet(key,ttl); if(cached) return cached;
   const cfg=RANGES[range];
-  try{ let u=`https://min-api.cryptocompare.com/data/v2/${cfg.cc.ep}?fsym=BTC&tsym=EUR&limit=${cfg.cc.limit}`; if(cfg.cc.agg) u+=`&aggregate=${cfg.cc.agg}`; const j=await getJSON(u); if(j.Response==="Success"&&j.Data&&j.Data.Data){ const a=j.Data.Data.filter(d=>d.close>0); if(a.length) return a.map(d=>({t:d.time*1000,c:d.close})); } }catch(e){}
-  try{ const j=await getJSON(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=eur&days=${cfg.cg}`); if(j.prices&&j.prices.length) return j.prices.map(p=>({t:p[0],c:p[1]})); }catch(e){}
+  try{ let u=`https://min-api.cryptocompare.com/data/v2/${cfg.cc.ep}?fsym=BTC&tsym=EUR&limit=${cfg.cc.limit}`; if(cfg.cc.agg) u+=`&aggregate=${cfg.cc.agg}`; const j=await getJSON(u); if(j.Response==="Success"&&j.Data&&j.Data.Data){ const a=j.Data.Data.filter(d=>d.close>0).map(d=>({t:d.time*1000,c:d.close})); if(a.length){ pcSet(key,a); return a; } } }catch(e){}
+  try{ if(cfg.cg<=365){ const j=await getJSON(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=eur&days=${cfg.cg}`); if(j.prices&&j.prices.length){ const a=j.prices.map(p=>({t:p[0],c:p[1]})); pcSet(key,a); return a; } } }catch(e){}
+  const stale=pcStale(key); if(stale) return stale;
   throw new Error("alle Quellen fehlgeschlagen");
 }
 async function loadPriceChart(range){
