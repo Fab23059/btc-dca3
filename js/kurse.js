@@ -359,6 +359,21 @@ export async function holeBlockhoehe() {
   return { hoehe: h, zeit: Date.now() };
 }
 
+/**
+ * Blockhöhe zu einem Zeitpunkt (z. B. dein erster Kauf). Ändert sich nie –
+ * wird deshalb dauerhaft gemerkt.
+ */
+export async function holeBlockZurZeit(ts) {
+  const gemerkt = ladeMarkt().bloecke ?? {};
+  const schl = String(Math.floor(ts / 1000));
+  if (Number.isInteger(gemerkt[schl])) return gemerkt[schl];
+  const j = await holeJson(`https://mempool.space/api/v1/mining/blocks/timestamp/${schl}`);
+  const h = j?.height;
+  if (!Number.isInteger(h) || h < 800_000 || h > 10_000_000) throw new Error("Blockhöhe: ungültig");
+  speichereMarkt({ bloecke: { ...gemerkt, [schl]: h } });
+  return h;
+}
+
 export function ladeMarkt() {
   const m = lies(SCHLUESSEL.markt, {});
   return m && typeof m === "object" ? m : {};

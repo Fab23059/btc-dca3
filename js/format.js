@@ -3,7 +3,7 @@
 // 1.234,56 € · 0,00024512 BTC · +4,82 % · Mo, 2. November
 // =====================================================================
 
-import { zerlege, wochentag } from "./zeit.js";
+import { zerlege, wochentag, berlinTeile } from "./zeit.js";
 
 const STRICH = "–"; // Gedankenstrich als Platzhalter für "kein Wert"
 const MINUS = "−";  // typografisch korrektes Minus
@@ -153,6 +153,15 @@ export function vorZeit(ts, jetzt = Date.now()) {
 /** Mehrzahl: "1 Woche", "3 Wochen" */
 export function anzahl(n, einzahl, mehrzahl) {
   return `${ganz(n)}${NBSP}${n === 1 ? einzahl : mehrzahl}`;
+}
+
+/** Gruß passend zur Tageszeit in Deutschland */
+export function gruss(ts = Date.now()) {
+  const st = berlinTeile(ts).stunde;
+  if (st >= 5 && st < 11) return "Guten Morgen";
+  if (st >= 11 && st < 17) return "Guten Tag";
+  if (st >= 17 && st < 23) return "Guten Abend";
+  return "Gute Nacht";
 }
 
 export { STRICH, MINUS, NBSP };
