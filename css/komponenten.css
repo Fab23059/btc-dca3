@@ -1,0 +1,410 @@
+/* =====================================================================
+   komponenten.css – Wiederkehrende Bausteine: Karten, Knöpfe,
+   Umschalter, Sheets, Hinweise, Formulare, Platzhalter …
+   ===================================================================== */
+
+/* ---- Druckfeedback: alles Antippbare gibt kurz nach ---- */
+.tippbar { transition: transform 0.5s var(--feder), background-color 0.2s, opacity 0.2s; }
+.tippbar:active { transform: scale(0.97); transition: transform 0.08s ease-out; }
+
+/* ---- Karten: Tiefe über Helligkeit und eine feine Lichtkante ---- */
+.karte {
+  display: block;
+  background: var(--flaeche-1);
+  border-radius: var(--radius-karte);
+  box-shadow: var(--lichtkante);
+  padding: 16px;
+}
+.karte--liste { padding: 0; overflow: hidden; }
+button.karte { width: 100%; border: 0; text-align: left; color: inherit; }
+
+/* ---- Knöpfe ---- */
+.knopf {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: var(--radius-voll);
+  background: var(--flaeche-2);
+  box-shadow: inset 0 0 0 1px var(--kante), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 15px; font-weight: 600; letter-spacing: -0.005em;
+  white-space: nowrap;
+  transition: transform 0.5s var(--feder), opacity 0.2s, background-color 0.2s;
+}
+.knopf:active { transform: scale(0.97); transition-duration: 0.08s; }
+.knopf:disabled { opacity: 0.38; pointer-events: none; }
+.knopf--primaer {
+  background: linear-gradient(180deg, var(--akzent-hell) 0%, var(--akzent) 55%, var(--akzent-tief) 100%);
+  color: #1B1007;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 10px 28px -10px rgba(var(--akzent-rgb), 0.7);
+}
+.knopf--klein { height: 36px; padding: 0 16px; font-size: 13px; }
+.knopf--breit { width: 100%; }
+.knopf--leise { background: transparent; box-shadow: none; color: var(--text-2); font-weight: 500; }
+.knopf--gefahr { color: var(--minus); }
+.knopf--gefahr.ist-scharf { background: rgba(var(--minus-rgb), 0.14); box-shadow: inset 0 0 0 1px rgba(var(--minus-rgb), 0.3); }
+.knopf-reihe { display: grid; gap: 8px; }
+
+.rundknopf {
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px var(--kante);
+  color: var(--text-2);
+  flex: none;
+}
+
+/* ---- Umschalter mit gleitendem Indikator ---- */
+.segment {
+  position: relative;
+  display: flex;
+  padding: 4px;
+  background: var(--flaeche-1);
+  border-radius: var(--radius-voll);
+  box-shadow: inset 0 0 0 1px var(--kante);
+}
+.segment-option {
+  position: relative; z-index: 1;
+  flex: 1 1 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 0; border-radius: var(--radius-voll);
+  background: none;
+  color: var(--text-3);
+  font-size: 13px; font-weight: 550;
+  white-space: nowrap;
+  transition: color 0.3s var(--sanft);
+}
+.segment-option.ist-aktiv { color: var(--text); }
+.segment-indikator {
+  position: absolute;
+  top: 4px; bottom: 4px; left: 0;
+  width: var(--b, 0);
+  transform: translateX(var(--x, 0));
+  border-radius: var(--radius-voll);
+  background: var(--flaeche-3);
+  box-shadow: inset 0 0 0 1px var(--kante-hell), inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: transform 0.55s var(--feder), width 0.55s var(--feder);
+}
+.segment-indikator.ohne-uebergang { transition: none; }
+.segment--klein { display: inline-flex; background: transparent; box-shadow: none; padding: 0; }
+.segment--klein .segment-indikator { top: 0; bottom: 0; background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 0 0 1px var(--kante); }
+.segment--klein .segment-option { flex: 0 0 auto; height: 28px; padding: 0 12px; font-size: 12px; }
+
+/* ---- Veränderung mit Pfeil + Vorzeichen ---- */
+.veraenderung { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-weight: 550; white-space: nowrap; }
+.veraenderung-euro, .veraenderung-prozent { white-space: nowrap; }
+.veraenderung-prozent { font-weight: 500; opacity: 0.85; }
+.veraenderung--plus { color: var(--plus); }
+.veraenderung--minus { color: var(--minus); }
+.veraenderung--null { color: var(--text-2); }
+.veraenderung--klein { font-size: 13px; }
+.veraenderung-pfeil { flex: none; }
+
+/* ---- Schimmernde Platzhalter statt Ladekreisel ---- */
+.skelett {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 8px;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.035) 30%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.035) 70%);
+  background-size: 250% 100%;
+  animation: schimmern 1.6s ease-in-out infinite;
+}
+.skelett--zahl { width: 6.2ch; height: 0.8em; border-radius: 14px; }
+.skelett--zeile { width: 12em; height: 1em; }
+.skelett--diagramm { display: block; width: 100%; height: 100%; border-radius: 0; opacity: 0.6; }
+@keyframes schimmern { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+/* ---- Leerzustand ---- */
+.leer {
+  display: grid; justify-items: center; gap: 8px;
+  padding: 32px 24px;
+  text-align: center;
+}
+.leer-symbol {
+  display: grid; place-items: center;
+  width: 56px; height: 56px; margin-bottom: 8px;
+  border-radius: 18px;
+  color: var(--akzent);
+  background: radial-gradient(circle at 30% 20%, rgba(var(--akzent-rgb), 0.18), rgba(var(--akzent-rgb), 0.04));
+  box-shadow: inset 0 0 0 1px rgba(var(--akzent-rgb), 0.18);
+}
+.leer-titel { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.leer-text { font-size: 14px; color: var(--text-2); max-width: 30ch; }
+
+/* ---- Hinweise ---- */
+.hinweise { display: grid; gap: 8px; margin-top: 24px; }
+.hinweise:empty { display: none; }
+.hinweis {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  border-radius: var(--radius-karte);
+  background: var(--flaeche-1);
+  box-shadow: var(--lichtkante);
+}
+.hinweis-symbol {
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 12px;
+  background: var(--flaeche-2);
+  color: var(--text-2);
+}
+.hinweis--aktion .hinweis-symbol { color: var(--akzent); background: rgba(var(--akzent-rgb), 0.1); }
+.hinweis-titel { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+.hinweis-unter { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+
+/* ---- Toast ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tab-hoehe) + var(--sicher-unten) + 16px);
+  z-index: 80;
+  display: flex; align-items: center; gap: 16px;
+  width: max-content;
+  max-width: min(360px, calc(100% - 32px));
+  min-height: 48px;
+  padding: 12px 8px 12px 20px;
+  border-radius: 20px;
+  line-height: 1.35;
+  background: rgba(36, 36, 44, 0.86);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: inset 0 0 0 1px var(--kante-hell), 0 16px 40px rgba(0, 0, 0, 0.5);
+  font-size: 14px; font-weight: 500;
+  transform: translate3d(-50%, 24px, 0) scale(0.96);
+  opacity: 0;
+  transition: transform 0.55s var(--feder), opacity 0.3s var(--sanft);
+  pointer-events: none;
+}
+.toast:not(:has(.toast-aktion)) { padding-right: 20px; }
+.toast.ist-sichtbar { transform: translate3d(-50%, 0, 0); opacity: 1; pointer-events: auto; }
+.toast--fehler { box-shadow: inset 0 0 0 1px rgba(var(--minus-rgb), 0.35), 0 16px 40px rgba(0, 0, 0, 0.5); }
+.toast--erfolg::before, .toast--feier::before {
+  content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--akzent); box-shadow: 0 0 12px rgba(var(--akzent-rgb), 0.8);
+  margin-left: -4px;
+}
+.toast-aktion {
+  height: 36px; padding: 0 16px;
+  border: 0; border-radius: var(--radius-voll);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--akzent-hell); font-weight: 600; font-size: 13px;
+}
+.ebene ~ .toast, .hat-ebene .toast { bottom: calc(var(--sicher-unten) + 24px); }
+
+/* ---- Ebenen: Sheets und Details ---- */
+.ebene { position: fixed; inset: 0; z-index: 50; }
+.sheet-hintergrund {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.4s var(--sanft);
+}
+.sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  max-width: 560px;
+  max-height: calc(100% - var(--sicher-oben) - 24px);
+  margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: rgba(24, 24, 29, 0.94);
+  -webkit-backdrop-filter: blur(32px) saturate(150%);
+  backdrop-filter: blur(32px) saturate(150%);
+  border-radius: 28px 28px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), inset 0 0 0 1px var(--kante), 0 -24px 60px rgba(0, 0, 0, 0.5);
+  padding-bottom: var(--sicher-unten);
+  transform: translate3d(0, 105%, 0);
+  transition: transform 0.6s var(--feder);
+  outline: none;
+  touch-action: pan-y;
+}
+.sheet.wird-gezogen { transition: none; }
+.ist-offen .sheet { transform: translate3d(0, 0, 0); }
+.ist-offen .sheet-hintergrund { opacity: 1; }
+.sheet-griffzone { display: grid; place-items: center; height: 24px; flex: none; cursor: grab; touch-action: none; }
+.sheet-griff { width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); }
+.sheet-kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 0 20px 16px 24px; flex: none; touch-action: none; }
+.sheet-titel { font-size: 22px; font-weight: 650; letter-spacing: -0.025em; line-height: 1.2; }
+.sheet-untertitel { font-size: 14px; color: var(--text-2); margin-top: 4px; }
+.sheet-inhalt { overflow-y: auto; padding: 0 24px 24px; overscroll-behavior: contain; flex: 1 1 auto; }
+.sheet-fuss { padding: 16px 24px 16px; box-shadow: 0 -1px 0 var(--kante); flex: none; }
+
+.detail-ebene { background: transparent; }
+.detail {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--grund);
+  outline: none;
+}
+.detail-kopf {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: calc(var(--sicher-oben) + 8px) 16px 8px 24px;
+  min-height: calc(var(--kopf-hoehe) + var(--sicher-oben));
+}
+.detail-titel { font-size: 22px; font-weight: 650; letter-spacing: -0.025em; }
+.detail-inhalt { flex: 1; overflow-y: auto; padding: 0 24px calc(var(--sicher-unten) + 40px); max-width: 560px; width: 100%; margin: 0 auto; overscroll-behavior: contain; }
+.detail-unter { font-size: 13px; color: var(--text-3); margin-bottom: 24px; }
+.detail-stapel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.detail-zwischentitel { margin-top: 16px; }
+.detail-abschnitt { display: grid; gap: 8px; margin-top: 16px; }
+
+/* Rechenweg: Zeilen wie auf einem Kassenzettel */
+.formel { display: grid; border-radius: var(--radius-klein); background: var(--flaeche-1); box-shadow: var(--lichtkante); padding: 4px 16px; }
+.formel-zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 12px 0; font-size: 14px; }
+.formel-zeile + .formel-zeile { box-shadow: inset 0 1px 0 var(--kante); }
+.formel-links { color: var(--text-2); }
+.formel-rechts { font-weight: 550; text-align: right; white-space: nowrap; }
+.formel-zeile--summe .formel-links { color: var(--text); font-weight: 600; }
+.formel-zeile--summe .formel-rechts { color: var(--text); font-weight: 650; }
+
+/* ---- Formular ---- */
+.formular { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.feld { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.feld-label { font-size: 13px; font-weight: 550; color: var(--text-2); }
+.feld-rahmen {
+  position: relative;
+  display: flex; align-items: center;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--flaeche-1);
+  box-shadow: inset 0 0 0 1px var(--kante-hell);
+  transition: box-shadow 0.2s;
+}
+.feld-rahmen:focus-within { box-shadow: inset 0 0 0 1.5px rgba(var(--akzent-rgb), 0.75), 0 0 0 4px rgba(var(--akzent-rgb), 0.12); }
+.hat-fehler .feld-rahmen { box-shadow: inset 0 0 0 1.5px rgba(var(--minus-rgb), 0.7); }
+.feld-eingabe {
+  flex: 1; min-width: 0; height: 100%;
+  padding: 0 16px;
+  border: 0; outline: 0;
+  background: transparent;
+  font-size: 20px; font-weight: 550; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.feld-eingabe::placeholder { color: var(--text-3); font-weight: 450; }
+.feld-eingabe[type="date"] { font-size: 17px; color-scheme: dark; }
+.feld-einheit { padding-right: 16px; color: var(--text-3); font-weight: 550; font-size: 14px; }
+.feld-hilfe { font-size: 13px; color: var(--text-3); min-height: 1.4em; }
+.feld-hilfe:empty { display: none; }
+.feld-hilfe--fehler { color: var(--minus); }
+.feld-hilfe--warnung { color: var(--akzent-hell); }
+
+.vorschlag {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+  padding: 12px 12px 12px 16px;
+  border: 0; border-radius: 14px;
+  background: rgba(var(--akzent-rgb), 0.07);
+  box-shadow: inset 0 0 0 1px rgba(var(--akzent-rgb), 0.18);
+  text-align: left;
+}
+.vorschlag-text { font-size: 15px; font-weight: 600; }
+.vorschlag-titel { color: var(--akzent); font-size: 11px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 4px; }
+.vorschlag-quelle { grid-column: 1; font-size: 12px; color: var(--text-3); }
+.vorschlag-los { grid-row: 1 / 3; grid-column: 2; padding: 8px 12px; border-radius: var(--radius-voll); background: rgba(var(--akzent-rgb), 0.16); color: var(--akzent-hell); font-size: 13px; font-weight: 650; }
+.vorschlag--laedt { display: block; padding: 16px; border-radius: 14px; background: var(--flaeche-1); }
+
+.rechnung { padding: 16px; border-radius: 16px; background: var(--flaeche-1); box-shadow: var(--lichtkante); }
+.rechnung--warnung { box-shadow: inset 0 0 0 1px rgba(var(--akzent-rgb), 0.35); }
+.rechnung-zeile { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: baseline; }
+.rechnung-titel { font-size: 13px; color: var(--text-2); }
+.rechnung-wert { font-size: 18px; font-weight: 650; letter-spacing: -0.02em; white-space: nowrap; }
+.rechnung-erkl { grid-column: 1 / -1; font-size: 12px; color: var(--text-3); }
+.rechnung--warnung .rechnung-erkl { color: var(--akzent-hell); }
+.rechnung-leer { font-size: 13px; color: var(--text-3); }
+
+/* ---- Listen (Einstellungen) ---- */
+.listen-gruppe { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 24px; }
+.listen-zeile {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--text-3);
+}
+.listen-zeile + .listen-zeile { box-shadow: inset 0 1px 0 var(--kante); }
+.listen-text { display: grid; gap: 2px; min-width: 0; }
+.listen-titel { font-size: 15px; font-weight: 550; color: var(--text); }
+.listen-unter { font-size: 13px; color: var(--text-2); }
+
+.schalter {
+  position: relative; flex: none;
+  width: 52px; height: 32px;
+  border: 0; border-radius: var(--radius-voll);
+  background: var(--flaeche-3);
+  box-shadow: inset 0 0 0 1px var(--kante-hell);
+  transition: background-color 0.3s var(--sanft);
+}
+.schalter-knopf {
+  position: absolute; top: 3px; left: 3px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #E9E9EE;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.5s var(--feder);
+}
+.schalter[aria-checked="true"] { background: var(--akzent); }
+.schalter[aria-checked="true"] .schalter-knopf { transform: translateX(20px); }
+
+/* ---- Fortschritt ---- */
+.fortschritt { position: relative; height: 8px; margin: 16px 0 8px; border-radius: var(--radius-voll); background: var(--flaeche-3); overflow: hidden; }
+.fortschritt--gross { height: 10px; }
+.fortschritt-fuellung {
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--akzent-tief), var(--akzent-hell));
+  transform-origin: left center;
+  transform: scaleX(var(--anteil, 0));
+  transition: transform 1.1s var(--sanft);
+}
+.fortschritt-fuellung--ruhig { background: linear-gradient(90deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.5)); }
+.fortschritt-beschriftung { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 550; }
+
+/* ---- Zum Aktualisieren ziehen ---- */
+.ptr {
+  position: fixed;
+  top: calc(var(--kopf-hoehe) + var(--sicher-oben) - 24px);
+  left: 50%;
+  z-index: 15;
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--flaeche-2);
+  box-shadow: inset 0 0 0 1px var(--kante-hell), 0 8px 24px rgba(0, 0, 0, 0.4);
+  transform: translate3d(-50%, calc(var(--weg, 0px) - 8px), 0) scale(calc(0.6 + var(--anteil, 0) * 0.4));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.55s var(--feder), opacity 0.25s;
+}
+.ptr.ist-aktiv { opacity: var(--anteil, 0); transition: none; }
+.ptr.laedt { opacity: 1; transition: transform 0.55s var(--feder); }
+.ptr svg { transform: rotate(-90deg); }
+.ptr-spur { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 2.5; }
+.ptr-ring { fill: none; stroke: var(--akzent); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+.ptr.ist-bereit { box-shadow: inset 0 0 0 1px rgba(var(--akzent-rgb), 0.4), 0 0 24px rgba(var(--akzent-rgb), 0.25); }
+.ptr.laedt svg { animation: drehen 0.9s linear infinite; }
+.ptr.laedt .ptr-ring { stroke-dashoffset: 70 !important; }
+@keyframes drehen { to { transform: rotate(270deg); } }
+
+/* ---- Konfetti (ruhiger Goldregen) ---- */
+.konfetti-ebene { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
+.konfetti { position: absolute; top: 0; border-radius: 2px; opacity: 0; }
+
+/* ---- Kleine Grafiken ---- */
+.sparkline, .kloetzchen { width: 88px; height: 28px; overflow: visible; }
+.kloetzchen rect { fill: rgba(255, 255, 255, 0.16); }
+.kloetzchen .kloetzchen-neu { fill: var(--akzent); }
+
+.fussnote { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+.fusszeile { margin-top: 32px; font-size: 11px; color: var(--text-3); text-align: center; letter-spacing: 0.01em; }
+.hilfe-knopf { margin-left: 4px; padding: 2px 10px; border: 0; border-radius: var(--radius-voll); background: rgba(var(--minus-rgb), 0.16); color: var(--text); font-size: 12px; font-weight: 600; }
