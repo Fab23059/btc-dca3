@@ -15,8 +15,6 @@
 // Sparplan ergibt immer denselben Baum.
 // =====================================================================
 
-import { wenigBewegung } from "./dom.js";
-import { tick } from "./ui/haptik.js";
 
 const TAU = Math.PI * 2;
 const PUNKTE = 300;   // Stützpunkte je Ring
@@ -239,126 +237,6 @@ export function ringBei(geo, x, y, cx, cy, R) {
 }
 
 /**
- * Lebendiger Baum auf einer Leinwand: wächst beim ersten Erscheinen,
- * atmet danach und reagiert auf den Finger.
- */
-export function lebendigerBaum(leinwand, { beimBeruehren } = {}) {
-  const ctx = leinwand.getContext("2d");
-  let geo = null; let groesse = 0; let dpr = 1;
-  let sichtbar = 0; let hervor = null; let gewachsen = false; let anim = 0;
-  const vorrat = document.createElement("canvas");   // ruhender Baum ohne Glutring
-  let vorratGueltig = false;
-
-  const mass = () => {
-    const r = leinwand.getBoundingClientRect();
-    dpr = Math.min(2.5, devicePixelRatio || 1);
-    groesse = r.width;
-    leinwand.width = Math.round(r.width * dpr);
-    leinwand.height = Math.round(r.width * dpr);
-  };
-  const R = () => groesse * 0.44;
-
-  const male = (atem = 0.5) => {
-    if (!geo || !groesse) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, groesse, groesse);
-    zeichneBaum(ctx, geo, { cx: groesse / 2, cy: groesse / 2, R: R(), sichtbar, hervor, atem });
-    vorratGueltig = false;
-  };
-  /** Atmen: ruhenden Baum aus dem Vorrat nehmen, nur den Glutring neu zeichnen. */
-  const atemBild = (atem) => {
-    if (!geo || !groesse) return;
-    if (!vorratGueltig) {
-      vorrat.width = leinwand.width; vorrat.height = leinwand.height;
-      const v = vorrat.getContext("2d");
-      v.setTransform(dpr, 0, 0, dpr, 0, 0);
-      zeichneBaum(v, geo, { cx: groesse / 2, cy: groesse / 2, R: R(), sichtbar, ohneGlut: true });
-      vorratGueltig = true;
-    }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, leinwand.width, leinwand.height);
-    ctx.drawImage(vorrat, 0, 0);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    zeichneBaum(ctx, geo, { cx: groesse / 2, cy: groesse / 2, R: R(), sichtbar, atem, nurGlut: true });
-  };
-
-  const atmen = () => {
-    cancelAnimationFrame(anim);
-    if (wenigBewegung()) { male(0.5); return; }
-    let letztes = 0;
-    const bild = (t) => {
-      anim = requestAnimationFrame(bild);
-      if (t - letztes < 50 || hervor != null) return;   // 20 Bilder/s genügen für ein ruhiges Atmen
-      letztes = t;
-      atemBild(0.5 + 0.5 * Math.sin(t / 1300));
-    };
-    anim = requestAnimationFrame(bild);
-  };
-
-  const wachsen = () => {
-    if (!geo) return;
-    if (wenigBewegung()) { sichtbar = geo.n; gewachsen = true; atmen(); return; }
-    cancelAnimationFrame(anim);
-    const dauer = Math.min(2600, 700 + geo.n * 55);
-    const t0 = performance.now();
-    let zuletzt = 0;
-    const bild = (t) => {
-      const k = Math.min(1, (t - t0) / dauer);
-      const e = 1 - Math.pow(1 - k, 2.4);
-      sichtbar = Math.max(0.01, e * geo.n);
-      if (Math.floor(sichtbar) !== zuletzt) { zuletzt = Math.floor(sichtbar); if (zuletzt % 3 === 0) tick(3); }
-      male(k);
-      if (k < 1) anim = requestAnimationFrame(bild);
-      else { gewachsen = true; tick(12); atmen(); }
-    };
-    anim = requestAnimationFrame(bild);
-  };
-
-  // Finger: Ring finden, hervorheben, melden
-  const zeige = (e) => {
-    if (!geo) return;
-    const r = leinwand.getBoundingClientRect();
-    const i = ringBei(geo, e.clientX - r.left, e.clientY - r.top, groesse / 2, groesse / 2, R());
-    if (i === hervor) return;
-    hervor = i;
-    if (i != null) tick(4);
-    beimBeruehren?.(i == null ? null : geo.ringe[i].kauf, i);
-    male();
-  };
-  let aktiv = false;
-  leinwand.addEventListener("pointerdown", (e) => { aktiv = true; zeige(e); });
-  leinwand.addEventListener("pointermove", (e) => { if (aktiv || e.pointerType === "mouse") zeige(e); });
-  const loslassen = () => { aktiv = false; if (hervor != null) { hervor = null; beimBeruehren?.(null, null); atemBild(0.5); } };
-  leinwand.addEventListener("pointerup", loslassen);
-  leinwand.addEventListener("pointercancel", loslassen);
-  leinwand.addEventListener("pointerleave", loslassen);
-
-  // Wachsen, sobald der Baum ins Bild kommt
-  const beobachter = new IntersectionObserver((ee) => {
-    for (const e of ee) {
-      if (e.isIntersecting && !gewachsen) wachsen();
-      if (!e.isIntersecting) cancelAnimationFrame(anim); else if (gewachsen) atmen();
-    }
-  }, { threshold: 0.35 });
-  beobachter.observe(leinwand);
-  new ResizeObserver(() => { mass(); vorratGueltig = false; male(); }).observe(leinwand);
-
-  return {
-    setze(kaeufe) {
-      const vorher = geo?.n ?? 0;
-      geo = baumGeometrie(kaeufe);
-      mass();
-      if (gewachsen) {
-        if (geo.n > vorher && vorher > 0) {
-          // ein neuer Ring wächst dazu
-          gewachsen = false; sichtbar = vorher; wachsen();
-        } else { sichtbar = geo.n; male(); }
-      } else male();
-    },
-  };
-}
-
-/**
  * Hintergrundbild 1080 × 2400: Baum, Nebelglut, ruhige Typografie.
  * Gibt einen Blob (PNG) zurück.
  */
@@ -390,12 +268,16 @@ export async function hintergrundbild(kaeufe, { zeilen = [] } = {}) {
   await document.fonts.ready;
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(244, 241, 236, 0.92)";
-  ctx.font = 'italic 76px "Instrument Serif", Georgia, serif';
+  ctx.font = '520 64px "Mona", system-ui, sans-serif';
+  if ("fontStretch" in ctx) ctx.fontStretch = "expanded";
+  ctx.letterSpacing = "-1px";
   ctx.shadowColor = "rgba(255, 170, 90, 0.35)"; ctx.shadowBlur = 30;
   ctx.fillText(zeilen[0] ?? "Jeder Ring ein Montag.", B / 2, H * 0.72);
   ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(167, 163, 174, 0.9)";
-  ctx.font = '500 34px "Inter Variable", system-ui, sans-serif';
+  if ("fontStretch" in ctx) ctx.fontStretch = "normal";
+  ctx.letterSpacing = "0px";
+  ctx.font = '500 34px "Mona", system-ui, sans-serif';
   zeilen.slice(1).forEach((z2, i) => ctx.fillText(z2, B / 2, H * 0.72 + 80 + i * 52));
   return new Promise((ok) => c.toBlob(ok, "image/png"));
 }

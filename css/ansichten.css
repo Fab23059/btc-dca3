@@ -1,397 +1,244 @@
 /* =====================================================================
-   ansichten.css – Die einzelnen Seiten: Depot, Käufe, Analyse, Weg.
+   ansichten.css – Startseite und Fenster: Käufe, Baum, Zahlen,
+   Eintragen, Einstellungen.
    ===================================================================== */
 
-/* Spätere Aktualisierungen ohne Einlauf-Animationen */
-.still *, .still *::before, .still *::after { animation: none !important; }
-
-/* ---- Kopfzeilen-Marke: ein Strich läuft wie ein Sekundenzeiger herum ---- */
-.kopf-marke-svg { width: 32px; height: 32px; overflow: visible; }
-.kopf-marke-svg .marke-strich { stroke: rgba(var(--akzent-rgb), 0.38); stroke-width: 2.6; stroke-linecap: round; animation: sekunde 60s linear infinite; animation-delay: calc(var(--i) * 60s / 52 - 60s); }
-.kopf-marke-svg .marke-zeichen { fill: var(--akzent); filter: drop-shadow(0 0 3px rgba(var(--glut-rgb), 0.85)); }
-@keyframes sekunde {
-  0% { stroke: #FFE2BC; filter: drop-shadow(0 0 2px rgba(255, 190, 120, 1)); }
-  6% { stroke: rgba(var(--akzent-rgb), 0.38); filter: none; }
-  100% { stroke: rgba(var(--akzent-rgb), 0.38); filter: none; }
+/* ---------------------------------------------------------------------
+   Startseite: Wert
+   --------------------------------------------------------------------- */
+.held { display: block; width: 100%; padding: 6px var(--rand) 0; text-align: left; }
+.held::after { display: none; }
+.held.wird-gedrueckt { transform: none; }
+.held-label { font-size: 15px; font-weight: 500; color: var(--text-2); height: 22px; }
+.held-zahl {
+  display: block; margin-top: 4px;
+  font-size: clamp(56px, 16.8vw, 72px); font-weight: 470; font-stretch: 125%;
+  letter-spacing: -0.052em; color: var(--text);
 }
+.held-zahl .ziffern-teil--rest { font-size: 0.4em; font-weight: 520; letter-spacing: -0.02em; color: var(--text-2); margin-left: 0.06em; }
+.held-zeile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 10px; min-height: 22px; font-size: 15px; font-weight: 520; }
+.held-zeitraum { color: var(--text-3); font-weight: 500; }
+
+.veraenderung { display: inline-flex; align-items: baseline; gap: 6px; color: var(--text); }
+.veraenderung-pfeil { align-self: center; }
+.veraenderung--plus .veraenderung-pfeil { color: var(--plus); }
+.veraenderung--minus .veraenderung-pfeil { color: var(--minus); }
+.veraenderung-prozent { color: var(--text-2); }
+.text-3 { color: var(--text-3); }
+
+/* ---- Linie ---- */
+.linie { position: relative; margin-top: 18px; touch-action: pan-y; -webkit-user-select: none; user-select: none; overflow-x: clip; }
+.linie-leinwand { display: block; width: 100%; height: 232px; cursor: crosshair; }
+.linie-kopf {
+  position: absolute; left: 0; top: 0; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+  background: #FFE7CC;
+  box-shadow: 0 0 0 3px rgba(var(--glut-rgb), 0.2), 0 0 16px 3px rgba(var(--glut-rgb), 0.6);
+  opacity: 0; transition: opacity 0.4s;
+}
+.linie-kopf.ist-sichtbar { opacity: 1; }
+.linie-kopf::after {
+  content: ""; position: absolute; inset: -12px; border-radius: 50%;
+  border: 1px solid rgba(var(--glut-rgb), 0.7);
+  animation: herzschlag 2.6s cubic-bezier(0.15, 0.7, 0.3, 1) infinite;
+}
+@keyframes herzschlag { 0% { transform: scale(0.35); opacity: 0.9; } 70%, 100% { transform: scale(1.5); opacity: 0; } }
+.linie-achsen { display: flex; justify-content: space-between; padding: 0 22px 0 var(--rand); margin-top: 4px; font-size: 12px; font-weight: 520; color: var(--text-3); }
+.linie.ist-leer .linie-leinwand { height: 120px; }
+.linie.wird-gescrubbt .linie-achsen { opacity: 0.35; }
+
+/* ---- Zeitraum ---- */
+.zeitraum { position: relative; display: flex; margin: 10px var(--rand) 0; }
+.zeitraum-wahl {
+  flex: 1; height: 42px; font-size: 14.5px; font-weight: 580; font-stretch: 112%;
+  color: var(--text-3); transition: color 0.3s;
+}
+.zeitraum-wahl[aria-pressed="true"] { color: var(--text); }
+.zeitraum-marke {
+  position: absolute; left: 0; bottom: 0; width: 6px; height: 6px; border-radius: 3px;
+  background: var(--glut); box-shadow: 0 0 10px 1px rgba(var(--glut-rgb), 0.8);
+  transform-origin: 50% 50%; will-change: transform;
+}
+
+/* ---- Takt bis zum nächsten Kauf ---- */
+.takt { margin: 26px var(--rand) 0; }
+.takt-zeile { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 520; color: var(--text-2); }
+.takt-zeit { color: var(--text); white-space: nowrap; }
+.takt-balken { display: block; height: 2px; margin-top: 10px; border-radius: 1px; background: var(--flaeche-3); overflow: hidden; }
+.takt-fuellung { display: block; height: 100%; background: linear-gradient(90deg, rgba(var(--glut-rgb), 0.25), var(--glut)); transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(0.2, 0.9, 0.2, 1); }
+
+/* ---- Stapel der Fenster ---- */
+.stapel { display: grid; gap: var(--abstand); margin: 28px var(--rand) 0; }
+.fuss { margin: 28px var(--rand) 0; font-size: 12px; color: var(--text-3); text-align: center; }
+
+/* ---- Ziehen zum Aktualisieren ---- */
+.auffrischen { position: absolute; left: 0; right: 0; top: calc(var(--sicher-oben) + 62px); display: grid; place-items: center; opacity: 0; pointer-events: none; }
+.ring { width: 34px; height: 34px; }
+.ring-strich { stroke: var(--flaeche-3); stroke-width: 3; stroke-linecap: round; transition: stroke 0.15s; }
+.ring-strich.an { stroke: var(--glut); }
+.ring.dreht { animation: drehen 1.1s linear infinite; }
+@keyframes drehen { to { transform: rotate(360deg); } }
 
 /* ---------------------------------------------------------------------
-   Seitenköpfe
+   Fenster-Köpfe (gleich in Kachel und Fenster)
    --------------------------------------------------------------------- */
-.seiten-kopf { display: grid; gap: 8px; padding: 16px 0 24px; }
-.seiten-titel { font-size: 30px; font-weight: 650; letter-spacing: -0.04em; line-height: 1.1; }
-.seiten-titel.serif { font-size: 40px; font-weight: 400; letter-spacing: -0.01em; text-shadow: var(--halation); }
-.seiten-unter { font-size: 15px; color: var(--text-2); max-width: 34ch; }
-.abschnitt-titel { margin: 48px 0 8px; font-size: 11px; font-weight: 560; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+
+/* Käufe */
+.kk-ernte { position: absolute; left: 20px; right: 20px; top: 92px; height: 64px; }
+.ernte { display: block; width: 100%; height: 100%; overflow: visible; }
+.ernte-balken { fill: var(--glut); opacity: 0.92; transition: opacity 0.35s; }
+.ernte-balken--geschaetzt, .ernte-balken--ohneKurs { fill: var(--text-3); opacity: 0.8; }
+.ernte-balken.ist-zukunft { opacity: 0.12; }
+.kk-fuss { position: absolute; left: 20px; right: 20px; top: 166px; display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 520; color: var(--text-2); white-space: nowrap; }
+.kk-offen { color: var(--glut-hell); }
+.kk-rechts { color: var(--text); }
+
+/* Baum */
+.fkopf--baum { padding: 0; }
+.fkopf--baum .baum-leinwand { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.bk-text { position: absolute; left: 0; top: 0; width: calc(100% - 210px); transform-origin: 0 0; }
+.fkopf--offen .bk-text { width: calc(100% - 44px); }
+.bk-ringe { margin-top: 30px; font-size: 40px; font-weight: 480; font-stretch: 125%; letter-spacing: -0.045em; line-height: 1; }
+.bk-ringe-wort { font-size: 15px; letter-spacing: 0; font-weight: 520; color: var(--text-2); }
+.bk-unter { display: block; margin-top: 8px; font-size: 14px; color: var(--text-2); font-weight: 520; }
+
+/* Zahlen */
+.zk-raster { position: absolute; left: 20px; right: 20px; top: 84px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.zk-feld { display: grid; gap: 2px; text-align: left; border-radius: 12px; }
+.zk-titel { font-size: 13px; color: var(--text-2); font-weight: 520; }
+.zk-wert { font-size: 22px; font-weight: 520; font-stretch: 118%; letter-spacing: -0.03em; }
+.zk-wert .ziffern-teil--rest, .zk-wert .ziffern-teil--einheit { font-size: 0.68em; color: var(--text-2); letter-spacing: 0; margin-left: 0.04em; }
 
 /* ---------------------------------------------------------------------
-   Depot
+   Fenster: Käufe
    --------------------------------------------------------------------- */
-.gruss { margin: 8px 0 0; font-size: 24px; color: var(--text-2); text-shadow: 0 0 24px rgba(255, 190, 120, 0.12); }
-.held {
-  position: relative;
-  display: block;
-  width: 100%;
-  padding: 8px 0 16px;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: left;
-  transition: transform var(--f-feder-d) var(--f-feder);
-}
-.held:active { transform: scale(0.985); transition-duration: 0.1s; }
-.held::before {
-  /* warmer Lichthof hinter der Zahl, der ganz langsam atmet */
-  content: "";
-  position: absolute;
-  left: -12%; top: 18%;
-  width: 92%; height: 90%;
-  z-index: -1;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.2), rgba(var(--glut-rgb), 0.07) 55%, transparent);
-  pointer-events: none;
-  animation: lichthof 7.5s ease-in-out infinite;
-}
-@keyframes lichthof { 0%, 100% { opacity: 0.65; transform: scale(0.94); } 50% { opacity: 1; transform: scale(1.06) translateX(3%); } }
-.held-label { display: block; margin: 16px 0 8px; }
-.held-zahl { display: block; }
-.held-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 24px; margin-top: 14px; font-size: 15px; }
-.held-zeitraum { color: var(--text-3); font-size: 14px; }
-
-/* ---- Diagramm ---- */
-.diagramm { position: relative; margin-top: 8px; }
-.diagramm-kopf { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-.diagramm-flaeche { position: relative; height: 240px; margin: 0 -16px; }
-.diagramm-flaeche--klein { height: 210px; margin: 16px -16px 8px; }
-.diagramm-canvas { width: 100%; height: 100%; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
-.diagramm-flaeche.ist-leer .diagramm-canvas { visibility: hidden; }
-.diagramm-flaeche .leer { position: absolute; inset: 0; align-content: center; }
-.diagramm-erklaerung { margin-top: 8px; font-size: 12px; color: var(--text-3); line-height: 1.5; min-height: 3em; }
-.zeitraum { margin-top: 16px; }
-
-/* Scrubbing: schwebende Glaskapsel mit dem Datum über dem Finger */
-.scrub-kapsel {
-  position: absolute;
-  top: -6px;
-  left: 0;
-  z-index: 3;
-  padding: 5px 12px;
-  border-radius: var(--radius-voll);
-  background: rgba(24, 24, 30, 0.82);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--lichtkante), 0 8px 20px -8px rgba(0, 0, 0, 0.8);
-  font-size: 12px; font-weight: 600; color: var(--text);
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, 6px) scale(0.9);
-  transition: opacity 0.2s, transform var(--f-feder-d) var(--f-feder);
-}
-.scrub-kapsel.ist-sichtbar { opacity: 1; transform: translate(-50%, 0) scale(1); }
-.scrub-kapsel.ist-kauf { color: #1F1206; background: linear-gradient(180deg, #FFCB8A, var(--akzent)); box-shadow: var(--glimmen); }
-
-/* Herzschlag am jüngsten Punkt */
-.diagramm-puls { position: absolute; z-index: 2; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity 0.5s; }
-.diagramm-puls.ist-sichtbar { opacity: 1; }
-.wird-gescrubbt .diagramm-puls { opacity: 0; }
-.diagramm-puls::before, .diagramm-puls::after { content: ""; position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; }
-.diagramm-puls::before { background: #FFE7C9; box-shadow: 0 0 0 2px rgba(11, 11, 13, 0.9), 0 0 14px 3px rgba(var(--glut-rgb), 0.9); }
-.diagramm-puls::after { border: 1.5px solid rgba(var(--glut-rgb), 0.9); animation: herzschlag 2.2s ease-out infinite; }
-
-/* ---- Kennzahlen ---- */
-.raster-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.kennzahlen { margin-top: 24px; }
-.kennzahl { display: grid; align-content: start; gap: 4px; min-height: 140px; padding: 16px 16px 48px; overflow: hidden; }
-.kennzahl-wert { display: block; margin-top: 8px; font-size: clamp(20px, 5.8vw, 24px); font-weight: 620; letter-spacing: -0.035em; line-height: 1.15; white-space: nowrap; }
-.kennzahl-wert .z-komma { font-size: 0.72em; color: var(--text-2); font-weight: 520; letter-spacing: -0.01em; }
-.kennzahl-wert .z-einheit { font-size: 0.62em; color: var(--text-2); margin-left: 0.18em; letter-spacing: 0; font-weight: 520; }
-.kennzahl-wert--btc .z-komma { color: var(--text-3); }
-.kennzahl-wert--btc .z-einheit { display: none; }
-.kennzahl-unter { display: block; font-size: 12px; color: var(--text-2); line-height: 1.35; }
-.kennzahl-unter .veraenderung { font-size: 12px; }
-.kennzahl-grafik { position: absolute; right: 12px; bottom: 12px; left: 16px; display: flex; justify-content: flex-end; color: var(--text-2); }
-
-/* ---- Uhr bis zum nächsten Kauf, Baum-Vorschau ---- */
-.depot-unten { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
-.uhr-karte { display: grid; gap: 8px; }
-.uhr-kopf { display: flex; align-items: center; justify-content: space-between; }
-.uhr-lampe { width: 8px; height: 8px; border-radius: 50%; background: var(--akzent); box-shadow: 0 0 10px 2px rgba(var(--glut-rgb), 0.85); animation: pulsieren 2s ease-in-out infinite; }
-.uhr-zahl { font-size: clamp(28px, 9vw, 36px); font-weight: 580; letter-spacing: -0.03em; white-space: nowrap; text-shadow: var(--halation); }
-.uhr-zahl .z-einheit { font-size: 0.5em; color: var(--text-3); font-weight: 560; letter-spacing: 0.02em; }
-.uhr-zahl .z-trenner { color: var(--akzent); opacity: 0.8; padding: 0 0.04em; animation: blinken 1s steps(2) infinite; }
-@keyframes blinken { 50% { opacity: 0.25; } }
-.uhr-ziel { font-size: 13px; color: var(--text-2); }
-.baum-karte { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 16px; padding: 12px 16px 12px 12px; }
-.baum-vorschau { width: 112px; height: 112px; }
-.baum-vorschau-inhalt { display: grid; gap: 6px; }
-.baum-vorschau-text { font-family: var(--schrift-serif); font-style: italic; font-size: 20px; line-height: 1.2; color: var(--text); }
-.baum-vorschau-los { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 620; color: var(--akzent-hell); text-shadow: var(--halation-glut); }
-
-/* ---------------------------------------------------------------------
-   Käufe
-   --------------------------------------------------------------------- */
-.kaeufe-unter { display: grid; gap: 4px; font-size: 15px; color: var(--text-2); margin-bottom: 16px; }
-.kaeufe-unter-zeile { font-size: 13px; }
-.kaeufe-liste { display: grid; gap: 8px; margin-top: 8px; }
-.monat-gruppe { display: grid; gap: 8px; margin-top: 16px; }
-.monat-titel { font-size: 13px; font-weight: 620; color: var(--text-2); padding-left: 4px; letter-spacing: -0.005em; }
-.phasen-trenner {
-  display: flex; align-items: center; gap: 12px;
-  margin: 24px 0 0;
-  font-size: 11px; font-weight: 560; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--text-3);
-}
-.phasen-trenner::before, .phasen-trenner::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--akzent-rgb), 0.35), transparent); }
-
-.ernte-karte { margin-top: 16px; }
-.ernte { display: flex; align-items: flex-end; gap: 3px; height: 92px; margin: 16px 0 12px; }
-.ernte-balken {
-  flex: 1 1 0;
-  min-width: 3px;
-  height: calc(var(--hoehe) * 100%);
-  padding: 0; border: 0;
-  border-radius: 4px 4px 2px 2px;
-  background: linear-gradient(180deg, rgba(var(--akzent-rgb), 0.95), rgba(var(--akzent-rgb), 0.25));
-  box-shadow: 0 0 12px -4px rgba(var(--glut-rgb), 0.8);
-  transform-origin: bottom;
-  transition: transform var(--f-gummi-d) var(--f-gummi), filter 0.3s, opacity 0.3s;
-  transition-delay: calc(var(--i) * 28ms);
-}
-.ernte-balken.ist-geschaetzt { background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.08)); box-shadow: none; }
-.ernte-balken.ist-max { box-shadow: 0 0 18px -2px rgba(var(--glut-rgb), 1); }
-.ernte-balken.ist-gewaehlt { filter: brightness(1.5); }
-.ernte--wartet .ernte-balken { transform: scaleY(0.02); }
-.ernte-info { font-size: 13px; color: var(--text-2); min-height: 2.8em; }
-
+.kauf-hinweis { margin: 0 20px 4px; padding: 14px 16px; border-radius: 18px; background: rgba(var(--glut-rgb), 0.08); }
+.kauf-hinweis-text { font-size: 14px; color: var(--glut-hell); line-height: 1.5; }
+.kauf-monat { margin-top: 18px; }
+.kauf-monat-titel { padding: 0 20px 6px; font-size: 14px; font-weight: 560; color: var(--text-2); }
 .kauf-zeile {
-  position: relative;
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 68px;
-  padding: 12px 16px;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: left;
+  position: relative; display: flex; align-items: center; gap: 14px;
+  width: 100%; min-height: 68px; padding: 10px 20px; text-align: left;
+  background: var(--flaeche);
 }
-.kauf-zeile > * { position: relative; z-index: 1; }
-.kauf-zeile + .kauf-zeile { box-shadow: inset 0 1px 0 var(--kante); }
-.kauf-datum { display: grid; justify-items: center; line-height: 1; gap: 4px; }
-.kauf-tag { font-size: 21px; font-weight: 620; letter-spacing: -0.035em; }
-.kauf-wt { font-size: 10px; font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
-.kauf-mitte { display: grid; gap: 2px; min-width: 0; }
-.kauf-menge { font-size: 15px; font-weight: 580; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kauf-einheit { font-size: 12px; color: var(--text-3); font-weight: 520; }
-.kauf-kurs { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kauf-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 580; color: var(--text-3); white-space: nowrap; }
-.kauf-status path { stroke-dasharray: 1; stroke-dashoffset: 0; }
-.ist-eingetragen .kauf-status { color: rgba(var(--plus-rgb), 0.85); }
-.ist-eingetragen .kauf-status svg { filter: drop-shadow(0 0 4px rgba(var(--plus-rgb), 0.6)); }
-.ist-eingetragen .kauf-status path { animation: zeichnen 0.7s 0.2s var(--sanft) backwards; }
-.ist-geschaetzt .kauf-menge { color: var(--text-2); }
-.ist-geschaetzt .kauf-status svg { animation: drehen 14s linear infinite; }
-.ist-ausstehend .kauf-status, .ist-ohnekurs .kauf-status { color: var(--akzent-hell); }
-.ist-ausstehend .kauf-status svg { filter: drop-shadow(0 0 4px rgba(var(--glut-rgb), 0.8)); }
-.ist-ausstehend .kauf-menge, .ist-ohnekurs .kauf-menge { color: var(--text-2); font-weight: 520; }
+.kauf-zeile + .kauf-zeile::before { content: ""; position: absolute; top: 0; left: 72px; right: 0; height: 1px; background: var(--linie); }
+.kz-datum { width: 38px; flex: none; display: grid; justify-items: center; line-height: 1.05; }
+.kz-tag { font-size: 21px; font-weight: 540; font-stretch: 125%; letter-spacing: -0.03em; }
+.kz-wochentag { font-size: 11.5px; color: var(--text-3); font-weight: 560; }
+.kz-mitte { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.kz-menge { font-size: 16px; font-weight: 540; }
+.kz-menge--leer { color: var(--text-2); font-weight: 500; }
+.kz-einheit { color: var(--text-2); font-size: 13px; }
+.kz-unter { font-size: 13px; color: var(--text-3); }
+.kz-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 560; color: var(--text-3); white-space: nowrap; }
+.kz-status--eingetragen { color: var(--text-2); }
+.kz-status--eingetragen svg { color: var(--plus); }
+.kz-status--geschaetzt { color: var(--glut-hell); }
+.kauf-zeile--kopf { min-height: 68px; }
+/* Gerade gespeichert: Der Haken landet mit einem kurzen Aufglühen */
+.kauf-zeile.ist-frisch .kz-status svg { animation: landen 1.4s 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes landen { 0% { transform: scale(0.4); filter: drop-shadow(0 0 0 rgba(147, 198, 160, 0)); } 35% { transform: scale(1.35); filter: drop-shadow(0 0 8px rgba(147, 198, 160, 0.95)); } 100% { transform: none; filter: drop-shadow(0 0 0 rgba(147, 198, 160, 0)); } }
 
 /* ---------------------------------------------------------------------
-   Analyse
+   Fenster: Eintragen
    --------------------------------------------------------------------- */
-.analyse-rest { display: grid; gap: 8px; margin-top: 8px; }
-.analyse-karte { display: grid; gap: 8px; }
-.analyse-karte--diagramm { padding-bottom: 16px; overflow: hidden; }
-.kurs-kopf { display: grid; gap: 8px; }
-.kurs-kopf .held-zeile { margin-top: 0; }
-.kurs-fuss { display: flex; justify-content: center; overflow-x: auto; scrollbar-width: none; }
-.legende-text { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; color: var(--text-3); margin-top: 4px; }
-.marke { width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(242, 242, 244, 0.85); margin-left: 8px; }
-.marke--voll { background: #F2F2F4; box-shadow: 0 0 6px rgba(255, 255, 255, 0.6); margin-left: 0; }
-.analyse-gross { font-size: 32px; font-weight: 600; letter-spacing: -0.04em; line-height: 1.15; margin-top: 4px; text-shadow: var(--halation); }
-.analyse-gross-zusatz { font-size: 14px; font-weight: 520; letter-spacing: 0; color: var(--text-2); text-shadow: none; }
-.analyse-text { font-size: 14px; color: var(--text-2); line-height: 1.55; }
-
-/* Ringe */
-.ring-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 8px; margin: 16px 0 8px; }
-.ring { display: grid; justify-items: center; gap: 4px; text-align: center; }
-.ring-grafik { position: relative; width: 112px; height: 112px; display: grid; place-items: center; }
-.ring-grafik svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
-.ring-spur { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 7; }
-.ring-bogen { fill: none; stroke: var(--akzent); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 5px rgba(var(--glut-rgb), 0.85)); transition: stroke-dashoffset 1.6s var(--f-traege); }
-.ring-zahl { position: relative; font-size: 26px; font-weight: 620; letter-spacing: -0.04em; text-shadow: var(--halation); }
-.ring-label { font-size: 13px; font-weight: 600; }
-.ring-unter { font-size: 12px; color: var(--text-3); }
-
-/* Verteilung der Tagesbewegungen */
-.verteilung { width: 100%; height: auto; margin: 8px 0; overflow: visible; }
-.verteilung-band { fill: rgba(var(--akzent-rgb), 0.07); stroke: rgba(var(--akzent-rgb), 0.18); stroke-width: 0.5; }
-.verteilung-null { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 2 3; }
-.verteilung-text { fill: var(--text-3); font-size: 9px; font-family: var(--schrift); }
-.tag-punkt { fill: var(--akzent-hell); filter: drop-shadow(0 0 2px rgba(var(--glut-rgb), 0.9)); }
-.tag-punkt--aussen { fill: rgba(255, 255, 255, 0.45); filter: none; }
-
-/* Tauchgang */
-.tauchgang { width: 100%; height: auto; margin: 8px 0; overflow: visible; }
-.wasserlinie { stroke: rgba(255, 220, 180, 0.5); stroke-width: 1; stroke-dasharray: 3 3; }
-.tauch-flaeche { fill: url(#tauch-verlauf); }
-.tauch-linie { fill: none; stroke: rgba(170, 195, 240, 0.85); stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(150, 180, 240, 0.6)); }
-.taucher { fill: #FFE7C9; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 1)); }
-
-/* Wochenmosaik */
-.mosaik { display: grid; grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); gap: 5px; margin: 12px 0 8px; }
-.mosaik-kachel {
-  position: relative;
-  aspect-ratio: 1;
-  padding: 0; border: 0;
-  border-radius: 7px;
-  display: grid; place-items: center;
-  transition: transform var(--f-gummi-d) var(--f-gummi), opacity 0.5s var(--sanft), box-shadow 0.3s;
-  transition-delay: calc(var(--i) * 22ms);
+.fenster-kauf .formular { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; padding: 18px 20px 0; }
+.fenster-kauf .feld-eingabe { width: 100%; }
+.formular-titel { font-size: 24px; font-weight: 560; font-stretch: 125%; letter-spacing: -0.03em; margin-top: 6px; }
+.formular-unter { font-size: 14.5px; color: var(--text-2); margin-top: -16px; }
+.vorschlag {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 2px; padding: 12px 14px;
+  border-radius: var(--r-feld); background: var(--flaeche-2); text-align: left; overflow: hidden;
 }
-.mosaik-kachel.ist-plus { background: rgba(var(--plus-rgb), calc(0.12 + var(--staerke) * 0.6)); box-shadow: 0 0 calc(var(--staerke) * 14px) -2px rgba(var(--plus-rgb), 0.7); }
-.mosaik-kachel.ist-minus { background: rgba(var(--minus-rgb), calc(0.1 + var(--staerke) * 0.5)); }
-.mosaik-kachel.ist-laufend { outline: 1px dashed rgba(255, 255, 255, 0.35); outline-offset: 2px; }
-.mosaik-kachel.ist-gewaehlt { transform: scale(1.18); box-shadow: 0 0 0 2px var(--text), 0 0 18px rgba(255, 255, 255, 0.4); z-index: 1; transition-delay: 0s; }
-.mosaik-einzahlung { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 244, 228, 0.9); box-shadow: 0 0 6px rgba(255, 220, 180, 0.9); }
-.mosaik--wartet .mosaik-kachel { transform: scale(0.2) rotate(-25deg); opacity: 0; }
-.mosaik-info { font-size: 13px; color: var(--text-2); min-height: 2.8em; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.mosaik-info strong { color: var(--text); font-weight: 620; flex-basis: 100%; }
-.rueckblick { margin-top: 4px; }
-.rueckblick-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; }
-.rueckblick-zeile + .rueckblick-zeile { box-shadow: inset 0 1px 0 var(--kante); }
-.rueckblick-titel { font-size: 14px; font-weight: 580; }
-
-/* Reifegrad */
-.reife-kopf { display: grid; gap: 4px; }
-.reife { position: relative; display: flex; align-items: flex-end; gap: 3px; height: 120px; margin: 24px 0 8px; padding-top: 4px; }
-.reife-linie { position: absolute; left: 0; right: 0; top: 0; height: 0; border-top: 1px dashed rgba(255, 210, 150, 0.55); box-shadow: 0 0 10px rgba(var(--glut-rgb), 0.5); }
-.reife-linie span { position: absolute; right: 0; top: -18px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--akzent-hell); }
-.reife-saeule {
-  flex: 1 1 0;
-  min-width: 2px;
-  height: calc(var(--anteil) * 100%);
-  border-radius: 3px 3px 1px 1px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.06));
-  transform-origin: bottom;
-  transition: transform 1.2s var(--f-traege);
-  transition-delay: calc(var(--i) * 30ms);
-}
-.reife-saeule.ist-reif { background: linear-gradient(180deg, #FFE1A8, var(--akzent)); box-shadow: 0 0 14px -2px rgba(var(--glut-rgb), 0.9); }
-.reife--wartet .reife-saeule { transform: scaleY(0); }
-.tranchen { display: grid; margin: 8px -16px 0; }
-.tranche { display: grid; gap: 4px; padding: 12px 16px; }
-.tranche + .tranche { box-shadow: inset 0 1px 0 var(--kante); }
-.tranche-oben, .tranche-unten { display: flex; justify-content: space-between; gap: 12px; }
-.tranche-oben { font-size: 15px; font-weight: 580; }
-.tranche-unten { font-size: 12px; color: var(--text-3); }
-.tranche-unten span:last-child, .tranche-oben span:last-child { text-align: right; white-space: nowrap; }
-.ist-reif-text { color: var(--akzent-hell); text-shadow: var(--halation-glut); }
+.vorschlag-text { flex: 1; display: grid; gap: 2px; }
+.vorschlag-titel { font-size: 12.5px; color: var(--text-2); font-weight: 560; }
+.vorschlag-text { font-size: 16px; font-weight: 560; font-variant-numeric: tabular-nums; }
+.vorschlag-quelle { display: none; }
+.vorschlag-los { color: var(--glut); font-weight: 650; font-size: 14px; }
+.rechnung { border-radius: var(--r-feld); background: var(--flaeche-2); padding: 14px 16px; }
+.rechnung-zeile { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; }
+.rechnung-titel { color: var(--text-2); font-size: 14px; }
+.rechnung-wert { font-weight: 600; font-variant-numeric: tabular-nums; font-stretch: 112%; }
+.rechnung-erkl { grid-column: 1 / -1; font-size: 12.5px; color: var(--text-3); }
+.rechnung-leer { font-size: 14px; color: var(--text-2); line-height: 1.5; }
+.rechnung--warnung .rechnung-wert { color: var(--glut-hell); }
+.formular-fuss { position: sticky; bottom: 0; display: grid; gap: 4px; padding: 10px 0 calc(10px + var(--sicher-unten)); background: linear-gradient(to bottom, rgba(19, 17, 16, 0), var(--flaeche) 30%); }
+.feld-eingabe[type="date"] { font-size: 19px; font-stretch: 100%; color-scheme: dark; }
+.knopf.ist-fertig { background: var(--plus); color: #0F1A12; }
+.knopf.ist-fertig > span:first-child { opacity: 0; }
+.knopf-haken { position: absolute; inset: 0; display: grid; place-items: center; }
+.knopf-haken svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: zeichnen 0.45s 0.05s cubic-bezier(0.3, 0.8, 0.3, 1) forwards; }
+@keyframes zeichnen { to { stroke-dashoffset: 0; } }
 
 /* ---------------------------------------------------------------------
-   Weg: der Baum
+   Fenster: Baum
    --------------------------------------------------------------------- */
-.baum-buehne {
-  position: relative;
-  display: grid;
-  place-items: center;
-  margin: 0 -16px;
-  padding: 8px 0 0;
+.baum-unten { padding: 0 20px; }
+.zeitleiste { position: relative; height: 44px; margin: 4px 6px 0; touch-action: none; cursor: ew-resize; }
+.zeitleiste::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--flaeche-3); }
+.zeitleiste-striche { position: absolute; inset: 0; }
+.zeitleiste-strich { position: absolute; top: 15px; width: 1px; height: 14px; margin-left: -0.5px; background: var(--text-3); }
+.zeitleiste-strich--eingetragen { background: var(--text-2); }
+.zeitleiste-zeiger {
+  position: absolute; left: 0; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+  background: #FFE7CC; box-shadow: 0 0 0 4px rgba(var(--glut-rgb), 0.18), 0 0 18px 2px rgba(var(--glut-rgb), 0.6);
+  will-change: transform;
 }
-.baum { position: relative; z-index: 1; width: min(100%, 420px); aspect-ratio: 1; touch-action: none; cursor: crosshair; }
-.baum-halo {
-  position: absolute;
-  inset: 4% 8% 16%;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.22), rgba(var(--glut-rgb), 0.06) 60%, transparent);
-  animation: halo 7s ease-in-out infinite;
-}
-@keyframes halo { 50% { transform: scale(1.06); opacity: 0.75; } }
-.baum-dunst { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
-.baum-dunst span { position: absolute; width: 70%; height: 30%; border-radius: 50%; background: radial-gradient(closest-side, rgba(200, 210, 235, 0.07), transparent); }
-.baum-dunst span:nth-child(1) { left: -20%; top: 40%; animation: dunst-a 26s ease-in-out infinite alternate; }
-.baum-dunst span:nth-child(2) { right: -25%; top: 62%; animation: dunst-b 34s ease-in-out infinite alternate; }
-@keyframes dunst-a { to { transform: translate3d(50%, -12%, 0) scale(1.2); } }
-@keyframes dunst-b { to { transform: translate3d(-45%, -18%, 0) scale(1.3); } }
-.baum-info { position: relative; z-index: 3; display: grid; gap: 2px; justify-items: center; text-align: center; margin-top: -8px; padding: 0 16px; min-height: 48px; }
-.baum-info-titel { font-size: 15px; font-weight: 620; text-shadow: var(--halation); }
-.baum-info-text { font-size: 13px; color: var(--text-2); }
-.baum-aktionen { display: flex; justify-content: center; margin: 16px 0 24px; }
-
-/* Anteil an allen Bitcoin */
-.anteil { position: relative; display: grid; place-items: center; width: 180px; height: 180px; margin: 16px auto 8px; }
-.anteil-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
-.anteil-spur { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 7; }
-.anteil-bogen { fill: none; stroke: var(--akzent); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.9)); transition: stroke-dashoffset 1.8s var(--f-traege); }
-.anteil-ueber { fill: none; stroke: #FFE1A8; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 8px rgba(255, 210, 150, 1)); transition: stroke-dashoffset 1.8s var(--f-traege) 1.2s; }
-.anteil-mitte { display: grid; justify-items: center; gap: 2px; }
-.anteil-zahl { font-size: 36px; font-weight: 620; letter-spacing: -0.045em; text-shadow: var(--halation); }
-.anteil-zahl .z-einheit { font-size: 0.5em; color: var(--text-2); margin-left: 0.1em; }
-.anteil-unter { max-width: 84px; font-size: 10.5px; line-height: 1.25; text-align: center; color: var(--text-3); letter-spacing: 0.03em; }
-.anteil-titel { font-family: var(--schrift-serif); font-style: italic; font-size: 24px; line-height: 1.2; text-align: center; color: var(--text); text-shadow: var(--halation); }
-
-.weg-karte { display: grid; gap: 8px; margin-top: 8px; }
-.meilenstein-kopf { display: grid; gap: 4px; margin-top: 4px; }
-.pfad { position: relative; display: grid; gap: 0; margin-top: 16px; padding-left: 4px; }
-.pfad-punkt { position: relative; display: grid; grid-template-columns: 24px 1fr; column-gap: 12px; padding-bottom: 16px; animation: fokusRein 0.7s var(--f-feder) backwards; animation-delay: calc(var(--i) * 70ms + 200ms); }
-@keyframes fokusRein { from { opacity: 0; filter: blur(6px); transform: translateX(-8px); } }
-.pfad-punkt::before { content: ""; position: absolute; left: 11px; top: 20px; bottom: 0; width: 2px; background: var(--kante-hell); }
-.pfad-punkt:last-child::before { display: none; }
-.pfad-punkt--erreicht::before { background: linear-gradient(rgba(var(--akzent-rgb), 0.6), rgba(var(--akzent-rgb), 0.25)); box-shadow: 0 0 6px rgba(var(--glut-rgb), 0.5); }
-.pfad-marke { grid-row: 1 / 3; width: 12px; height: 12px; margin: 4px 6px; border-radius: 50%; background: var(--flaeche-3); box-shadow: inset 0 0 0 2px var(--kante-hell); }
-.pfad-punkt--erreicht .pfad-marke { background: var(--akzent); box-shadow: 0 0 0 4px rgba(var(--akzent-rgb), 0.15), 0 0 10px rgba(var(--glut-rgb), 0.9); }
-.pfad-punkt--naechstes .pfad-marke { background: var(--grund); box-shadow: inset 0 0 0 2px var(--akzent), 0 0 0 4px rgba(var(--akzent-rgb), 0.12); animation: atmenRing 2.4s ease-in-out infinite; }
-@keyframes atmenRing { 50% { box-shadow: inset 0 0 0 2px var(--akzent), 0 0 0 9px rgba(var(--akzent-rgb), 0.05), 0 0 16px rgba(var(--glut-rgb), 0.6); } }
-.pfad-titel { font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
-.pfad-unter { font-size: 12px; color: var(--text-3); }
-.pfad-punkt--spaeter .pfad-titel { color: var(--text-3); }
-
-.wochen-serie { display: grid; gap: 4px; }
-.wochen-punkte { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; margin: 16px 0 8px; }
-.wochen-punkte span { aspect-ratio: 1; border-radius: 50%; background: var(--flaeche-3); }
-.wochen-punkte span.an { background: var(--akzent); box-shadow: 0 0 8px rgba(var(--glut-rgb), 0.6); animation: zuenden-punkt 0.5s var(--f-gummi) backwards; animation-delay: calc(var(--i) * 35ms + 150ms); }
-@keyframes zuenden-punkt { from { transform: scale(0); background: #FFF2DE; box-shadow: 0 0 16px rgba(255, 220, 180, 1); } }
-
-.markt-zeile { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.werte-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; margin-top: 8px; }
-.werte-liste dt { font-size: 12px; color: var(--text-3); }
-.werte-liste dd { font-size: 15px; font-weight: 580; white-space: nowrap; }
-
-.stimmung { display: flex; align-items: center; gap: 16px; margin: 8px 0; }
-.tacho { width: 132px; height: 72px; flex: none; overflow: visible; }
-.tacho-spur { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 8; stroke-linecap: round; }
-.tacho-bogen { fill: none; stroke-width: 8; stroke-linecap: round; opacity: 0.6; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2)); }
-.tacho-nadel { transform-origin: 64px 60px; transform-box: view-box; }
-.tacho-zeiger-linie { stroke: var(--text); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(255, 220, 180, 0.9)); }
-.tacho-nabe { fill: var(--text); stroke: var(--grund); stroke-width: 2.5; }
-.stimmung-text { display: grid; gap: 2px; }
+.baum-info { min-height: 44px; margin-top: 10px; font-size: 14px; color: var(--text-2); line-height: 1.5; }
+.baum-info strong { color: var(--text); font-weight: 600; }
+.baum-unten .knopf { margin-top: 10px; }
 
 /* ---------------------------------------------------------------------
-   Push-Einrichtung
+   Fenster: Zahlen
    --------------------------------------------------------------------- */
-.schritte { display: grid; gap: 24px; }
-.schritt { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
-.schritt-nr { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(var(--akzent-rgb), 0.16); color: var(--akzent-hell); font-size: 13px; font-weight: 700; box-shadow: var(--schimmer); }
-.schritt-inhalt { display: grid; gap: 8px; min-width: 0; }
-.schritt-titel { font-size: 16px; font-weight: 620; letter-spacing: -0.01em; padding-top: 2px; }
-.schluessel-feld {
-  width: 100%; resize: none;
-  padding: 12px;
-  border: 0; border-radius: 14px;
-  background: rgba(10, 10, 13, 0.7);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  color: var(--text-2);
-  font: 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  word-break: break-all;
-}
+.zahlen-koerper { padding: 4px 20px 0; }
+.zahl-abschnitt { padding: 26px 0; }
+.zahl-abschnitt + .zahl-abschnitt { border-top: 1px solid var(--linie); }
+.zahl-abschnitt-titel { font-size: 14px; font-weight: 560; color: var(--text-2); }
+.zahl-gross { margin-top: 8px; font-size: 40px; font-weight: 480; font-stretch: 125%; letter-spacing: -0.045em; line-height: 1.05; }
+.zahl-knopf { display: block; text-align: left; border-radius: 12px; }
+.zahl-einheit { font-size: 16px; font-weight: 520; letter-spacing: 0; color: var(--text-2); }
+.zahl-satz { margin-top: 12px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+.zb { position: relative; display: block; height: 4px; margin-top: 16px; border-radius: 2px; background: var(--flaeche-3); }
+.zb-fuellung { position: absolute; inset: 0; border-radius: 2px; background: var(--text-2); transform-origin: left; transform: scaleX(0); will-change: transform; }
+.zb--glut .zb-fuellung, .zb--stimmung .zb-fuellung { background: linear-gradient(90deg, rgba(var(--glut-rgb), 0.35), var(--glut)); box-shadow: 0 0 10px rgba(var(--glut-rgb), 0.45); }
+.zb--stimmung { background: linear-gradient(90deg, rgba(227, 154, 135, 0.25), rgba(160, 152, 142, 0.18), rgba(147, 198, 160, 0.25)); }
+.zb-marke { position: absolute; top: -5px; width: 1.5px; height: 14px; margin-left: -0.75px; background: var(--text); border-radius: 1px; }
+.wochenpunkte { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; max-width: 338px; }
+.wochenpunkt { width: 6px; height: 6px; border-radius: 50%; background: var(--glut); }
+.wochenpunkt--geschaetzt { background: rgba(var(--glut-rgb), 0.45); }
+.wochenpunkt--ausstehend { background: transparent; box-shadow: inset 0 0 0 1px var(--text-3); }
+.wochenpunkt--ohneKurs { background: var(--text-3); }
+.meilen { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+.meilen li { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-2); }
+.meilen li span:first-child { color: var(--text); font-weight: 560; }
 
-@media (max-width: 359px) {
-  .kauf-status-text { display: none; }
-  .baum-karte { grid-template-columns: 88px minmax(0, 1fr); }
-  .baum-vorschau { width: 88px; height: 88px; }
+/* ---------------------------------------------------------------------
+   Fenster: Einstellungen
+   --------------------------------------------------------------------- */
+.fenster-einstellungen { padding: 22px 16px 0; }
+.einstellungen-titel { padding: 2px 4px 6px; }
+.einstellungen .gruppe:first-child { margin-top: 18px; }
+
+/* Rechenweg, Import-Vorschau, Push */
+.rechenweg > * + * { margin-top: 14px; }
+.import-vorschau > * + * { margin-top: 14px; }
+.detail-stapel > * + * { margin-top: 14px; }
+.schritte { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+.schritt { display: flex; gap: 14px; }
+.schritt-nr { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--flaeche-3); font-weight: 650; font-size: 14px; }
+.schritt-inhalt { flex: 1; display: grid; gap: 8px; }
+.schritt-titel { font-weight: 600; }
+.schluessel-feld { width: 100%; border: 0; border-radius: 14px; padding: 12px; background: var(--flaeche-3); color: var(--text); font: 12px ui-monospace, monospace; resize: none; }
+.hinweis { display: flex; gap: 12px; padding: 14px; border-radius: 18px; background: rgba(147, 198, 160, 0.1); }
+.hinweis-symbol { color: var(--plus); }
+.hinweis-titel { font-weight: 600; }
+.hinweis-unter { font-size: 13.5px; color: var(--text-2); }
+
+/* Offene Fenster: Beim Scrollen blendet oben ein weicher Übergang ein (nur Deckkraft) */
+.fenster::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; z-index: 2; pointer-events: none;
+  height: calc(var(--sicher-oben) + 72px);
+  background: linear-gradient(to bottom, var(--flaeche) 0%, var(--flaeche) 45%, rgba(19, 17, 16, 0));
+  opacity: 0; transition: opacity 0.25s;
 }
-@media (min-width: 560px) {
-  .depot-unten { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+.fenster.ist-gerollt::after { opacity: 1; }

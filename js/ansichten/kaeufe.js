@@ -1,139 +1,137 @@
 // =====================================================================
-// kaeufe.js – Alle Sparwochen als Liste, nach Monaten gruppiert.
-// Eingetragen = ruhiges Häkchen, geschätzt = gestrichelter Kreis,
-// ausstehend = Uhr. Antippen öffnet das Eintragen.
+// kaeufe.js – Das Fenster "Käufe".
+//
+// Kopf (auch als Kachel auf der Startseite): die Ernte – jeder Kauf ein
+// Balken, so hoch wie die sats, die es dafür gab. Bei der Zeitreise
+// verblassen die Käufe, die "noch nicht passiert" sind.
+//
+// Darunter: alle Sparwochen. Eine Zeile antippen → sie entfaltet sich
+// zum Eintragen (Bewegung B1, aus genau dieser Zeile).
 // =====================================================================
 
-import { h, svg, icon, fuelle, wenigBewegung } from "../dom.js";
-import { Zaehlwerk } from "../ui/zaehlwerk.js";
-import { fokus } from "../ui/federwerk.js";
-import { tick } from "../ui/haptik.js";
-import { btc as btcFmt, euro, monatsname, wochentagKurz, datumLang, anzahl, ganz, sats } from "../format.js";
-import { zerlege } from "../zeit.js";
-import { leer } from "./gemeinsam.js";
+import { h, svg, icon, fuelle } from "../dom.js";
+import { entfalte } from "../teile/fenster.js";
+import { btc as btcFmt, sats, euro, anzahl, datumMonatKurz, monatsname, wochentagKurz, uhrzeit, datumLang } from "../format.js";
+import { zerlege as zerlegeDatum } from "../zeit.js";
+import { kopfPlus } from "./gemeinsam.js";
+
+/** Ernte als SVG: ein Balken je Kauf. */
+function ernte() {
+  const el = svg("svg", { class: "ernte", viewBox: "0 0 100 40", preserveAspectRatio: "none", "aria-hidden": "true" });
+  let balken = [];
+  return {
+    el,
+    setze(kaeufe) {
+      const gez = kaeufe.filter((k) => k.gezaehlt);
+      // Höhe ab einem Sockel, damit günstige Wochen sichtbar herausragen
+      const max = Math.max(...gez.map((k) => k.btc), 1e-12);
+      const min = Math.min(...gez.map((k) => k.btc), max);
+      const sockel = min * 0.72;
+      const n = Math.max(gez.length, 12);
+      const b = 100 / n;
+      balken = gez.map((k, i) => {
+        const hoehe = 5 + ((k.btc - sockel) / Math.max(1e-12, max - sockel)) * 35;
+        return { ts: k.ts, el: svg("rect", { x: (i * b + b * 0.18).toFixed(3), y: (40 - hoehe).toFixed(3), width: (b * 0.64).toFixed(3), height: hoehe.toFixed(3), rx: Math.min(0.8, b * 0.2), class: `ernte-balken ernte-balken--${k.status}` }) };
+      });
+      el.replaceChildren(...balken.map((x) => x.el));
+    },
+    zeitreise(t) { for (const x of balken) x.el.classList.toggle("ist-zukunft", t != null && x.ts > t); },
+  };
+}
+
+export function kaeufeKopf(app) {
+  const z = app.zustand;
+  const unter = h("p", { class: "fkopf-unter" });
+  const e = ernte();
+  const links = h("span", { class: "kk-links" });
+  const rechts = h("span", { class: "kk-rechts zahl" });
+  const el = h("div", { class: "fkopf fkopf--kaeufe" },
+    h("h2", { class: "fkopf-titel" }, "Käufe"), unter, kopfPlus(),
+    h("div", { class: "kk-ernte" }, e.el),
+    h("p", { class: "kk-fuss" }, links, rechts));
+  let letzteZeit = null;
+  const zeige = (t) => {
+    const s = z.summe;
+    const gez = z.kaeufe.filter((k) => k.gezaehlt && (t == null || k.ts <= t));
+    if (!s.anzahl) { unter.textContent = "Noch kein Kauf"; fuelle(links); fuelle(rechts); return; }
+    unter.textContent = t == null ? `${anzahl(s.anzahl, "Kauf", "Käufe")} seit ${datumMonatKurz(z.kaeufe[0].montag)}` : `${anzahl(gez.length, "Kauf", "Käufe")} bis hierhin`;
+    const geschaetzt = s.geschaetzt.length;
+    fuelle(links, `${s.eingetragen} eingetragen`, geschaetzt ? h("span", { class: "kk-offen" }, ` · ${geschaetzt} geschätzt`) : null);
+    const satsSumme = gez.reduce((a, k) => a + k.btc, 0) * 1e8;
+    rechts.textContent = `${sats(satsSumme)} sats`;
+  };
+  return {
+    el,
+    aktualisiere() { e.setze(z.kaeufe); e.zeitreise(letzteZeit); zeige(letzteZeit); },
+    zeitreise(info) { letzteZeit = info?.t ?? null; e.zeitreise(letzteZeit); zeige(letzteZeit); },
+  };
+}
 
 const STATUS = {
   eingetragen: { text: "eingetragen", symbol: "haken" },
   geschaetzt: { text: "geschätzt", symbol: "schaetzung" },
   ausstehend: { text: "ausstehend", symbol: "uhr" },
-  ohneKurs: { text: "Kurs fehlt", symbol: "offline" },
+  ohneKurs: { text: "ohne Kurs", symbol: "schaetzung" },
 };
 
-export function erstelleKaeufe(app) {
+// Zuletzt gespeicherter Kauf: Seine Zeile glüht beim Neuaufbau kurz auf
+let frisch = { montag: null, bis: 0 };
+export function markiereFrisch(montag) { frisch = { montag, bis: Date.now() + 2500 }; }
+
+/** Eine Zeile – gleich aufgebaut wie der Kopf des Eintragen-Fensters. */
+export function kaufZeile(k, { beiTipp } = {}) {
+  const { tag } = zerlegeDatum(k.montag);
+  const st = STATUS[k.status];
+  const menge = k.btc != null ? h("span", { class: "kz-menge zahl" }, btcFmt(k.btc), h("span", { class: "kz-einheit" }, " BTC")) : h("span", { class: "kz-menge kz-menge--leer" }, k.status === "ausstehend" ? `${uhrzeit(k.ts)} Uhr` : "Kurs fehlt");
+  const unter = k.btc != null ? h("span", { class: "kz-unter zahl" }, `${sats(k.btc * 1e8)} sats · ${euro(k.kurs, 0)}`) : h("span", { class: "kz-unter" }, k.boerse ?? "");
+  const kinder = [
+    h("span", { class: "kz-datum" }, h("span", { class: "kz-tag zahl" }, String(tag)), h("span", { class: "kz-wochentag" }, wochentagKurz(k.montag))),
+    h("span", { class: "kz-mitte" }, menge, unter),
+    h("span", { class: `kz-status kz-status--${k.status}` }, icon(st.symbol, { groesse: 15, strich: 2 }), h("span", null, st.text)),
+  ];
+  if (!beiTipp || k.status === "ausstehend") return h("div", { class: "kauf-zeile", "data-montag": k.montag }, kinder);
+  const istFrisch = frisch.montag === k.montag && Date.now() < frisch.bis;
+  const el = h("button", { type: "button", class: ["kauf-zeile", "tippbar", istFrisch && "ist-frisch"], "data-montag": k.montag, "aria-label": `Kauf vom ${datumLang(k.montag)} – ${st.text}`, onclick: () => beiTipp(el) }, kinder);
+  return el;
+}
+
+/** Das offene Fenster. */
+export function oeffneKaeufe(app, herkunft) {
   const z = app.zustand;
-  const zahl = h("p", { class: "kaeufe-zahl zahl-gross" });
-  const zahlWerk = new Zaehlwerk(zahl, (n) => [["ganz", n == null ? "–" : ganz(n)]], { einrollen: true, glimmen: true });
-  const unter = h("p", { class: "kaeufe-unter" });
-  const knopf = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit impuls", onclick: (e) => app.eintragen(null, e.currentTarget) }, icon("plus", { groesse: 18, strich: 2.2 }), h("span", null, "Kauf eintragen"));
-  // Ernte: Jede Woche dieselben 15 € – aber unterschiedlich viele sats
-  const ernteInfo = h("p", { class: "ernte-info" });
-  const ernte = h("div", { class: "ernte", "aria-hidden": "true" });
-  const ernteKarte = h("section", { class: "karte karte--glanz ernte-karte" }, h("h2", { class: "label" }, "Deine Ernte · sats je Kauf"), ernte, ernteInfo);
-  const liste = h("div", { class: "kaeufe-liste" });
-  const el = h("div", { class: "seite-inhalt" },
-    h("header", { class: "seiten-kopf" }, h("p", { class: "label" }, "Deine Käufe"), zahl, unter, knopf),
-    ernteKarte,
-    liste);
-  let ernteSig = ""; let besucht = false; let ernteGezeigt = false;
+  const kopf = kaeufeKopf(app);
+  const liste = h("div", { class: "kauf-liste" });
+  const hinweis = h("div", { class: "kauf-hinweis" });
+  const inhalt = h("div", { class: "fenster-kaeufe" }, kopf.el, hinweis, liste);
 
-  function zeigeErnte() {
-    const kauf = z.kaeufe.filter((k) => k.gezaehlt);
-    const sig = kauf.map((k) => k.btc.toFixed(8)).join();
-    if (sig === ernteSig) return;
-    ernteSig = sig;
-    if (kauf.length < 2) { ernteKarte.hidden = true; return; }
-    ernteKarte.hidden = false;
-    const werte = kauf.map((k) => k.btc * 1e8);
-    const max = Math.max(...werte); const min = Math.min(...werte);
-    const schnitt = werte.reduce((a, b) => a + b, 0) / werte.length;
-    const sichtbar = kauf.slice(-40);
-    const balken = sichtbar.map((k, i) => {
-      const w = k.btc * 1e8;
-      const b = h("button", {
-        type: "button", class: ["ernte-balken", k.status === "geschaetzt" && "ist-geschaetzt", w === max && "ist-max"],
-        style: { "--hoehe": (0.18 + 0.82 * ((w - min * 0.85) / (max - min * 0.85 || 1))).toFixed(3), "--i": String(i) },
-        "aria-label": `${datumLang(k.montag)}: ${sats(w)} sats`,
-        onclick: () => { ernte.querySelectorAll(".ist-gewaehlt").forEach((x) => x.classList.remove("ist-gewaehlt")); b.classList.add("ist-gewaehlt"); tick(4); ernteInfo.textContent = `${datumLang(k.montag)}: ${sats(w)} sats für 15 € – ${w >= schnitt ? `${zahl2(w / schnitt * 100 - 100)} % mehr` : `${zahl2(100 - w / schnitt * 100)} % weniger`} als im Schnitt.`; },
-      });
-      return b;
-    });
-    fuelle(ernte, balken);
-    if (!ernteGezeigt && !wenigBewegung()) ernte.classList.add("ernte--wartet");
-    ernteInfo.textContent = `Jede Woche dieselben 15 € – in günstigen Wochen gibt es mehr sats. Im Schnitt ${sats(schnitt)} sats pro Kauf.`;
-    if (besucht) laufeErnte();
+  function baueListe() {
+    kopf.aktualisiere();
+    const s = z.summe;
+    if (s.geschaetzt.length) {
+      const aeltester = s.geschaetzt[0];
+      fuelle(hinweis, h("p", { class: "kauf-hinweis-text" },
+        `${anzahl(s.geschaetzt.length, "Kauf ist", "Käufe sind")} nur geschätzt. Trag die echte Menge aus Bitvavo ein, dann stimmt alles aufs Satoshi.`));
+      hinweis.hidden = false;
+      hinweis.dataset.montag = aeltester.montag;
+    } else hinweis.hidden = true;
+
+    const gruppen = new Map();
+    for (const k of [...z.kaeufe].reverse()) {
+      const { jahr, monat } = zerlegeDatum(k.montag);
+      const schl = `${jahr}-${monat}`;
+      if (!gruppen.has(schl)) gruppen.set(schl, { titel: `${monatsname(monat)} ${jahr}`, kaeufe: [] });
+      gruppen.get(schl).kaeufe.push(k);
+    }
+    fuelle(liste, ...[...gruppen.values()].map((g) => h("section", { class: "kauf-monat" },
+      h("h3", { class: "kauf-monat-titel" }, g.titel),
+      ...g.kaeufe.map((k) => kaufZeile(k, { beiTipp: (el) => app.eintragen(k.montag, el) })))));
   }
-  function laufeErnte() {
-    if (ernteGezeigt) return;
-    ernteGezeigt = true;
-    requestAnimationFrame(() => ernte.classList.remove("ernte--wartet"));
-  }
+  baueListe();
+  app.koepfe.add(kopf);
+  const beobachter = () => baueListe();
+  app.beiAenderung.add(beobachter);
 
-  function zeile(k) {
-    const st = STATUS[k.status];
-    const { tag } = zerlege(k.montag);
-    const uhr = `${String(k.stunde).padStart(2, "0")}:${String(k.minute).padStart(2, "0")}`;
-    const mitte = k.status === "ausstehend"
-      ? [h("span", { class: "kauf-menge" }, `Kauf um ${uhr} Uhr`), h("span", { class: "kauf-kurs" }, "zählt ab dann mit")]
-      : k.status === "ohneKurs"
-        ? [h("span", { class: "kauf-menge" }, "Kurs wird gesucht"), h("span", { class: "kauf-kurs" }, "oder selbst eintragen")]
-        : [h("span", { class: "kauf-menge" }, btcFmt(k.btc), h("span", { class: "kauf-einheit" }, " BTC")),
-          h("span", { class: "kauf-kurs" }, `zu ${euro(k.kurs, 0)}${k.kaufdatum !== k.montag ? ` · gekauft ${wochentagKurz(k.kaufdatum)}` : ""}`)];
-    return h("button", {
-      type: "button", class: ["kauf-zeile", "tippbar", "impuls", `ist-${k.status.toLowerCase()}`],
-      "aria-label": `${datumLang(k.montag, true)}: ${st.text}. Antippen zum ${k.status === "eingetragen" ? "Bearbeiten" : "Eintragen"}.`,
-      onclick: (e) => app.eintragen(k.montag, e.currentTarget),
-    },
-    h("span", { class: "kauf-datum" }, h("span", { class: "kauf-tag" }, String(tag)), h("span", { class: "kauf-wt" }, wochentagKurz(k.montag))),
-    h("span", { class: "kauf-mitte" }, mitte),
-    h("span", { class: "kauf-status" }, icon(st.symbol, { groesse: 16, strich: 2 }), h("span", { class: "kauf-status-text" }, st.text)));
-  }
-
-  const zahl2 = (x) => Math.round(x).toLocaleString("de-DE");
-  return {
-    el,
-    betreten() {
-      besucht = true;
-      laufeErnte();
-      fokus([...liste.querySelectorAll(".monat-gruppe, .phasen-trenner")].slice(0, 6), { abstand: 70, start: 120 });
-    },
-    aktualisiere() {
-      const s = z.summe;
-      zahlWerk.setze(s.anzahl);
-      zeigeErnte();
-      const teile = [z.kaeufe.length ? `${s.anzahl === 1 ? "Kauf" : "Käufe"} seit ${datumLang(z.kaeufe[0].montag, true).replace(/^\w+, /, "")}` : "Käufe"];
-      const sub = [];
-      if (s.eingetragen) sub.push(`${s.eingetragen} eingetragen`);
-      if (s.geschaetzt.length) sub.push(`${s.geschaetzt.length} geschätzt`);
-      if (s.ausstehend.length) sub.push(`${s.ausstehend.length} ausstehend`);
-      fuelle(unter, teile[0], sub.length ? h("span", { class: "text-3 kaeufe-unter-zeile" }, sub.join(" · ")) : null);
-
-      if (!z.kaeufe.length) {
-        fuelle(liste, leer({ titel: "Noch keine Sparwoche", text: "Der Sparplan startet am 8. Juni 2026. Ab dann erscheint hier jede Woche ein Kauf.", symbol: "kaeufe" }));
-        return;
-      }
-      // Nach Monaten gruppieren, neueste zuerst; Börsenwechsel als Trenner
-      const gruppen = [];
-      for (const k of [...z.kaeufe].reverse()) {
-        const { jahr, monat } = zerlege(k.montag);
-        const schl = `${jahr}-${monat}`;
-        if (!gruppen.length || gruppen[gruppen.length - 1].schl !== schl) gruppen.push({ schl, jahr, monat, boerse: k.boerse, kaeufe: [] });
-        gruppen[gruppen.length - 1].kaeufe.push(k);
-      }
-      const kinder = [];
-      let letzteBoerse = null;
-      for (const g of gruppen) {
-        const boerse = g.kaeufe[g.kaeufe.length - 1].boerse;
-        if (boerse !== letzteBoerse) {
-          const inPhase = z.kaeufe.filter((k) => k.boerse === boerse);
-          const geb = (inPhase[0].gebuehr * 100).toLocaleString("de-DE", { maximumFractionDigits: 2 });
-          kinder.push(h("p", { class: "phasen-trenner" }, h("span", null, `${boerse} · ${geb} % Gebühr · ${anzahl(inPhase.length, "Sparwoche", "Sparwochen")}`)));
-          letzteBoerse = boerse;
-        }
-        kinder.push(h("section", { class: "monat-gruppe" },
-          h("h3", { class: "monat-titel" }, `${monatsname(g.monat)} ${g.jahr}`),
-          h("div", { class: "karte karte--liste" }, g.kaeufe.map(zeile))));
-      }
-      fuelle(liste, kinder);
-    },
-  };
+  return entfalte({
+    herkunft, inhalt, titel: "Käufe", hintergrund: app.heuteEl,
+    beimSchliessen: () => { app.koepfe.delete(kopf); app.beiAenderung.delete(beobachter); },
+  });
 }

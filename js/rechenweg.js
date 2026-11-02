@@ -5,16 +5,16 @@
 // =====================================================================
 
 import { h, fuelle } from "./dom.js";
-import { oeffneDetail } from "./ui/detail.js";
+import { oeffneTablett } from "./teile/tablett.js";
 import { gegenprobe } from "./kurse.js";
 import { zeitraumErgebnis } from "./rechnen.js";
 import { euro, euroMitVorzeichen, prozent, btc as btcFmt, sats, zahl, anzahl, uhrzeit, zeitpunkt } from "./format.js";
-import { ZEITRAEUME, zeitraumDaten } from "./ansichten/depot.js";
+import { ZEITRAEUME, zeitraumDaten } from "./zeitraeume.js";
 import { skelett } from "./ansichten/gemeinsam.js";
 
 const formel = (...zeilen) => h("div", { class: "formel" }, zeilen);
 const fz = (links, rechts, art = "") => h("div", { class: ["formel-zeile", art && `formel-zeile--${art}`] }, h("span", { class: "formel-links" }, links), h("span", { class: "formel-rechts" }, rechts));
-const absatz = (...t) => h("p", { class: "analyse-text" }, ...t);
+const absatz = (...t) => h("p", { class: "absatz" }, ...t);
 
 function kursQuelle(z) {
   const a = z.aktuell;
@@ -29,7 +29,7 @@ function gegenprobeBlock() {
     if (g.cryptocompare && g.coinbase) zeilen.push(fz("Abweichung", prozent(Math.abs(g.coinbase / g.cryptocompare - 1) * 100, 2).replace("+", ""), "summe"));
     fuelle(ziel, formel(...zeilen), absatz(`Abgefragt um ${uhrzeit(g.zeit)} Uhr. Kleine Abweichungen sind normal – jede Börse hat ihren eigenen Kurs.`));
   });
-  return h("section", { class: "detail-abschnitt" }, h("h3", { class: "label" }, "Gegenprobe des Kurses"), ziel);
+  return h("section", { class: "abschnitt" }, h("h3", { class: "abschnitt-titel" }, "Gegenprobe des Kurses"), ziel);
 }
 
 export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
@@ -48,9 +48,9 @@ export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
     inhalt = [
       formel(fz("Bestand", `${btcFmt(s.btc)} BTC`), fz("× aktueller Kurs", euro(kurs)), fz("= Depotwert", euro(s.wert), "summe")),
       kursQuelle(z),
-      h("h3", { class: "label detail-zwischentitel" }, "Gewinn / Verlust gesamt"),
+      h("h3", { class: "abschnitt-titel abschnitt" }, "Gewinn / Verlust gesamt"),
       formel(fz("Depotwert", euro(s.wert)), fz("− investiert", euro(s.investiert)), fz("= Gewinn/Verlust", euroMitVorzeichen(s.gv), "summe"), fz("÷ investiert", prozent(s.gvProzent))),
-      r ? h("h3", { class: "label detail-zwischentitel" }, `Zeitraum: ${ZEITRAEUME[zeitraum].text}`) : null,
+      r ? h("h3", { class: "abschnitt-titel abschnitt" }, `Zeitraum: ${ZEITRAEUME[zeitraum].text}`) : null,
       r ? formel(
         fz("Wert zu Beginn", euro(r.wertAnfang)),
         fz("+ Einzahlungen im Zeitraum", euro(r.einzahlungen)),
@@ -97,7 +97,7 @@ export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
       gegenprobeBlock(),
     ];
   }
-  return oeffneDetail(quelle, { titel, ueberschrift: h("p", { class: "detail-unter" }, `So entsteht diese Zahl · Stand ${zeitpunkt(z.jetzt)}`), inhalt: h("div", { class: "detail-stapel" }, inhalt) });
+  return oeffneTablett({ titel, untertitel: `So entsteht diese Zahl · Stand ${zeitpunkt(z.jetzt)}`, inhalt: h("div", { class: "rechenweg" }, inhalt) });
 }
 
 function ganzText(n) { return zahl(n, 0); }

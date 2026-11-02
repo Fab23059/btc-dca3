@@ -1,5 +1,9 @@
 // =====================================================================
-// eintragen.js – Der Komfort-Dialog zum Eintragen eines Kaufs.
+// eintragen.js – Einen Kauf eintragen.
+//
+// Bewegung zuerst: Die Zeile des Kaufs entfaltet sich zum Formular (B1)
+// und faltet sich nach dem Speichern in genau diese Zeile zurück – die
+// dann schon ihren neuen Stand zeigt.
 //
 // Kauftag + Menge ODER Kurs genügt – das Fehlende rechnet die App aus
 // und zeigt es live beim Tippen. Der automatisch geholte Kurs des Tages
@@ -7,10 +11,10 @@
 // =====================================================================
 
 import { h, svg, fuelle } from "./dom.js";
-import { fokus } from "./ui/federwerk.js";
-import { oeffneSheet } from "./ui/sheet.js";
-import { toast } from "./ui/toast.js";
-import { tick } from "./ui/haptik.js";
+import { entfalte } from "./teile/fenster.js";
+import { toast } from "./teile/meldung.js";
+import { tick } from "./teile/haptik.js";
+import { kaufZeile, markiereFrisch } from "./ansichten/kaeufe.js";
 import { setzeEintrag, loescheEintrag, ladeEintraege, speichereEintraege } from "./speicher.js";
 import { holeKursZumZeitpunkt } from "./kurse.js";
 import { SPARRATE_EUR, ZEITPLAN, GRENZEN } from "./konfig.js";
@@ -44,7 +48,7 @@ export function leseZahl(text, art) {
 const ERSTER_MONTAG = ZEITPLAN[0].erster;
 
 /** Öffnet den Dialog. montag = null → der passendste offene Montag. */
-export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
+export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft = null, hintergrund = null }) {
   const heute = heuteBerlin();
   const eintraege = ladeEintraege();
   if (!montag) {
@@ -70,20 +74,30 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
     h("div", { class: "feld-rahmen" }, eingabe, einheit ? h("span", { class: "feld-einheit" }, einheit) : null),
     hilfe, extra);
 
-  const speichern = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit impuls", onclick: () => sichern() }, h("span", null, "Speichern"));
-  const entfernen = vorhanden ? h("button", { type: "button", class: "knopf knopf--leise knopf--gefahr", onclick: () => entfernenFragen() }, "Eintrag entfernen") : null;
+  const speichern = h("button", { type: "button", class: "knopf knopf--glut knopf--breit tippbar", onclick: () => sichern() }, h("span", null, "Speichern"));
+  const entfernen = vorhanden ? h("button", { type: "button", class: "knopf knopf--leise knopf--gefahr knopf--breit", onclick: () => entfernenFragen() }, "Eintrag entfernen") : null;
 
   const formular = h("form", { class: "formular", novalidate: true, onsubmit: (e) => { e.preventDefault(); sichern(); } },
-    feld("ein-datum", "Kauftag", datumFeld, null, datumHilfe),
+    h("p", { class: "formular-titel" }, vorhanden ? "Kauf bearbeiten" : "Kauf eintragen"),
+    h("p", { class: "formular-unter" }, "So, wie er in Bitvavo steht. Menge oder Kurs genügt."),
     feld("ein-btc", "Gekaufte Menge", btcFeld, "BTC", btcHilfe),
     feld("ein-kurs", "Kurs", kursFeld, "€", kursHilfe, vorschlag),
-    rechnung);
+    feld("ein-datum", "Kauftag", datumFeld, null, datumHilfe),
+    rechnung,
+    h("div", { class: "formular-fuss" }, speichern, entfernen));
 
-  const sheet = oeffneSheet({
+  // Der Kopf ist dieselbe Zeile wie in der Liste – daraus entfaltet sich das Fenster
+  const kauf = zustand.kaeufe.find((k) => k.montag === montag);
+  let kopf = kauf ? kaufZeile(kauf) : null;
+  kopf?.classList.add("kauf-zeile--kopf");
+  let statusEl = kopf?.querySelector(".kz-status");
+  let fortschritt = 1;
+  const finde = () => (herkunft?.isConnected ? herkunft : null) ?? document.querySelector(`.fenster .kauf-zeile[data-montag="${montag}"]`) ?? herkunft;
+  const sheet = entfalte({
+    herkunft: () => finde(), radius: 0, mitPlus: false, hintergrund,
     titel: vorhanden ? "Kauf bearbeiten" : "Kauf eintragen",
-    untertitel: "So wie er in Bitvavo steht. Menge oder Kurs genügt.",
-    inhalt: formular,
-    fuss: h("div", { class: "knopf-reihe" }, speichern, entfernen),
+    inhalt: h("div", { class: "fenster-kauf" }, kopf, formular),
+    beiFortschritt: (p) => { fortschritt = p; if (statusEl) statusEl.style.transform = `translate3d(${(-48 * p).toFixed(1)}px, 0, 0)`; },
   });
 
   // ---- Vorschlag: Marktkurs zur Kaufzeit ----
@@ -210,8 +224,15 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
   datumFeld.addEventListener("change", pruefen);
   btcFeld.addEventListener("blur", pruefen);
   pruefen();
-  fokus([...formular.children], { abstand: 55, start: 140 });
-  if (!vorhanden) setTimeout(() => btcFeld.focus({ preventScroll: true }), 650);
+  // Auf dem Handy nicht sofort die Tastatur öffnen (sie würde das Entfalten stören)
+  if (!vorhanden && matchMedia("(pointer: fine)").matches) setTimeout(() => btcFeld.focus({ preventScroll: true }), 650);
+  // Fokus: Die Linie unter dem Feld zündet an der Stelle, an der getippt wurde
+  for (const f of [btcFeld, kursFeld, datumFeld]) {
+    f.addEventListener("pointerdown", (e) => {
+      const r = f.parentElement.getBoundingClientRect();
+      f.parentElement.style.setProperty("--zuend-x", `${(((e.clientX - r.left) / r.width) * 100).toFixed(1)}%`);
+    });
+  }
 
   // ---- Speichern / Entfernen ----
   function sichern() {
@@ -235,10 +256,20 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
     speichern.append(h("span", { class: "knopf-haken", "aria-hidden": "true" }, svg("svg", { viewBox: "0 0 24 24" }, svg("path", { d: "M5 12.5l4.5 4.5L19 7.5", pathLength: 1 }))));
     speichern.disabled = false; speichern.style.setProperty("pointer-events", "none");
     setTimeout(() => {
-      sheet.schliessen();
-      beiAenderung?.();
+      markiereFrisch(m);
+      beiAenderung?.();       // Liste zeigt schon den neuen Stand …
+      // … und der Kopf des Fensters auch – so landet es auf der neuen Zeile
+      const neu = zustand.kaeufe.find((k) => k.montag === m);
+      if (neu && kopf) {
+        const ersatz = kaufZeile(neu);
+        ersatz.classList.add("kauf-zeile--kopf");
+        kopf.replaceWith(ersatz); kopf = ersatz;
+        statusEl = kopf.querySelector(".kz-status");
+        statusEl.style.transform = `translate3d(${(-48 * fortschritt).toFixed(1)}px, 0, 0)`;
+      }
+      sheet.schliessen();     // … und das Fenster faltet sich in die neue Zeile
       toast(`Kauf vom ${datumMonatKurz(m)} gespeichert`, { art: "erfolg" });
-    }, 620);
+    }, 560);
   }
 
   let bestaetigen = null;
@@ -252,8 +283,8 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
     clearTimeout(bestaetigen);
     let alt;
     try { alt = loescheEintrag(urspruenglich); } catch (e) { toast(`Nicht entfernt: ${e.message}`, { art: "fehler" }); return; }
-    sheet.schliessen();
     beiAenderung?.();
+    sheet.schliessen();
     toast(`Eintrag vom ${datumMonatKurz(urspruenglich)} entfernt`, {
       aktion: { text: "Rückgängig", los: () => {
         try { setzeEintrag(urspruenglich, alt, alt.herkunft ?? "neu"); beiAenderung?.(); toast("Wiederhergestellt", { art: "erfolg" }); } catch (e) { toast(e.message, { art: "fehler" }); }

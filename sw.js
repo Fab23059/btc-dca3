@@ -8,22 +8,20 @@
 // Bei jeder Änderung an den App-Dateien: VERSION um eins erhöhen.
 // =====================================================================
 
-const VERSION = 2;
+const VERSION = 3;
 const PRAEFIX = "dca3-app-";
 const CACHE = `${PRAEFIX}${VERSION}`;
 
 const DATEIEN = [
   "./", "index.html", "manifest.webmanifest",
-  "css/basis.css", "css/komponenten.css", "css/ansichten.css",
+  "css/grund.css", "css/teile.css", "css/ansichten.css",
   "js/app.js", "js/konfig.js", "js/zeit.js", "js/format.js", "js/speicher.js", "js/altdaten.js",
   "js/abgleich.js", "js/rechnen.js", "js/kennzahlen.js", "js/kurse.js", "js/dom.js", "js/jahresringe.js",
-  "js/diagramme.js", "js/eintragen.js", "js/rechenweg.js", "js/einstellungen.js", "js/benachrichtigung.js", "js/notfall.js",
-  "js/ui/zahl.js", "js/ui/segment.js", "js/ui/toast.js", "js/ui/ebenen.js", "js/ui/sheet.js", "js/ui/detail.js",
-  "js/ui/ptr.js", "js/ui/haptik.js", "js/ui/sparkline.js", "js/ui/federwerk.js", "js/ui/zaehlwerk.js",
-  "js/ui/nebel.js", "js/ui/insel.js", "js/ui/funken.js", "js/ui/marke.js", "js/ui/intro.js",
-  "js/ansichten/gemeinsam.js", "js/ansichten/depot.js", "js/ansichten/kaeufe.js", "js/ansichten/analyse.js", "js/ansichten/weg.js",
-  "vendor/chart-4.4.3.umd.min.js",
-  "fonts/inter-latin-opsz.woff2", "fonts/inter-bitcoinzeichen.woff2", "fonts/instrument-serif-kursiv.woff2",
+  "js/zeitraeume.js", "js/eintragen.js", "js/rechenweg.js", "js/einstellungen.js", "js/benachrichtigung.js", "js/notfall.js",
+  "js/bewegung/feder.js", "js/bewegung/geste.js", "js/bewegung/ziffern.js", "js/bewegung/nebel.js",
+  "js/teile/fenster.js", "js/teile/tablett.js", "js/teile/meldung.js", "js/teile/linie.js", "js/teile/ebenen.js", "js/teile/haptik.js",
+  "js/ansichten/gemeinsam.js", "js/ansichten/heute.js", "js/ansichten/kaeufe.js", "js/ansichten/baum.js", "js/ansichten/zahlen.js",
+  "fonts/mona-sans.woff2",
   "icons/icon.svg", "icons/icon-192.png", "icons/abzeichen-96.png", "icons/koernung.png",
 ];
 

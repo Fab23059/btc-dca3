@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <!--
   Sicherheitsrichtlinie: Die App lädt Code, Stile und Schriften ausschließlich
-  aus diesem Repository. Netzwerkzugriffe sind nur zu den fünf Kursquellen erlaubt.
+  aus diesem Repository. Netzwerkzugriffe sind nur zu den Kursquellen erlaubt.
   Trusted Types verhindern, dass jemals Text als HTML ins Dokument gelangt.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self' https://min-api.cryptocompare.com https://api.exchange.coinbase.com https://api.coingecko.com https://api.alternative.me https://mempool.space; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types dca3-sw">
 <meta name="referrer" content="no-referrer">
 <title>BTC-Sparplan</title>
 <meta name="description" content="Dein wöchentlicher Bitcoin-Sparplan – ruhig, ehrlich, schön.">
-<meta name="theme-color" content="#0B0B0D">
+<meta name="theme-color" content="#090807">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,49 +22,32 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="preload" href="fonts/inter-latin-opsz.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/basis.css">
-<link rel="stylesheet" href="css/komponenten.css">
+<link rel="preload" href="fonts/mona-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/grund.css">
+<link rel="stylesheet" href="css/teile.css">
 <link rel="stylesheet" href="css/ansichten.css">
-<script src="vendor/chart-4.4.3.umd.min.js" defer></script>
 <script src="js/notfall.js" defer></script>
 <script type="module" src="js/app.js"></script>
 </head>
 <body>
-<!-- Filmschichten: Nebel (WebGL), Ersatz-Aurora, Vignette, Lichtleck, Korn -->
-<canvas class="nebel" id="nebel" aria-hidden="true"></canvas>
-<div class="aurora-ersatz" id="aurora-ersatz" aria-hidden="true" hidden><span></span><span></span><span></span></div>
-<div class="vignette" aria-hidden="true"></div>
-<div class="lichtleck" aria-hidden="true"></div>
-<div class="koernung" aria-hidden="true"></div>
+<!-- Atmosphäre: Nebel (einmal gerechnet, dann nur verschoben) und ruhendes Korn -->
+<div class="atmosphaere" aria-hidden="true">
+  <div class="nebel" id="nebel"></div>
+  <div class="glut" id="glut"></div>
+  <div class="korn"></div>
+</div>
 
-<header id="kopf" class="app-kopf">
-  <div class="kopf-links">
-    <span class="kopf-marke" id="kopf-marke" aria-hidden="true"></span>
-    <h1 id="kopf-titel" class="kopf-titel">Depot</h1>
-  </div>
+<header class="kopf" id="kopf">
+  <p class="kopf-links" id="kopf-links"></p>
   <div class="kopf-rechts">
-    <span id="kopf-status" class="kopf-status" role="status"><span class="status-punkt status-punkt--laedt" aria-hidden="true"></span>Lädt …</span>
-    <button id="knopf-einstellungen" class="rundknopf tippbar" type="button" aria-label="Einstellungen">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.25"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-    </button>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+    <button class="rund tippbar" id="knopf-einstellungen" type="button" aria-label="Einstellungen"></button>
   </div>
 </header>
 
-<main id="pager" class="pager">
-  <section id="seite-depot" class="seite" role="tabpanel" aria-labelledby="tab-depot">
-    <!-- Platzhalter, bis die App gestartet ist: Die Oberfläche steht sofort. -->
-    <div class="seite-inhalt">
-      <div class="held"><span class="held-label label">Depotwert</span><span class="held-zahl zahl-gross"><span class="skelett skelett--zahl"></span></span><span class="held-zeile"><span class="skelett skelett--zeile"></span></span></div>
-      <div class="diagramm"><div class="diagramm-flaeche"><span class="skelett skelett--diagramm"></span></div></div>
-    </div>
-  </section>
-  <section id="seite-kaeufe" class="seite" role="tabpanel" aria-labelledby="tab-kaeufe"></section>
-  <section id="seite-analyse" class="seite" role="tabpanel" aria-labelledby="tab-analyse"></section>
-  <section id="seite-weg" class="seite" role="tabpanel" aria-labelledby="tab-weg"></section>
+<main class="heute" id="heute">
+  <div class="heute-inhalt" id="heute-inhalt"></div>
 </main>
-
-<nav id="tabs" class="tabbar" role="tablist" aria-label="Bereiche"></nav>
 
 <noscript><p class="notfall">Diese App braucht JavaScript.</p></noscript>
 </body>

@@ -10,8 +10,8 @@
 // =====================================================================
 
 import { h, icon, fuelle } from "./dom.js";
-import { oeffneSheet } from "./ui/sheet.js";
-import { toast } from "./ui/toast.js";
+import { oeffneSheet } from "./teile/tablett.js";
+import { toast } from "./teile/meldung.js";
 import { SCHLUESSEL, lies, schreibe, entferne, ladeEinstellungen } from "./speicher.js";
 import { ZEITPLAN } from "./konfig.js";
 import { naechsterKauf } from "./rechnen.js";
@@ -119,7 +119,7 @@ export function oeffnePushEinrichtung() {
   function anleitung(block) {
     const feld = h("textarea", { class: "schluessel-feld", readonly: true, rows: 4, spellcheck: "false", "aria-label": "Push-Schlüssel" });
     feld.value = block;
-    const kopieren = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit", onclick: async () => {
+    const kopieren = h("button", { type: "button", class: "knopf knopf--glut knopf--breit", onclick: async () => {
       try { await navigator.clipboard.writeText(block); toast("Kopiert – jetzt bei GitHub einfügen", { art: "erfolg" }); }
       catch { feld.select(); toast("Bitte den markierten Text kopieren"); }
     } }, icon("kopieren", { groesse: 18 }), "Schlüssel kopieren");
@@ -128,26 +128,26 @@ export function oeffnePushEinrichtung() {
         schritt(1, "Schlüssel kopieren", feld, kopieren,
           h("p", { class: "fussnote" }, "Dieser Text enthält einen geheimen Schlüssel. Er gehört nur in das GitHub-Secret – nicht in eine Nachricht, nicht ins Repository.")),
         schritt(2, "Bei GitHub als Secret hinterlegen",
-          h("p", { class: "analyse-text" }, "Im Repository btc-dca3: Settings → Secrets and variables → Actions → New repository secret."),
-          h("p", { class: "analyse-text" }, "Name: PUSH_CONFIG · Secret: einfügen · Add secret.")),
+          h("p", { class: "absatz" }, "Im Repository btc-dca3: Settings → Secrets and variables → Actions → New repository secret."),
+          h("p", { class: "absatz" }, "Name: PUSH_CONFIG · Secret: einfügen · Add secret.")),
         schritt(3, "Ausprobieren (optional)",
-          h("p", { class: "analyse-text" }, "Im Repository: Actions → Erinnerung → Run workflow. Nach etwa einer Minute kommt eine Testnachricht."))),
+          h("p", { class: "absatz" }, "Im Repository: Actions → Erinnerung → Run workflow. Nach etwa einer Minute kommt eine Testnachricht."))),
       h("p", { class: "fussnote" }, "Gut zu wissen: Am zuverlässigsten klappt Push, wenn die App auf dem Startbildschirm installiert ist. GitHubs Zeitplan kann sich um einige Minuten verspäten – die Nachricht kommt also gegen 21 Uhr, nicht auf die Minute."));
   }
 
   function start() {
     if (!kannPush()) {
-      fuelle(ziel, h("p", { class: "analyse-text" }, "Dieser Browser unterstützt keine Push-Nachrichten. Der Hinweis in der App funktioniert trotzdem."));
+      fuelle(ziel, h("p", { class: "absatz" }, "Dieser Browser unterstützt keine Push-Nachrichten. Der Hinweis in der App funktioniert trotzdem."));
       return;
     }
-    const los = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit", onclick: async () => {
+    const los = h("button", { type: "button", class: "knopf knopf--glut knopf--breit", onclick: async () => {
       los.disabled = true; los.textContent = "Wird eingerichtet …";
       try { anleitung(await einrichten()); } catch (e) { toast(e.message, { art: "fehler", dauer: 6000 }); los.disabled = false; los.textContent = "Einrichten"; }
     } }, status ? "Neu einrichten" : "Einrichten");
     fuelle(ziel,
       status ? h("div", { class: "hinweis" }, h("div", { class: "hinweis-symbol" }, icon("haken", { groesse: 20 })), h("div", { class: "hinweis-text" }, h("p", { class: "hinweis-titel" }, "Eingerichtet"), h("p", { class: "hinweis-unter" }, `Seit ${zeitpunkt(status.seit)} Uhr über ${status.endpunkt}. Damit es ankommt, muss PUSH_CONFIG bei GitHub hinterlegt sein.`))) : null,
-      h("p", { class: "analyse-text" }, "Die App erzeugt dafür ein eigenes Schlüsselpaar und meldet dieses Gerät für Nachrichten an. Danach kopierst du einmal einen Text zu GitHub – das ist alles."),
-      h("p", { class: "analyse-text" }, "Die Nachricht enthält nur die Erinnerung und den Kurs zur Kaufzeit – keine Käufe. Unterwegs ist sie verschlüsselt, sodass der Push-Dienst sie nicht lesen kann."),
+      h("p", { class: "absatz" }, "Die App erzeugt dafür ein eigenes Schlüsselpaar und meldet dieses Gerät für Nachrichten an. Danach kopierst du einmal einen Text zu GitHub – das ist alles."),
+      h("p", { class: "absatz" }, "Die Nachricht enthält nur die Erinnerung und den Kurs zur Kaufzeit – keine Käufe. Unterwegs ist sie verschlüsselt, sodass der Push-Dienst sie nicht lesen kann."),
       los,
       status ? h("button", { type: "button", class: "knopf knopf--leise knopf--breit", onclick: async () => { await abschalten(); sheet.schliessen(); toast("Push abgeschaltet. Das Secret bei GitHub kannst du löschen."); } }, "Abschalten") : null);
   }
