@@ -1,0 +1,162 @@
+/* =====================================================================
+   grund.css – Grundlagen: Schrift, Farben, Raster, Atmosphäre.
+   Abgeleitet aus dem Bewegungssystem (siehe GESTALTUNG.md):
+   Tonwerte statt Glas, eine Akzentfarbe, Ziffern mit fester Breite.
+   ===================================================================== */
+
+@font-face {
+  font-family: "Mona";
+  src: url("../fonts/mona-sans.woff2") format("woff2");
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Sicherheitsabstände als echte Längen (lesbar für die Fenster-Geometrie) */
+@property --sicher-oben-px { syntax: "<length>"; inherits: true; initial-value: 0px; }
+
+:root {
+  /* Tonwerte: Grund → Fläche → gehobene Fläche */
+  --grund: #090807;
+  --flaeche: #131110;
+  --flaeche-2: #1C1916;
+  --flaeche-3: #27231F;
+  --linie: rgba(255, 240, 222, 0.075);
+
+  --text: #F2EDE6;
+  --text-2: #A0988E;
+  --text-3: #6A635B;
+
+  /* Die eine Akzentfarbe – nur, wo Bewegung oder Handlung ist */
+  --glut: #FF8A2A;
+  --glut-rgb: 255, 138, 42;
+  --glut-hell: #FFC289;
+  --plus: #93C6A0;
+  --minus: #E39A87;
+
+  /* Raster */
+  --rand: 16px;
+  --abstand: 12px;
+  --r-fenster: 28px;
+  --r-feld: 16px;
+  --sicher-oben: env(safe-area-inset-top, 0px);
+  --sicher-unten: env(safe-area-inset-bottom, 0px);
+  --sicher-oben-px: env(safe-area-inset-top, 0px);
+
+  --schrift: "Mona", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--grund);
+  color: var(--text);
+  font-family: var(--schrift);
+  font-size: 16px;
+  line-height: 1.45;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, p { margin: 0; font-weight: inherit; font-size: inherit; }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-user-select: none; user-select: none; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid rgba(var(--glut-rgb), 0.7); outline-offset: 3px; border-radius: 10px; }
+.unsichtbar { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[hidden] { display: none !important; }
+
+/* Zahlen rollen nur, wenn alle Ziffern gleich breit sind */
+.zahl, .ziffern { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.breit { font-stretch: 125%; }
+
+/* ---------------------------------------------------------------------
+   Atmosphäre: Nebel (zwei weiche Bilder, nur verschoben), Glut, Korn
+   --------------------------------------------------------------------- */
+.atmosphaere { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.nebel { position: absolute; inset: 0; opacity: 0; transition: opacity 2.4s cubic-bezier(.3, .7, .2, 1); }
+.nebel.ist-bereit { opacity: 1; }
+.nebel-schicht { position: absolute; inset: -18% -30%; will-change: transform; }
+.nebel-trieb { position: absolute; inset: 0; }
+.nebel-trieb--a { animation: treiben-a 84s ease-in-out infinite alternate; }
+.nebel-trieb--b { animation: treiben-b 61s ease-in-out infinite alternate; }
+.nebel-bild { width: 100%; height: 100%; display: block; }
+.nebel-schicht--hinten { opacity: 0.9; }
+.nebel-schicht--vorn { opacity: 0.55; }
+@keyframes treiben-a { from { transform: translate3d(-4%, 0, 0) scale(1.06); } to { transform: translate3d(5%, -3%, 0) scale(1.12); } }
+@keyframes treiben-b { from { transform: translate3d(6%, 2%, 0) scale(1.1); } to { transform: translate3d(-5%, -2%, 0) scale(1.04); } }
+
+/* Glut: Licht hinter der großen Zahl – leuchtet auf, wenn sich etwas bewegt */
+.glut {
+  position: absolute; left: -30vw; top: calc(var(--sicher-oben) - 18vh);
+  width: 130vw; height: 70vh;
+  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.22), rgba(var(--glut-rgb), 0.06) 55%, transparent);
+  opacity: 0.25;
+  will-change: opacity;
+}
+
+/* Korn: ruhend, liegt über allem wie bei Film (läuft nicht – kostet nichts) */
+.korn { position: absolute; inset: 0; background: url("../icons/koernung.png") repeat; background-size: 180px; opacity: 0.05; }
+
+/* Wer "Bewegung reduzieren" eingestellt hat: Nebel steht still */
+@media (prefers-reduced-motion: reduce) {
+  .nebel-trieb { animation: none !important; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+html.ruhig .nebel, html.ruhig .korn { display: none; }
+
+/* ---------------------------------------------------------------------
+   Kopfzeile: Datum links, Status und Einstellungen rechts
+   --------------------------------------------------------------------- */
+.kopf {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+  height: calc(var(--sicher-oben) + 60px);
+  padding: calc(var(--sicher-oben) + 12px) var(--rand) 0;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  pointer-events: none;
+}
+.kopf > * { pointer-events: auto; }
+.kopf::before {
+  content: ""; position: absolute; inset: 0 0 -28px 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom, var(--grund) 0%, rgba(9, 8, 7, 0.86) 55%, rgba(9, 8, 7, 0));
+  opacity: var(--kopf-deckung, 0);
+}
+.kopf-links {
+  font-size: 15px; font-weight: 500; color: var(--text-2);
+  line-height: 36px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: opacity 0.2s;
+}
+.kopf-rechts { display: flex; align-items: center; gap: 8px; flex: none; }
+.kopf-wert { color: var(--text); font-stretch: 118%; font-weight: 560; letter-spacing: -0.01em; }
+
+/* ---------------------------------------------------------------------
+   Die Startseite rollt; Fenster legen sich darüber
+   --------------------------------------------------------------------- */
+.heute {
+  position: fixed; inset: 0; z-index: 1;
+  overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.heute::-webkit-scrollbar { display: none; }
+.heute.tritt-zurueck { will-change: transform; }
+.heute-inhalt {
+  max-width: 560px; margin: 0 auto;
+  padding: calc(var(--sicher-oben) + 60px) 0 calc(var(--sicher-unten) + 36px);
+  will-change: transform;
+}
+
+/* Notfall-Hinweis (falls die App nicht startet) */
+.notfall { position: fixed; left: 16px; right: 16px; bottom: 24px; z-index: 99; padding: 18px; border-radius: 22px; background: var(--flaeche-2); color: var(--text); display: grid; gap: 10px; }
+.notfall-titel { font-weight: 600; }
