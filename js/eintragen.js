@@ -6,7 +6,8 @@
 // steht als Vorschlag bereit; Übernehmen ist ein Tipp.
 // =====================================================================
 
-import { h, fuelle } from "./dom.js";
+import { h, svg, fuelle } from "./dom.js";
+import { fokus } from "./ui/federwerk.js";
 import { oeffneSheet } from "./ui/sheet.js";
 import { toast } from "./ui/toast.js";
 import { tick } from "./ui/haptik.js";
@@ -69,7 +70,7 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
     h("div", { class: "feld-rahmen" }, eingabe, einheit ? h("span", { class: "feld-einheit" }, einheit) : null),
     hilfe, extra);
 
-  const speichern = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit", onclick: () => sichern() }, "Speichern");
+  const speichern = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit impuls", onclick: () => sichern() }, h("span", null, "Speichern"));
   const entfernen = vorhanden ? h("button", { type: "button", class: "knopf knopf--leise knopf--gefahr", onclick: () => entfernenFragen() }, "Eintrag entfernen") : null;
 
   const formular = h("form", { class: "formular", novalidate: true, onsubmit: (e) => { e.preventDefault(); sichern(); } },
@@ -154,6 +155,8 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
     // Menge
     if (b === null) setzeHilfe(btcHilfe, "");
     else if (Number.isNaN(b)) { setzeHilfe(btcHilfe, "Das ist keine Zahl. Beispiel: 0,00024512", "fehler"); ok = false; }
+    // "0", "0," oder "0,000" ist beim Tippen nur ein Anfang – erst beim Verlassen des Felds meckern
+    else if (b <= 0 && document.activeElement === btcFeld && /^\s*0*([.,]0*)?\s*$/.test(btcFeld.value)) { setzeHilfe(btcHilfe, ""); ok = false; }
     else if (b <= 0) { setzeHilfe(btcHilfe, "Bitte eine Menge größer als 0.", "fehler"); ok = false; }
     else {
       const impliziert = netto / b;
@@ -205,8 +208,10 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
 
   for (const f of [datumFeld, btcFeld, kursFeld]) f.addEventListener("input", pruefen);
   datumFeld.addEventListener("change", pruefen);
+  btcFeld.addEventListener("blur", pruefen);
   pruefen();
-  if (!vorhanden) setTimeout(() => btcFeld.focus({ preventScroll: true }), 450);
+  fokus([...formular.children], { abstand: 55, start: 140 });
+  if (!vorhanden) setTimeout(() => btcFeld.focus({ preventScroll: true }), 650);
 
   // ---- Speichern / Entfernen ----
   function sichern() {
@@ -225,9 +230,15 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
       return;
     }
     tick(10);
-    sheet.schliessen();
-    beiAenderung?.();
-    toast(`Kauf vom ${datumMonatKurz(m)} gespeichert`, { art: "erfolg" });
+    // Der Knopf verwandelt sich in einen leuchtenden Haken, dann schließt sich das Sheet
+    speichern.classList.add("ist-fertig");
+    speichern.append(h("span", { class: "knopf-haken", "aria-hidden": "true" }, svg("svg", { viewBox: "0 0 24 24" }, svg("path", { d: "M5 12.5l4.5 4.5L19 7.5", pathLength: 1 }))));
+    speichern.disabled = false; speichern.style.setProperty("pointer-events", "none");
+    setTimeout(() => {
+      sheet.schliessen();
+      beiAenderung?.();
+      toast(`Kauf vom ${datumMonatKurz(m)} gespeichert`, { art: "erfolg" });
+    }, 620);
   }
 
   let bestaetigen = null;

@@ -193,6 +193,8 @@ const STANDARD_EINSTELLUNGEN = Object.freeze({
   erinnerung: true,       // Hinweis/Benachrichtigung, wenn ein Kauf fehlt
   haptik: true,           // feines Vibrieren beim Fahren über Käufe im Diagramm
   einheit: "eur",
+  name: "Fabi",           // für den Gruß
+  effekte: true,          // Nebel, Lichtleck, lebendes Korn (aus = ruhiger, spart Akku)
 });
 
 export function ladeEinstellungen() {
@@ -209,6 +211,7 @@ export function ladeEinstellungen() {
 export function speichereEinstellung(k, wert) {
   const e = ladeEinstellungen();
   if (!(k in STANDARD_EINSTELLUNGEN) || typeof wert !== typeof STANDARD_EINSTELLUNGEN[k]) return e;
+  if (k === "name") wert = wert.replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 24);
   e[k] = wert;
   schreibe(SCHLUESSEL.einstellungen, e);
   return e;

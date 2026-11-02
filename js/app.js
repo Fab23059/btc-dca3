@@ -10,7 +10,7 @@
 
 import { h, $, $$, icon, fuelle } from "./dom.js";
 import { SPARRATE_EUR, ZEITPLAN } from "./konfig.js";
-import { ladeEintraege, ladeEinstellungen, lies, schreibe, SCHLUESSEL } from "./speicher.js";
+import { ladeEintraege, ladeEinstellungen, lies, schreibe, SCHLUESSEL, ladeStatus, setzeStatus } from "./speicher.js";
 import { abgleichMitAlterApp } from "./abgleich.js";
 import { sparwochen, kaeufeBerechnen, zusammenfassung } from "./rechnen.js";
 import { meilensteine, SATS_ZIELE, WOCHEN_ZIELE, zielName } from "./kennzahlen.js";
@@ -18,7 +18,7 @@ import {
   holeAktuell, letzterBekannterKurs, ladeKaufkurse, ladeAltkurse, ergaenzeKaufkurse,
   holeReihe, holeTagesreihe, holeStimmung, holeBlockhoehe, ladeMarkt, speichereMarkt,
 } from "./kurse.js";
-import { uhrzeit, zeitpunkt, anzahl, datumMonatKurz } from "./format.js";
+import { uhrzeit, zeitpunkt, anzahl, datumMonatKurz, gruss, euro } from "./format.js";
 import { toast } from "./ui/toast.js";
 import { ziehenZumAktualisieren } from "./ui/ptr.js";
 import { erstelleDepot } from "./ansichten/depot.js";
@@ -29,7 +29,13 @@ import { oeffneEintragen } from "./eintragen.js";
 import { oeffneRechenweg } from "./rechenweg.js";
 import { oeffneEinstellungen } from "./einstellungen.js";
 import { planeErinnerung } from "./benachrichtigung.js";
-import { feiern } from "./ui/feier.js";
+import { federnAlsCss, lichtimpulseAktivieren, fokus } from "./ui/federwerk.js";
+import { starteNebel } from "./ui/nebel.js";
+import { ziffernblatt } from "./ui/marke.js";
+import { spieleIntro } from "./ui/intro.js";
+import { funkenflug } from "./ui/funken.js";
+import { insel } from "./ui/insel.js";
+
 
 // Nie in einem fremden Rahmen laufen (Schutz vor untergeschobenen Klicks).
 if (window.top !== window.self) {
@@ -88,8 +94,10 @@ const app = {
   zustand,
   eintragen: (montag, quelle) => oeffneEintragen({ zustand, montag, beiAenderung: nachAenderung }),
   oeffneRechenweg: (art, quelle) => oeffneRechenweg(art, quelle, zustand, ansichten.depot.zeitraum),
-  oeffneEinstellungen: (abschnitt) => oeffneEinstellungen({ zustand, beiAenderung: nachAenderung, abschnitt }),
+  oeffneEinstellungen: (abschnitt) => oeffneEinstellungen({ zustand, beiAenderung: nachAenderung, abschnitt, app }),
   wechsleSeite: (i) => zeigeSeite(i, true),
+  spieleIntro: () => intro(true),
+  setzeEffekte: (an) => effekte(an),
   ladeReihe: async (name) => {
     try { zustand.reihen[name] = await holeReihe(name); } catch (e) { zustand.reihen[name] ??= null; throw e; }
     return zustand.reihen[name];
@@ -121,25 +129,51 @@ function baueOberflaeche() {
     onclick: () => zeigeSeite(i, true),
   }, icon(s.symbol, { groesse: 22, klasse: "tab-symbol" }), h("span", { class: "tab-text" }, s.titel))));
 
+  // Der Indikator dehnt sich beim Wechsel wie ein Tropfen: Die vordere Kante
+  // eilt voraus, die hintere folgt – in der Mitte ist er lang, am Ziel wieder rund.
+  const setzeIndikator = (pos) => {
+    const n = SEITEN.length;
+    const p = Math.max(0, Math.min(n - 1, pos));
+    const i = Math.min(n - 2, Math.floor(p)); const t = p - i;
+    const links = i + t * t;
+    const rechts = i + 1 + (1 - (1 - t) * (1 - t));
+    const b = (tabs.clientWidth - 12) / n;
+    indikator.style.setProperty("left", `${6 + links * b}px`);
+    indikator.style.setProperty("width", `${(rechts - links) * b}px`);
+  };
   pager.addEventListener("scroll", () => {
     const b = pager.clientWidth || 1;
     const pos = pager.scrollLeft / b;
-    tabs.style.setProperty("--pos", String(pos));
+    setzeIndikator(pos);
+    nebelScroll = pos;
     const i = Math.round(pos);
     if (i !== aktiveSeite) markiereSeite(i);
   }, { passive: true });
+  new ResizeObserver(() => setzeIndikator(pager.scrollLeft / (pager.clientWidth || 1))).observe(tabs);
+  setzeIndikator(0);
+
+  // Das Markenzeichen in der Kopfzeile: ein Strich läuft wie ein Sekundenzeiger herum
+  const marke = ziffernblatt({ klasse: "kopf-marke-svg" });
+  [...marke.querySelectorAll(".marke-strich")].forEach((s, i) => s.style.setProperty("--i", String(i)));
+  $("#kopf-marke").append(marke);
 
   $("#knopf-einstellungen").addEventListener("click", () => app.oeffneEinstellungen());
 
   // Kopfzeile wird beim Scrollen zu Milchglas
   for (const s of $$(".seite")) {
-    s.addEventListener("scroll", () => { if ($$(".seite")[aktiveSeite] === s) kopf.classList.toggle("ist-gescrollt", s.scrollTop > 4); }, { passive: true });
+    s.addEventListener("scroll", () => {
+      if ($$(".seite")[aktiveSeite] !== s) return;
+      kopf.classList.toggle("ist-gescrollt", s.scrollTop > 4);
+      kopfTitelSetzen();
+    }, { passive: true });
   }
   ziehenZumAktualisieren($$(".seite"), () => aktualisieren({ erzwingen: true }));
   markiereSeite(0);
 }
 
+const besucht = new Set([0]);
 function markiereSeite(i) {
+  const vorher = aktiveSeite;
   aktiveSeite = i;
   SEITEN.forEach((s, k) => {
     const t = $(`#tab-${s.id}`);
@@ -147,8 +181,30 @@ function markiereSeite(i) {
     t.classList.toggle("ist-aktiv", k === i);
     $(`#seite-${s.id}`).toggleAttribute("inert", k !== i);
   });
-  kopfTitel.textContent = SEITEN[i].titel;
+  if (i !== vorher) {
+    kopfTitelSetzen(i > vorher ? 1 : -1);
+    const sym = $(`#tab-${SEITEN[i].id} .tab-symbol`);
+    sym?.classList.remove("zeichnet"); void sym?.getBoundingClientRect(); sym?.classList.add("zeichnet");
+  }
   kopf.classList.toggle("ist-gescrollt", ($$(".seite")[i]?.scrollTop ?? 0) > 4);
+  if (ansichten && !besucht.has(i)) { besucht.add(i); ansichten[SEITEN[i].id].betreten?.(); }
+}
+
+/**
+ * Titel in der Kopfzeile. Auf der Depot-Seite erscheint dort der Depotwert,
+ * sobald die große Zahl aus dem Bild gescrollt ist (wie bei großen Apps).
+ */
+function kopfTitelSetzen(richtung = 0) {
+  const seite = $$(".seite")[aktiveSeite];
+  const wert = zustand.summe?.wert;
+  const zeigeWert = aktiveSeite === 0 && seite?.scrollTop > 250 && wert != null;
+  const text = zeigeWert ? euro(wert) : SEITEN[aktiveSeite].titel;
+  if (kopfTitel.textContent === text) return;
+  const warWert = kopfTitel.classList.contains("zeigt-wert");
+  kopfTitel.textContent = text;
+  kopfTitel.classList.toggle("zeigt-wert", zeigeWert);
+  const vonY = richtung === 0 ? (zeigeWert && !warWert ? 12 : warWert && !zeigeWert ? -12 : 0) : 0;
+  kopfTitel.animate([{ opacity: 0, filter: "blur(6px)", transform: `translate(${richtung * 10}px, ${vonY}px)` }, { opacity: 1, filter: "blur(0)", transform: "none" }], { duration: 420, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
 }
 
 function zeigeSeite(i, sanft) {
@@ -180,6 +236,8 @@ function rendern({ ersteMal = false } = {}) {
       try { v.aktualisiere({ ersteMal }); } catch (e) { console.error(`Ansicht ${name}:`, e); }
     }
     pruefeMeilensteine();
+    pruefeNeuenKauf();
+    if (kopfTitel.classList.contains("zeigt-wert")) { kopfTitel.textContent = ""; kopfTitelSetzen(); }
   });
 }
 
@@ -228,6 +286,21 @@ async function kursTick() {
 }
 
 // ---------------------------------------------------------------------
+// Montagabend, 20:50: Ist die App gerade offen, wenn der Sparplan kauft,
+// wächst sichtbar ein neuer Ring – mit einem kleinen Funkenflug.
+// ---------------------------------------------------------------------
+let letzterBlick = Date.now();   // Zeitpunkt der letzten Berechnung
+function pruefeNeuenKauf() {
+  const jetzt = zustand.jetzt;
+  // Nur Käufe, deren Kaufzeit seit dem letzten Blick verstrichen ist – also live miterlebt
+  const neu = zustand.kaeufe.find((k) => k.ts > letzterBlick && k.ts <= jetzt);
+  letzterBlick = Math.max(letzterBlick, jetzt);
+  if (!neu) return;
+  funkenflug({ anzahl: 40 });
+  insel({ titel: "Dein Sparplan hat gekauft", text: "Ein neuer Ring wächst. Trag die Menge ein, sobald Bitvavo sie zeigt.", art: "feier", dauer: 6500, aktion: { text: "Eintragen", los: () => app.eintragen(neu.montag) } });
+}
+
+// ---------------------------------------------------------------------
 // Meilensteine feiern (einmal je Meilenstein)
 // ---------------------------------------------------------------------
 
@@ -248,15 +321,54 @@ function pruefeMeilensteine() {
   if (!neu.length) return;
   schreibe(SCHLUESSEL.gefeiert, [...new Set([...gefeiert, ...erreicht])]);
   const top = neu[neu.length - 1];
-  feiern(top[0] === "s" ? `${zielName(Number(top.slice(1)))} sats erreicht` : `${top.slice(1)} Wochen ohne Unterbrechung`);
+  funkenflug();
+  insel({ titel: top[0] === "s" ? `${zielName(Number(top.slice(1)))} sats erreicht` : `${top.slice(1)} Wochen ohne Unterbrechung`, text: "Ein neuer Meilenstein auf deinem Weg.", art: "feier", dauer: 5600 });
 }
 
 // ---------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------
 
+// ---------------------------------------------------------------------
+// Atmosphäre und Intro
+// ---------------------------------------------------------------------
+
+let nebel = null;
+let nebelScroll = 0;
+function effekte(an) {
+  document.documentElement.classList.toggle("ruhig", !an);
+  const ersatz = $("#aurora-ersatz");
+  if (an && !nebel) {
+    try { nebel = starteNebel($("#nebel"), { holeScroll: () => nebelScroll * 0.6 + (($$(".seite")[aktiveSeite]?.scrollTop ?? 0) / innerHeight) * 0.5 }); } catch { nebel = null; }
+    ersatz.hidden = Boolean(nebel);
+  } else if (an && nebel) { nebel.start(); }
+  else if (!an && nebel) { nebel.stopp(); }
+  if (!an) ersatz.hidden = false;
+}
+
+async function intro(erzwingen = false) {
+  const status = ladeStatus();
+  if (status.intro && !erzwingen) return false;
+  const b = zustand.abgleich;
+  const n = b?.uebernommen?.length ?? 0;
+  const name = ladeEinstellungen().name;
+  await spieleIntro({
+    gruss: `${gruss()}${name ? `, ${name}` : ""}.`,
+    zeile: n && !erzwingen ? "Deine Käufe aus der alten App sind sicher übernommen. Die alte App bleibt unverändert." : "Schön, dass du da bist. Dein Sparplan läuft.",
+    zahl: n && !erzwingen ? n : zustand.summe?.anzahl ?? 0,
+    zahlText: n && !erzwingen ? (n === 1 ? "Kauf übernommen" : "Käufe übernommen") : "Käufe bisher",
+    ziel: $("#kopf-marke"),
+  });
+  setzeStatus({ intro: Date.now() });
+  fokus($$("#seite-depot .seite-inhalt > *"), { abstand: 60 });
+  return true;
+}
+
 function start() {
+  federnAlsCss();
+  lichtimpulseAktivieren();
   const einst = ladeEinstellungen();
+  effekte(einst.effekte);
   try {
     zustand.abgleich = abgleichMitAlterApp({ aktiv: einst.altAbgleich });
   } catch (e) {
@@ -270,8 +382,11 @@ function start() {
   baueOberflaeche();
   rendern({ ersteMal: true });
   document.documentElement.dataset.bereit = "1";
+  const introLaeuft = !ladeStatus().intro;
+  if (introLaeuft) requestAnimationFrame(() => intro());
+  else requestAnimationFrame(() => fokus($$("#seite-depot .seite-inhalt > *"), { abstand: 55 }));
 
-  if (b?.uebernommen?.length) {
+  if (b?.uebernommen?.length && !introLaeuft) {
     const n = b.uebernommen.length;
     setTimeout(() => toast(erstmalig
       ? `Willkommen! ${anzahl(n, "Kauf", "Käufe")} aus der alten App übernommen.`

@@ -1,173 +1,202 @@
 /* =====================================================================
-   ansichten.css – Die einzelnen Seiten: Depot, Käufe, Analyse, Weg,
-   Einstellungen.
+   ansichten.css – Die einzelnen Seiten: Depot, Käufe, Analyse, Weg.
    ===================================================================== */
 
-/* ---------------------------------------------------------------------
-   Depot – die große Zahl mit Aurora-Schimmer
-   --------------------------------------------------------------------- */
+/* Spätere Aktualisierungen ohne Einlauf-Animationen */
+.still *, .still *::before, .still *::after { animation: none !important; }
 
+/* ---- Kopfzeilen-Marke: ein Strich läuft wie ein Sekundenzeiger herum ---- */
+.kopf-marke-svg { width: 32px; height: 32px; overflow: visible; }
+.kopf-marke-svg .marke-strich { stroke: rgba(var(--akzent-rgb), 0.38); stroke-width: 2.6; stroke-linecap: round; animation: sekunde 60s linear infinite; animation-delay: calc(var(--i) * 60s / 52 - 60s); }
+.kopf-marke-svg .marke-zeichen { fill: var(--akzent); filter: drop-shadow(0 0 3px rgba(var(--glut-rgb), 0.85)); }
+@keyframes sekunde {
+  0% { stroke: #FFE2BC; filter: drop-shadow(0 0 2px rgba(255, 190, 120, 1)); }
+  6% { stroke: rgba(var(--akzent-rgb), 0.38); filter: none; }
+  100% { stroke: rgba(var(--akzent-rgb), 0.38); filter: none; }
+}
+
+/* ---------------------------------------------------------------------
+   Seitenköpfe
+   --------------------------------------------------------------------- */
+.seiten-kopf { display: grid; gap: 8px; padding: 16px 0 24px; }
+.seiten-titel { font-size: 30px; font-weight: 650; letter-spacing: -0.04em; line-height: 1.1; }
+.seiten-titel.serif { font-size: 40px; font-weight: 400; letter-spacing: -0.01em; text-shadow: var(--halation); }
+.seiten-unter { font-size: 15px; color: var(--text-2); max-width: 34ch; }
+.abschnitt-titel { margin: 48px 0 8px; font-size: 11px; font-weight: 560; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+
+/* ---------------------------------------------------------------------
+   Depot
+   --------------------------------------------------------------------- */
+.gruss { margin: 8px 0 0; font-size: 24px; color: var(--text-2); text-shadow: 0 0 24px rgba(255, 190, 120, 0.12); }
 .held {
   position: relative;
-  isolation: isolate;
   display: block;
   width: 100%;
-  padding: 16px 0 16px;
+  padding: 8px 0 16px;
   border: 0;
   background: none;
   color: inherit;
   text-align: left;
+  transition: transform var(--f-feder-d) var(--f-feder);
 }
-.held > .label, .held-label { display: block; margin-bottom: 8px; }
-.held-zahl { display: block; }
-.held-zeile {
-  display: flex; flex-wrap: wrap; align-items: center;
-  gap: 4px 8px;
-  min-height: 24px;
-  margin-top: 12px;
-  font-size: 15px;
-}
-.held-zeitraum { color: var(--text-3); font-size: 14px; }
-
-.held-aurora {
+.held:active { transform: scale(0.985); transition-duration: 0.1s; }
+.held::before {
+  /* warmer Lichthof hinter der Zahl, der ganz langsam atmet */
+  content: "";
   position: absolute;
-  inset: -64px -16px -24px;
+  left: -12%; top: 18%;
+  width: 92%; height: 90%;
   z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.9;
-}
-.held-aurora span {
-  position: absolute;
   border-radius: 50%;
-  will-change: transform;
+  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.2), rgba(var(--glut-rgb), 0.07) 55%, transparent);
+  pointer-events: none;
+  animation: lichthof 7.5s ease-in-out infinite;
 }
-.held-aurora span:nth-child(1) {
-  width: 340px; height: 220px; left: -90px; top: 40px;
-  background: radial-gradient(closest-side, rgba(var(--akzent-rgb), 0.16), transparent);
-  animation: aurora-a 19s ease-in-out infinite alternate;
-}
-.held-aurora span:nth-child(2) {
-  width: 300px; height: 200px; left: 90px; top: 70px;
-  background: radial-gradient(closest-side, rgba(205, 96, 52, 0.11), transparent);
-  animation: aurora-b 23s ease-in-out infinite alternate;
-}
-.held-aurora span:nth-child(3) {
-  width: 260px; height: 180px; right: -110px; top: 10px;
-  background: radial-gradient(closest-side, rgba(126, 112, 214, 0.08), transparent);
-  animation: aurora-c 29s ease-in-out infinite alternate;
-}
-@keyframes aurora-a { to { transform: translate3d(60px, 18px, 0) scale(1.15) rotate(8deg); } }
-@keyframes aurora-b { to { transform: translate3d(-70px, -14px, 0) scale(0.9) rotate(-10deg); } }
-@keyframes aurora-c { to { transform: translate3d(-50px, 30px, 0) scale(1.2); } }
+@keyframes lichthof { 0%, 100% { opacity: 0.65; transform: scale(0.94); } 50% { opacity: 1; transform: scale(1.06) translateX(3%); } }
+.held-label { display: block; margin: 16px 0 8px; }
+.held-zahl { display: block; }
+.held-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 24px; margin-top: 14px; font-size: 15px; }
+.held-zeitraum { color: var(--text-3); font-size: 14px; }
 
 /* ---- Diagramm ---- */
 .diagramm { position: relative; margin-top: 8px; }
 .diagramm-kopf { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-.diagramm-flaeche {
-  position: relative;
-  height: 232px;
-  margin: 0 -16px;
-}
-.diagramm-flaeche--klein { height: 200px; margin: 16px -16px 8px; }
+.diagramm-flaeche { position: relative; height: 240px; margin: 0 -16px; }
+.diagramm-flaeche--klein { height: 210px; margin: 16px -16px 8px; }
 .diagramm-canvas { width: 100%; height: 100%; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
 .diagramm-flaeche.ist-leer .diagramm-canvas { visibility: hidden; }
 .diagramm-flaeche .leer { position: absolute; inset: 0; align-content: center; }
 .diagramm-erklaerung { margin-top: 8px; font-size: 12px; color: var(--text-3); line-height: 1.5; min-height: 3em; }
 .zeitraum { margin-top: 16px; }
 
+/* Scrubbing: schwebende Glaskapsel mit dem Datum über dem Finger */
+.scrub-kapsel {
+  position: absolute;
+  top: -6px;
+  left: 0;
+  z-index: 3;
+  padding: 5px 12px;
+  border-radius: var(--radius-voll);
+  background: rgba(24, 24, 30, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--lichtkante), 0 8px 20px -8px rgba(0, 0, 0, 0.8);
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.9);
+  transition: opacity 0.2s, transform var(--f-feder-d) var(--f-feder);
+}
+.scrub-kapsel.ist-sichtbar { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.scrub-kapsel.ist-kauf { color: #1F1206; background: linear-gradient(180deg, #FFCB8A, var(--akzent)); box-shadow: var(--glimmen); }
+
+/* Herzschlag am jüngsten Punkt */
+.diagramm-puls { position: absolute; z-index: 2; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity 0.5s; }
+.diagramm-puls.ist-sichtbar { opacity: 1; }
+.wird-gescrubbt .diagramm-puls { opacity: 0; }
+.diagramm-puls::before, .diagramm-puls::after { content: ""; position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; }
+.diagramm-puls::before { background: #FFE7C9; box-shadow: 0 0 0 2px rgba(11, 11, 13, 0.9), 0 0 14px 3px rgba(var(--glut-rgb), 0.9); }
+.diagramm-puls::after { border: 1.5px solid rgba(var(--glut-rgb), 0.9); animation: herzschlag 2.2s ease-out infinite; }
+
 /* ---- Kennzahlen ---- */
 .raster-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .kennzahlen { margin-top: 24px; }
-.kennzahl {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 4px;
-  min-height: 136px;
-  padding: 16px 16px 48px;
-  overflow: hidden;
-}
-.kennzahl-wert {
-  display: block;
-  margin-top: 8px;
-  font-size: clamp(19px, 5.6vw, 23px);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  white-space: nowrap;
-}
-.kennzahl-wert .z-komma { font-size: 0.72em; color: var(--text-2); font-weight: 500; letter-spacing: -0.01em; }
-.kennzahl-wert .z-einheit { font-size: 0.62em; color: var(--text-2); margin-left: 0.18em; letter-spacing: 0; font-weight: 500; }
+.kennzahl { display: grid; align-content: start; gap: 4px; min-height: 140px; padding: 16px 16px 48px; overflow: hidden; }
+.kennzahl-wert { display: block; margin-top: 8px; font-size: clamp(20px, 5.8vw, 24px); font-weight: 620; letter-spacing: -0.035em; line-height: 1.15; white-space: nowrap; }
+.kennzahl-wert .z-komma { font-size: 0.72em; color: var(--text-2); font-weight: 520; letter-spacing: -0.01em; }
+.kennzahl-wert .z-einheit { font-size: 0.62em; color: var(--text-2); margin-left: 0.18em; letter-spacing: 0; font-weight: 520; }
 .kennzahl-wert--btc .z-komma { color: var(--text-3); }
 .kennzahl-wert--btc .z-einheit { display: none; }
 .kennzahl-unter { display: block; font-size: 12px; color: var(--text-2); line-height: 1.35; }
 .kennzahl-unter .veraenderung { font-size: 12px; }
 .kennzahl-grafik { position: absolute; right: 12px; bottom: 12px; left: 16px; display: flex; justify-content: flex-end; color: var(--text-2); }
 
-/* ---- Zitat klein ---- */
-.zitat-klein {
-  display: grid; gap: 8px;
-  width: 100%;
-  margin-top: 32px;
-  padding: 24px 8px 8px;
-  border: 0; background: none;
-  color: inherit; text-align: center;
-}
-.zitat-klein-text { font-family: var(--schrift-serif); font-style: italic; font-size: 21px; line-height: 1.35; color: var(--text); letter-spacing: -0.005em; }
-.zitat-klein-autor { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
-
-/* ---------------------------------------------------------------------
-   Seitenköpfe
-   --------------------------------------------------------------------- */
-.seiten-kopf { display: grid; gap: 8px; padding: 16px 0 24px; }
-.seiten-titel { font-size: 28px; font-weight: 650; letter-spacing: -0.035em; line-height: 1.15; }
-.abschnitt-titel { margin: 40px 0 8px; font-size: 11px; font-weight: 550; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+/* ---- Uhr bis zum nächsten Kauf, Baum-Vorschau ---- */
+.depot-unten { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+.uhr-karte { display: grid; gap: 8px; }
+.uhr-kopf { display: flex; align-items: center; justify-content: space-between; }
+.uhr-lampe { width: 8px; height: 8px; border-radius: 50%; background: var(--akzent); box-shadow: 0 0 10px 2px rgba(var(--glut-rgb), 0.85); animation: pulsieren 2s ease-in-out infinite; }
+.uhr-zahl { font-size: clamp(28px, 9vw, 36px); font-weight: 580; letter-spacing: -0.03em; white-space: nowrap; text-shadow: var(--halation); }
+.uhr-zahl .z-einheit { font-size: 0.5em; color: var(--text-3); font-weight: 560; letter-spacing: 0.02em; }
+.uhr-zahl .z-trenner { color: var(--akzent); opacity: 0.8; padding: 0 0.04em; animation: blinken 1s steps(2) infinite; }
+@keyframes blinken { 50% { opacity: 0.25; } }
+.uhr-ziel { font-size: 13px; color: var(--text-2); }
+.baum-karte { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 16px; padding: 12px 16px 12px 12px; }
+.baum-vorschau { width: 112px; height: 112px; }
+.baum-vorschau-inhalt { display: grid; gap: 6px; }
+.baum-vorschau-text { font-family: var(--schrift-serif); font-style: italic; font-size: 20px; line-height: 1.2; color: var(--text); }
+.baum-vorschau-los { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 620; color: var(--akzent-hell); text-shadow: var(--halation-glut); }
 
 /* ---------------------------------------------------------------------
    Käufe
    --------------------------------------------------------------------- */
-.kaeufe-zahl { margin-top: 0; }
 .kaeufe-unter { display: grid; gap: 4px; font-size: 15px; color: var(--text-2); margin-bottom: 16px; }
 .kaeufe-unter-zeile { font-size: 13px; }
-.kaeufe-liste { display: grid; gap: 8px; }
+.kaeufe-liste { display: grid; gap: 8px; margin-top: 8px; }
 .monat-gruppe { display: grid; gap: 8px; margin-top: 16px; }
-.monat-titel { font-size: 13px; font-weight: 600; color: var(--text-2); padding-left: 4px; letter-spacing: -0.005em; }
+.monat-titel { font-size: 13px; font-weight: 620; color: var(--text-2); padding-left: 4px; letter-spacing: -0.005em; }
 .phasen-trenner {
   display: flex; align-items: center; gap: 12px;
   margin: 24px 0 0;
-  font-size: 11px; font-weight: 550; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 11px; font-weight: 560; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--text-3);
 }
-.phasen-trenner::before, .phasen-trenner::after { content: ""; flex: 1; height: 1px; background: var(--kante-hell); }
+.phasen-trenner::before, .phasen-trenner::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--akzent-rgb), 0.35), transparent); }
+
+.ernte-karte { margin-top: 16px; }
+.ernte { display: flex; align-items: flex-end; gap: 3px; height: 92px; margin: 16px 0 12px; }
+.ernte-balken {
+  flex: 1 1 0;
+  min-width: 3px;
+  height: calc(var(--hoehe) * 100%);
+  padding: 0; border: 0;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, rgba(var(--akzent-rgb), 0.95), rgba(var(--akzent-rgb), 0.25));
+  box-shadow: 0 0 12px -4px rgba(var(--glut-rgb), 0.8);
+  transform-origin: bottom;
+  transition: transform var(--f-gummi-d) var(--f-gummi), filter 0.3s, opacity 0.3s;
+  transition-delay: calc(var(--i) * 28ms);
+}
+.ernte-balken.ist-geschaetzt { background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.08)); box-shadow: none; }
+.ernte-balken.ist-max { box-shadow: 0 0 18px -2px rgba(var(--glut-rgb), 1); }
+.ernte-balken.ist-gewaehlt { filter: brightness(1.5); }
+.ernte--wartet .ernte-balken { transform: scaleY(0.02); }
+.ernte-info { font-size: 13px; color: var(--text-2); min-height: 2.8em; }
 
 .kauf-zeile {
+  position: relative;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 64px;
+  min-height: 68px;
   padding: 12px 16px;
   border: 0;
   background: none;
   color: inherit;
   text-align: left;
 }
+.kauf-zeile > * { position: relative; z-index: 1; }
 .kauf-zeile + .kauf-zeile { box-shadow: inset 0 1px 0 var(--kante); }
-.kauf-zeile:active { background: rgba(255, 255, 255, 0.03); }
 .kauf-datum { display: grid; justify-items: center; line-height: 1; gap: 4px; }
-.kauf-tag { font-size: 20px; font-weight: 600; letter-spacing: -0.03em; }
-.kauf-wt { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.kauf-tag { font-size: 21px; font-weight: 620; letter-spacing: -0.035em; }
+.kauf-wt { font-size: 10px; font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .kauf-mitte { display: grid; gap: 2px; min-width: 0; }
-.kauf-menge { font-size: 15px; font-weight: 550; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kauf-einheit { font-size: 12px; color: var(--text-3); font-weight: 500; }
+.kauf-menge { font-size: 15px; font-weight: 580; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kauf-einheit { font-size: 12px; color: var(--text-3); font-weight: 520; }
 .kauf-kurs { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kauf-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 550; color: var(--text-3); white-space: nowrap; }
-.ist-eingetragen .kauf-status { color: rgba(var(--plus-rgb), 0.75); }
+.kauf-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 580; color: var(--text-3); white-space: nowrap; }
+.kauf-status path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.ist-eingetragen .kauf-status { color: rgba(var(--plus-rgb), 0.85); }
+.ist-eingetragen .kauf-status svg { filter: drop-shadow(0 0 4px rgba(var(--plus-rgb), 0.6)); }
+.ist-eingetragen .kauf-status path { animation: zeichnen 0.7s 0.2s var(--sanft) backwards; }
 .ist-geschaetzt .kauf-menge { color: var(--text-2); }
-.ist-ausstehend .kauf-status, .ist-ohnekurs .kauf-status { color: var(--text-2); }
-.ist-ausstehend .kauf-menge, .ist-ohnekurs .kauf-menge { color: var(--text-2); font-weight: 500; }
+.ist-geschaetzt .kauf-status svg { animation: drehen 14s linear infinite; }
+.ist-ausstehend .kauf-status, .ist-ohnekurs .kauf-status { color: var(--akzent-hell); }
+.ist-ausstehend .kauf-status svg { filter: drop-shadow(0 0 4px rgba(var(--glut-rgb), 0.8)); }
+.ist-ausstehend .kauf-menge, .ist-ohnekurs .kauf-menge { color: var(--text-2); font-weight: 520; }
 
 /* ---------------------------------------------------------------------
    Analyse
@@ -180,129 +209,189 @@
 .kurs-fuss { display: flex; justify-content: center; overflow-x: auto; scrollbar-width: none; }
 .legende-text { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; color: var(--text-3); margin-top: 4px; }
 .marke { width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(242, 242, 244, 0.85); margin-left: 8px; }
-.marke--voll { background: #F2F2F4; box-shadow: none; margin-left: 0; }
-.analyse-gross { font-size: 30px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.15; margin-top: 4px; }
-.analyse-gross-zusatz { font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-2); }
+.marke--voll { background: #F2F2F4; box-shadow: 0 0 6px rgba(255, 255, 255, 0.6); margin-left: 0; }
+.analyse-gross { font-size: 32px; font-weight: 600; letter-spacing: -0.04em; line-height: 1.15; margin-top: 4px; text-shadow: var(--halation); }
+.analyse-gross-zusatz { font-size: 14px; font-weight: 520; letter-spacing: 0; color: var(--text-2); text-shadow: none; }
 .analyse-text { font-size: 14px; color: var(--text-2); line-height: 1.55; }
-.statistik-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 8px; margin: 8px 0; }
-.stat-wert { font-size: 26px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.1; white-space: nowrap; }
-.stat-label { font-size: 12px; color: var(--text-2); margin-top: 4px; }
-.rueckgang-grafik { width: 100%; height: 64px; margin: 8px 0; }
-.rueckgang-band { fill: rgba(var(--akzent-rgb), 0.09); }
-.rueckgang-linie { fill: none; stroke: var(--text-2); stroke-width: 1.5; stroke-linejoin: round; }
-.rueckblick-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
+
+/* Ringe */
+.ring-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 8px; margin: 16px 0 8px; }
+.ring { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.ring-grafik { position: relative; width: 112px; height: 112px; display: grid; place-items: center; }
+.ring-grafik svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.ring-spur { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 7; }
+.ring-bogen { fill: none; stroke: var(--akzent); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 5px rgba(var(--glut-rgb), 0.85)); transition: stroke-dashoffset 1.6s var(--f-traege); }
+.ring-zahl { position: relative; font-size: 26px; font-weight: 620; letter-spacing: -0.04em; text-shadow: var(--halation); }
+.ring-label { font-size: 13px; font-weight: 600; }
+.ring-unter { font-size: 12px; color: var(--text-3); }
+
+/* Verteilung der Tagesbewegungen */
+.verteilung { width: 100%; height: auto; margin: 8px 0; overflow: visible; }
+.verteilung-band { fill: rgba(var(--akzent-rgb), 0.07); stroke: rgba(var(--akzent-rgb), 0.18); stroke-width: 0.5; }
+.verteilung-null { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 2 3; }
+.verteilung-text { fill: var(--text-3); font-size: 9px; font-family: var(--schrift); }
+.tag-punkt { fill: var(--akzent-hell); filter: drop-shadow(0 0 2px rgba(var(--glut-rgb), 0.9)); }
+.tag-punkt--aussen { fill: rgba(255, 255, 255, 0.45); filter: none; }
+
+/* Tauchgang */
+.tauchgang { width: 100%; height: auto; margin: 8px 0; overflow: visible; }
+.wasserlinie { stroke: rgba(255, 220, 180, 0.5); stroke-width: 1; stroke-dasharray: 3 3; }
+.tauch-flaeche { fill: url(#tauch-verlauf); }
+.tauch-linie { fill: none; stroke: rgba(170, 195, 240, 0.85); stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(150, 180, 240, 0.6)); }
+.taucher { fill: #FFE7C9; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 1)); }
+
+/* Wochenmosaik */
+.mosaik { display: grid; grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); gap: 5px; margin: 12px 0 8px; }
+.mosaik-kachel {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0; border: 0;
+  border-radius: 7px;
+  display: grid; place-items: center;
+  transition: transform var(--f-gummi-d) var(--f-gummi), opacity 0.5s var(--sanft), box-shadow 0.3s;
+  transition-delay: calc(var(--i) * 22ms);
+}
+.mosaik-kachel.ist-plus { background: rgba(var(--plus-rgb), calc(0.12 + var(--staerke) * 0.6)); box-shadow: 0 0 calc(var(--staerke) * 14px) -2px rgba(var(--plus-rgb), 0.7); }
+.mosaik-kachel.ist-minus { background: rgba(var(--minus-rgb), calc(0.1 + var(--staerke) * 0.5)); }
+.mosaik-kachel.ist-laufend { outline: 1px dashed rgba(255, 255, 255, 0.35); outline-offset: 2px; }
+.mosaik-kachel.ist-gewaehlt { transform: scale(1.18); box-shadow: 0 0 0 2px var(--text), 0 0 18px rgba(255, 255, 255, 0.4); z-index: 1; transition-delay: 0s; }
+.mosaik-einzahlung { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 244, 228, 0.9); box-shadow: 0 0 6px rgba(255, 220, 180, 0.9); }
+.mosaik--wartet .mosaik-kachel { transform: scale(0.2) rotate(-25deg); opacity: 0; }
+.mosaik-info { font-size: 13px; color: var(--text-2); min-height: 2.8em; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.mosaik-info strong { color: var(--text); font-weight: 620; flex-basis: 100%; }
+.rueckblick { margin-top: 4px; }
+.rueckblick-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; }
 .rueckblick-zeile + .rueckblick-zeile { box-shadow: inset 0 1px 0 var(--kante); }
-.rueckblick-titel { font-size: 14px; font-weight: 550; }
+.rueckblick-titel { font-size: 14px; font-weight: 580; }
+
+/* Reifegrad */
+.reife-kopf { display: grid; gap: 4px; }
+.reife { position: relative; display: flex; align-items: flex-end; gap: 3px; height: 120px; margin: 24px 0 8px; padding-top: 4px; }
+.reife-linie { position: absolute; left: 0; right: 0; top: 0; height: 0; border-top: 1px dashed rgba(255, 210, 150, 0.55); box-shadow: 0 0 10px rgba(var(--glut-rgb), 0.5); }
+.reife-linie span { position: absolute; right: 0; top: -18px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--akzent-hell); }
+.reife-saeule {
+  flex: 1 1 0;
+  min-width: 2px;
+  height: calc(var(--anteil) * 100%);
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.06));
+  transform-origin: bottom;
+  transition: transform 1.2s var(--f-traege);
+  transition-delay: calc(var(--i) * 30ms);
+}
+.reife-saeule.ist-reif { background: linear-gradient(180deg, #FFE1A8, var(--akzent)); box-shadow: 0 0 14px -2px rgba(var(--glut-rgb), 0.9); }
+.reife--wartet .reife-saeule { transform: scaleY(0); }
 .tranchen { display: grid; margin: 8px -16px 0; }
 .tranche { display: grid; gap: 4px; padding: 12px 16px; }
 .tranche + .tranche { box-shadow: inset 0 1px 0 var(--kante); }
 .tranche-oben, .tranche-unten { display: flex; justify-content: space-between; gap: 12px; }
-.tranche-oben { font-size: 15px; font-weight: 550; }
+.tranche-oben { font-size: 15px; font-weight: 580; }
 .tranche-unten { font-size: 12px; color: var(--text-3); }
 .tranche-unten span:last-child, .tranche-oben span:last-child { text-align: right; white-space: nowrap; }
+.ist-reif-text { color: var(--akzent-hell); text-shadow: var(--halation-glut); }
 
 /* ---------------------------------------------------------------------
-   Weg – Zitat-Bühne, Meilensteine, Umfeld
+   Weg: der Baum
    --------------------------------------------------------------------- */
-.zitat-buehne {
+.baum-buehne {
   position: relative;
-  display: grid; justify-items: center; gap: 16px;
-  width: 100%;
-  margin: 8px 0 32px;
-  padding: 32px 16px 32px;
-  border: 0;
-  border-radius: 28px;
-  color: inherit;
-  text-align: center;
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(var(--akzent-rgb), 0.07), transparent 60%),
-    var(--flaeche-1);
-  box-shadow: var(--lichtkante);
-  overflow: hidden;
+  display: grid;
+  place-items: center;
+  margin: 0 -16px;
+  padding: 8px 0 0;
 }
-.zitat-zeichen {
-  display: block;
-  height: 40px;
-  margin-bottom: -8px;
-  font-family: var(--schrift-serif); font-style: italic;
-  font-size: 96px; line-height: 1;
-  color: rgba(var(--akzent-rgb), 0.45);
+.baum { position: relative; z-index: 1; width: min(100%, 420px); aspect-ratio: 1; touch-action: none; cursor: crosshair; }
+.baum-halo {
+  position: absolute;
+  inset: 4% 8% 16%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.22), rgba(var(--glut-rgb), 0.06) 60%, transparent);
+  animation: halo 7s ease-in-out infinite;
 }
-.zitat-text {
-  font-family: var(--schrift-serif);
-  font-style: italic;
-  font-size: clamp(25px, 7.2vw, 32px);
-  line-height: 1.28;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  max-width: 22ch;
-  text-wrap: balance;
-}
-.zitat-autor { font-size: 11px; font-weight: 550; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
-.zitat-hinweis { font-size: 11px; color: var(--text-3); opacity: 0.6; margin-top: 8px; }
+@keyframes halo { 50% { transform: scale(1.06); opacity: 0.75; } }
+.baum-dunst { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.baum-dunst span { position: absolute; width: 70%; height: 30%; border-radius: 50%; background: radial-gradient(closest-side, rgba(200, 210, 235, 0.07), transparent); }
+.baum-dunst span:nth-child(1) { left: -20%; top: 40%; animation: dunst-a 26s ease-in-out infinite alternate; }
+.baum-dunst span:nth-child(2) { right: -25%; top: 62%; animation: dunst-b 34s ease-in-out infinite alternate; }
+@keyframes dunst-a { to { transform: translate3d(50%, -12%, 0) scale(1.2); } }
+@keyframes dunst-b { to { transform: translate3d(-45%, -18%, 0) scale(1.3); } }
+.baum-info { position: relative; z-index: 3; display: grid; gap: 2px; justify-items: center; text-align: center; margin-top: -8px; padding: 0 16px; min-height: 48px; }
+.baum-info-titel { font-size: 15px; font-weight: 620; text-shadow: var(--halation); }
+.baum-info-text { font-size: 13px; color: var(--text-2); }
+.baum-aktionen { display: flex; justify-content: center; margin: 16px 0 24px; }
+
+/* Anteil an allen Bitcoin */
+.anteil { position: relative; display: grid; place-items: center; width: 180px; height: 180px; margin: 16px auto 8px; }
+.anteil-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.anteil-spur { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 7; }
+.anteil-bogen { fill: none; stroke: var(--akzent); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.9)); transition: stroke-dashoffset 1.8s var(--f-traege); }
+.anteil-ueber { fill: none; stroke: #FFE1A8; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 8px rgba(255, 210, 150, 1)); transition: stroke-dashoffset 1.8s var(--f-traege) 1.2s; }
+.anteil-mitte { display: grid; justify-items: center; gap: 2px; }
+.anteil-zahl { font-size: 36px; font-weight: 620; letter-spacing: -0.045em; text-shadow: var(--halation); }
+.anteil-zahl .z-einheit { font-size: 0.5em; color: var(--text-2); margin-left: 0.1em; }
+.anteil-unter { max-width: 84px; font-size: 10.5px; line-height: 1.25; text-align: center; color: var(--text-3); letter-spacing: 0.03em; }
+.anteil-titel { font-family: var(--schrift-serif); font-style: italic; font-size: 24px; line-height: 1.2; text-align: center; color: var(--text); text-shadow: var(--halation); }
 
 .weg-karte { display: grid; gap: 8px; margin-top: 8px; }
 .meilenstein-kopf { display: grid; gap: 4px; margin-top: 4px; }
-
 .pfad { position: relative; display: grid; gap: 0; margin-top: 16px; padding-left: 4px; }
-.pfad-punkt { position: relative; display: grid; grid-template-columns: 24px 1fr; column-gap: 12px; padding-bottom: 16px; }
-.pfad-punkt::before {
-  content: ""; position: absolute; left: 11px; top: 20px; bottom: 0; width: 2px;
-  background: var(--kante-hell);
-}
+.pfad-punkt { position: relative; display: grid; grid-template-columns: 24px 1fr; column-gap: 12px; padding-bottom: 16px; animation: fokusRein 0.7s var(--f-feder) backwards; animation-delay: calc(var(--i) * 70ms + 200ms); }
+@keyframes fokusRein { from { opacity: 0; filter: blur(6px); transform: translateX(-8px); } }
+.pfad-punkt::before { content: ""; position: absolute; left: 11px; top: 20px; bottom: 0; width: 2px; background: var(--kante-hell); }
 .pfad-punkt:last-child::before { display: none; }
-.pfad-punkt--erreicht::before { background: rgba(var(--akzent-rgb), 0.35); }
-.pfad-marke {
-  grid-row: 1 / 3;
-  width: 12px; height: 12px; margin: 4px 6px;
-  border-radius: 50%;
-  background: var(--flaeche-3);
-  box-shadow: inset 0 0 0 2px var(--kante-hell);
-}
-.pfad-punkt--erreicht .pfad-marke { background: var(--akzent); box-shadow: 0 0 0 4px rgba(var(--akzent-rgb), 0.15); }
-.pfad-punkt--naechstes .pfad-marke { background: var(--grund); box-shadow: inset 0 0 0 2px var(--akzent), 0 0 0 4px rgba(var(--akzent-rgb), 0.12); animation: atmen 2.4s ease-in-out infinite; }
-@keyframes atmen { 50% { box-shadow: inset 0 0 0 2px var(--akzent), 0 0 0 8px rgba(var(--akzent-rgb), 0.04); } }
-.pfad-titel { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.pfad-punkt--erreicht::before { background: linear-gradient(rgba(var(--akzent-rgb), 0.6), rgba(var(--akzent-rgb), 0.25)); box-shadow: 0 0 6px rgba(var(--glut-rgb), 0.5); }
+.pfad-marke { grid-row: 1 / 3; width: 12px; height: 12px; margin: 4px 6px; border-radius: 50%; background: var(--flaeche-3); box-shadow: inset 0 0 0 2px var(--kante-hell); }
+.pfad-punkt--erreicht .pfad-marke { background: var(--akzent); box-shadow: 0 0 0 4px rgba(var(--akzent-rgb), 0.15), 0 0 10px rgba(var(--glut-rgb), 0.9); }
+.pfad-punkt--naechstes .pfad-marke { background: var(--grund); box-shadow: inset 0 0 0 2px var(--akzent), 0 0 0 4px rgba(var(--akzent-rgb), 0.12); animation: atmenRing 2.4s ease-in-out infinite; }
+@keyframes atmenRing { 50% { box-shadow: inset 0 0 0 2px var(--akzent), 0 0 0 9px rgba(var(--akzent-rgb), 0.05), 0 0 16px rgba(var(--glut-rgb), 0.6); } }
+.pfad-titel { font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
 .pfad-unter { font-size: 12px; color: var(--text-3); }
 .pfad-punkt--spaeter .pfad-titel { color: var(--text-3); }
 
 .wochen-serie { display: grid; gap: 4px; }
 .wochen-punkte { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; margin: 16px 0 8px; }
 .wochen-punkte span { aspect-ratio: 1; border-radius: 50%; background: var(--flaeche-3); }
-.wochen-punkte span.an { background: var(--akzent); box-shadow: 0 0 8px rgba(var(--akzent-rgb), 0.35); }
+.wochen-punkte span.an { background: var(--akzent); box-shadow: 0 0 8px rgba(var(--glut-rgb), 0.6); animation: zuenden-punkt 0.5s var(--f-gummi) backwards; animation-delay: calc(var(--i) * 35ms + 150ms); }
+@keyframes zuenden-punkt { from { transform: scale(0); background: #FFF2DE; box-shadow: 0 0 16px rgba(255, 220, 180, 1); } }
 
 .markt-zeile { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .werte-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; margin-top: 8px; }
 .werte-liste dt { font-size: 12px; color: var(--text-3); }
-.werte-liste dd { font-size: 15px; font-weight: 550; white-space: nowrap; }
+.werte-liste dd { font-size: 15px; font-weight: 580; white-space: nowrap; }
 
 .stimmung { display: flex; align-items: center; gap: 16px; margin: 8px 0; }
-.tacho { width: 128px; height: 68px; flex: none; overflow: visible; }
+.tacho { width: 132px; height: 72px; flex: none; overflow: visible; }
 .tacho-spur { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 8; stroke-linecap: round; }
-.tacho-bogen { fill: none; stroke-width: 8; stroke-linecap: round; opacity: 0.55; }
-.tacho-zeiger { fill: var(--text); stroke: var(--flaeche-1); stroke-width: 3; }
+.tacho-bogen { fill: none; stroke-width: 8; stroke-linecap: round; opacity: 0.6; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2)); }
+.tacho-nadel { transform-origin: 64px 60px; transform-box: view-box; }
+.tacho-zeiger-linie { stroke: var(--text); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(255, 220, 180, 0.9)); }
+.tacho-nabe { fill: var(--text); stroke: var(--grund); stroke-width: 2.5; }
 .stimmung-text { display: grid; gap: 2px; }
 
 /* ---------------------------------------------------------------------
    Push-Einrichtung
    --------------------------------------------------------------------- */
 .schritte { display: grid; gap: 24px; }
-.schritt { display: grid; grid-template-columns: 32px 1fr; gap: 12px; }
-.schritt-nr { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(var(--akzent-rgb), 0.14); color: var(--akzent); font-size: 13px; font-weight: 700; }
+.schritt { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
+.schritt-nr { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(var(--akzent-rgb), 0.16); color: var(--akzent-hell); font-size: 13px; font-weight: 700; box-shadow: var(--schimmer); }
 .schritt-inhalt { display: grid; gap: 8px; min-width: 0; }
-.schritt-titel { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; padding-top: 2px; }
+.schritt-titel { font-size: 16px; font-weight: 620; letter-spacing: -0.01em; padding-top: 2px; }
 .schluessel-feld {
   width: 100%; resize: none;
   padding: 12px;
-  border: 0; border-radius: 12px;
-  background: var(--flaeche-1);
-  box-shadow: inset 0 0 0 1px var(--kante-hell);
+  border: 0; border-radius: 14px;
+  background: rgba(10, 10, 13, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   color: var(--text-2);
   font: 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   word-break: break-all;
 }
 
-/* Sehr schmale Geräte: Statustext der Käufe nur als Symbol */
 @media (max-width: 359px) {
   .kauf-status-text { display: none; }
+  .baum-karte { grid-template-columns: 88px minmax(0, 1fr); }
+  .baum-vorschau { width: 88px; height: 88px; }
+}
+@media (min-width: 560px) {
+  .depot-unten { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

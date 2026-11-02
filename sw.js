@@ -8,7 +8,7 @@
 // Bei jeder Änderung an den App-Dateien: VERSION um eins erhöhen.
 // =====================================================================
 
-const VERSION = 1;
+const VERSION = 2;
 const PRAEFIX = "dca3-app-";
 const CACHE = `${PRAEFIX}${VERSION}`;
 
@@ -16,13 +16,14 @@ const DATEIEN = [
   "./", "index.html", "manifest.webmanifest",
   "css/basis.css", "css/komponenten.css", "css/ansichten.css",
   "js/app.js", "js/konfig.js", "js/zeit.js", "js/format.js", "js/speicher.js", "js/altdaten.js",
-  "js/abgleich.js", "js/rechnen.js", "js/kennzahlen.js", "js/kurse.js", "js/dom.js", "js/zitate.js",
+  "js/abgleich.js", "js/rechnen.js", "js/kennzahlen.js", "js/kurse.js", "js/dom.js", "js/jahresringe.js",
   "js/diagramme.js", "js/eintragen.js", "js/rechenweg.js", "js/einstellungen.js", "js/benachrichtigung.js", "js/notfall.js",
   "js/ui/zahl.js", "js/ui/segment.js", "js/ui/toast.js", "js/ui/ebenen.js", "js/ui/sheet.js", "js/ui/detail.js",
-  "js/ui/ptr.js", "js/ui/haptik.js", "js/ui/sparkline.js", "js/ui/feier.js",
+  "js/ui/ptr.js", "js/ui/haptik.js", "js/ui/sparkline.js", "js/ui/federwerk.js", "js/ui/zaehlwerk.js",
+  "js/ui/nebel.js", "js/ui/insel.js", "js/ui/funken.js", "js/ui/marke.js", "js/ui/intro.js",
   "js/ansichten/gemeinsam.js", "js/ansichten/depot.js", "js/ansichten/kaeufe.js", "js/ansichten/analyse.js", "js/ansichten/weg.js",
   "vendor/chart-4.4.3.umd.min.js",
-  "fonts/inter-latin.woff2", "fonts/inter-bitcoinzeichen.woff2", "fonts/instrument-serif-kursiv.woff2",
+  "fonts/inter-latin-opsz.woff2", "fonts/inter-bitcoinzeichen.woff2", "fonts/instrument-serif-kursiv.woff2",
   "icons/icon.svg", "icons/icon-192.png", "icons/abzeichen-96.png", "icons/koernung.png",
 ];
 

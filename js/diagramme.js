@@ -104,6 +104,18 @@ function zwischenFlaeche(ctx, chart, f, staerke) {
 
 const zeichenPlugin = {
   id: "sparplanZeichnen",
+  beforeDatasetDraw(chart, args) {
+    const z = chart.$z;
+    if (!z?.gluehen || args.index !== z.hauptsatz) return;
+    chart.ctx.save();
+    chart.ctx.shadowColor = z.gluehen;
+    chart.ctx.shadowBlur = 12;
+  },
+  afterDatasetDraw(chart, args) {
+    const z = chart.$z;
+    if (!z?.gluehen || args.index !== z.hauptsatz) return;
+    chart.ctx.restore();
+  },
   beforeDatasetsDraw(chart) {
     const z = chart.$z;
     if (!z) return;
@@ -123,6 +135,33 @@ const zeichenPlugin = {
     const { ctx, chartArea: a } = chart;
     ctx.restore();
     const c = farben();
+
+    // Komet: Beim Einzeichnen zieht ein glühender Punkt die Linie
+    if (z.fortschritt < 1 && !z.balken) {
+      const p = punkteVon(chart, z.hauptsatz);
+      const kante = a.left + (a.right - a.left) * z.fortschritt;
+      const q = p.length ? p[Math.max(0, Math.min(p.length - 1, nahesterIndex(p, kante)))] : null;
+      if (q) {
+        const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 16);
+        g.addColorStop(0, "rgba(255, 244, 228, 0.95)"); g.addColorStop(0.25, `rgba(${z.punktRgb ?? c.akzent}, 0.6)`); g.addColorStop(1, `rgba(${z.punktRgb ?? c.akzent}, 0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q.x, q.y, 16, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Lichtlauf: nach dem Einzeichnen wandert ein Lichtimpuls einmal über die Linie
+    if (z.lichtlauf != null && !z.balken) {
+      const p = punkteVon(chart, z.hauptsatz);
+      if (p.length > 1) {
+        const x = a.left + (a.right - a.left + 160) * z.lichtlauf - 80;
+        const g = ctx.createLinearGradient(x - 80, 0, x + 80, 0);
+        g.addColorStop(0, "rgba(255, 240, 220, 0)"); g.addColorStop(0.5, "rgba(255, 240, 220, 0.95)"); g.addColorStop(1, "rgba(255, 240, 220, 0)");
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x - 80, a.top - 10, 160, a.bottom - a.top + 20); ctx.clip();
+        ctx.beginPath(); ctx.moveTo(p[0].x, p[0].y); for (const q of p) ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = g; ctx.lineWidth = 2.6; ctx.shadowColor = `rgba(${z.punktRgb ?? c.akzent}, 0.9)`; ctx.shadowBlur = 14; ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
     // Kaufmarken (z. B. weiße Punkte im Kursverlauf)
     if (z.marken && z.fortschritt > 0.98) {
@@ -207,14 +246,35 @@ function nahesterIndex(punkte, x) {
   return lo;
 }
 
-function grundDiagramm(canvas, { beimScrubben, typ = "line" }) {
+function grundDiagramm(canvas, { beimScrubben, typ = "line", beimPuls = null }) {
   const chart = new Chart(canvas, { type: typ, data: { datasets: [] }, options: {}, plugins: [zeichenPlugin] });
-  chart.$z = { fortschritt: 1, fuellung: 1, scrub: null, hauptsatz: 0 };
+  chart.$z = { fortschritt: 1, fuellung: 1, scrub: null, hauptsatz: 0, lichtlauf: null };
   let anim = 0; let aktiv = false; let letzter = null;
 
-  function einzeichnen(dauer = 950) {
+  /** Meldet, wo der jüngste Punkt liegt (dort pulsiert ein Herzschlag). */
+  function meldePuls() {
+    if (!beimPuls) return;
+    const p = punkteVon(chart, chart.$z.hauptsatz);
+    const q = p[p.length - 1];
+    beimPuls(q && chart.$z.fortschritt >= 1 ? { x: q.x, y: q.y } : null);
+  }
+
+  function lichtlauf() {
+    if (wenigBewegung() || chart.$z.balken) { meldePuls(); return; }
+    const t0 = performance.now(); const dauer = 1100;
+    const schritt = (t) => {
+      const e = Math.min(1, (t - t0) / dauer);
+      chart.$z.lichtlauf = e < 1 ? 1 - Math.pow(1 - e, 2) : null;
+      chart.draw();
+      if (e < 1) anim = requestAnimationFrame(schritt); else meldePuls();
+    };
+    anim = requestAnimationFrame(schritt);
+  }
+
+  function einzeichnen(dauer = 1100) {
     cancelAnimationFrame(anim);
-    if (wenigBewegung()) { chart.$z.fortschritt = 1; chart.$z.fuellung = 1; chart.draw(); return; }
+    beimPuls?.(null);
+    if (wenigBewegung()) { chart.$z.fortschritt = 1; chart.$z.fuellung = 1; chart.draw(); meldePuls(); return; }
     const t0 = performance.now();
     const schritt = (t) => {
       const e = Math.min(1, (t - t0) / dauer);
@@ -222,6 +282,7 @@ function grundDiagramm(canvas, { beimScrubben, typ = "line" }) {
       chart.$z.fuellung = Math.max(0, Math.min(1, (t - t0 - dauer * 0.4) / (dauer * 0.8)));
       chart.draw();
       if (e < 1 || chart.$z.fuellung < 1) anim = requestAnimationFrame(schritt);
+      else lichtlauf();
     };
     chart.$z.fortschritt = 0; chart.$z.fuellung = 0;
     anim = requestAnimationFrame(schritt);
@@ -235,7 +296,7 @@ function grundDiagramm(canvas, { beimScrubben, typ = "line" }) {
     if (i == null || i === chart.$z.scrub) return;
     chart.$z.scrub = i;
     chart.draw();
-    const info = beimScrubben?.(i);
+    const info = beimScrubben?.(i, { x: punkte[i].x, y: punkte[i].y });
     if (info?.kauf && letzter !== i) tick(6);
     letzter = i;
   }
@@ -253,7 +314,8 @@ function grundDiagramm(canvas, { beimScrubben, typ = "line" }) {
   canvas.addEventListener("pointerleave", ende);
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  return { chart, einzeichnen, ende };
+  new ResizeObserver(() => requestAnimationFrame(meldePuls)).observe(canvas);
+  return { chart, einzeichnen, ende, meldePuls };
 }
 
 /** Achse für Zeitwerte: wenige Beschriftungen, die jüngste immer dabei. */
@@ -275,6 +337,12 @@ function zeitAchse({ min, max, mitUhrzeit = false, anzahl = 4 }) {
 }
 
 /** Wertachse rechts außen (überdeckt nie die Linie); Grenzen eng um die Daten. */
+/**
+ * Y-Achse. "abNull": Zeigt der Ausschnitt den Anfang (noch nichts investiert),
+ * beginnt die Achse bei 0 – dann sieht man die Treppe wachsen. Bei kurzen
+ * Zeiträumen (Woche, Monat) zoomt sie auf den tatsächlichen Bereich, sonst
+ * wäre die Linie nur ein flacher Strich am oberen Rand.
+ */
 function wertAchse({ format, werte = [], abNull = false } = {}) {
   const c = farben();
   const w = werte.filter(Number.isFinite);
@@ -291,7 +359,7 @@ function wertAchse({ format, werte = [], abNull = false } = {}) {
 }
 
 /** Meldet den Punkt an die Ansicht und gibt ihn zurück (für das Haptik-Signal bei Käufen). */
-const melde = (f, p) => { f(p); return p; };
+const melde = (f, p, pos) => { f(p, pos); return p; };
 
 const euroAchsenFormat = (v) => `${zahl(v, 0)} €`;
 
@@ -299,9 +367,9 @@ const euroAchsenFormat = (v) => `${zahl(v, 0)} €`;
 // 1) Depotwert: Wert (orange) über der Treppe der Einzahlungen (grau)
 // ---------------------------------------------------------------------
 
-export function wertDiagramm(canvas, beimScrubben) {
+export function wertDiagramm(canvas, beimScrubben, beimPuls = null) {
   let punkte = [];
-  const g = grundDiagramm(canvas, { beimScrubben: (i) => melde(beimScrubben, i == null ? null : punkte[i]) });
+  const g = grundDiagramm(canvas, { beimScrubben: (i, pos) => melde(beimScrubben, i == null ? null : punkte[i], pos), beimPuls });
   const c = farben();
   return {
     zeige(neu, { mitUhrzeit = false, einzeichnen = true } = {}) {
@@ -312,10 +380,10 @@ export function wertDiagramm(canvas, beimScrubben) {
         { data: punkte.map((p) => ({ x: p.t, y: p.wert })), borderColor: `rgb(${c.akzent})`, borderWidth: 2, pointRadius: 0, tension: 0, borderJoinStyle: "round", order: 1 },
         { data: punkte.map((p) => ({ x: p.t, y: p.investiert })), borderColor: "rgba(242,242,244,0.42)", borderWidth: 1.25, pointRadius: 0, tension: 0, order: 2 },
       ];
-      g.chart.options.scales = { x: zeitAchse({ min, max, mitUhrzeit }), y: wertAchse({ format: euroAchsenFormat, werte: punkte.flatMap((p) => [p.wert, p.investiert]), abNull: true }) };
+      g.chart.options.scales = { x: zeitAchse({ min, max, mitUhrzeit }), y: wertAchse({ format: euroAchsenFormat, werte: punkte.flatMap((p) => [p.wert, p.investiert]), abNull: punkte[0].investiert < 1 }) };
       g.chart.options.layout = { padding: { top: 12, bottom: 0, left: 0, right: 4 } };
       Object.assign(g.chart.$z, {
-        hauptsatz: 0, nebensaetze: [1], balken: false, marken: null,
+        hauptsatz: 0, nebensaetze: [1], balken: false, marken: null, gluehen: `rgba(${c.akzent}, 0.75)`, punktRgb: c.akzent,
         flaechen: [
           { art: "verlauf", datensatz: 1, rgb: "242,242,244", alpha: 0.05 },
           { art: "zwischen", oben: 0, unten: 1, plus: c.plus, minus: c.minus, alpha: 0.16 },
@@ -326,7 +394,7 @@ export function wertDiagramm(canvas, beimScrubben) {
         ],
       });
       g.chart.update("none");
-      if (einzeichnen) g.einzeichnen(); else g.chart.draw();
+      if (einzeichnen) g.einzeichnen(); else { g.chart.draw(); g.meldePuls(); }
     },
     ende: g.ende,
   };
@@ -338,7 +406,7 @@ export function wertDiagramm(canvas, beimScrubben) {
 
 export function wochenDiagramm(canvas, beimScrubben) {
   let wochen = [];
-  const g = grundDiagramm(canvas, { typ: "bar", beimScrubben: (i) => melde(beimScrubben, i == null ? null : wochen[i]) });
+  const g = grundDiagramm(canvas, { typ: "bar", beimScrubben: (i, pos) => melde(beimScrubben, i == null ? null : wochen[i], pos) });
   const c = farben();
   return {
     zeige(neu, { einzeichnen = true } = {}) {
@@ -366,9 +434,9 @@ export function wochenDiagramm(canvas, beimScrubben) {
 // 3) Sats: Der Bestand wächst nur – jede Stufe ist ein Kauf
 // ---------------------------------------------------------------------
 
-export function satsDiagramm(canvas, beimScrubben) {
+export function satsDiagramm(canvas, beimScrubben, beimPuls = null) {
   let punkte = [];
-  const g = grundDiagramm(canvas, { beimScrubben: (i) => melde(beimScrubben, i == null ? null : punkte[i]) });
+  const g = grundDiagramm(canvas, { beimScrubben: (i, pos) => melde(beimScrubben, i == null ? null : punkte[i], pos), beimPuls });
   const c = farben();
   return {
     zeige(neu, { einzeichnen = true } = {}) {
@@ -377,10 +445,10 @@ export function satsDiagramm(canvas, beimScrubben) {
       g.chart.data.datasets = [
         { data: punkte.map((p) => ({ x: p.t, y: p.btc * 1e8 })), borderColor: `rgb(${c.akzent})`, borderWidth: 2, pointRadius: 0, tension: 0 },
       ];
-      g.chart.options.scales = { x: zeitAchse({ min: punkte[0].t, max: punkte[punkte.length - 1].t }), y: wertAchse({ format: (v) => `${zahl(v / 1000, 0)}k`, werte: punkte.map((p) => p.btc * 1e8), abNull: true }) };
-      Object.assign(g.chart.$z, { hauptsatz: 0, nebensaetze: [], balken: false, marken: null, endbeschriftung: null, flaechen: [{ art: "verlauf", datensatz: 0, rgb: c.akzent, alpha: 0.3 }] });
+      g.chart.options.scales = { x: zeitAchse({ min: punkte[0].t, max: punkte[punkte.length - 1].t }), y: wertAchse({ format: (v) => `${zahl(v / 1000, 0)}k`, werte: punkte.map((p) => p.btc * 1e8), abNull: punkte[0].btc <= 0 }) };
+      Object.assign(g.chart.$z, { hauptsatz: 0, nebensaetze: [], balken: false, marken: null, endbeschriftung: null, gluehen: `rgba(${c.akzent}, 0.75)`, punktRgb: c.akzent, flaechen: [{ art: "verlauf", datensatz: 0, rgb: c.akzent, alpha: 0.3 }] });
       g.chart.update("none");
-      if (einzeichnen) g.einzeichnen(); else g.chart.draw();
+      if (einzeichnen) g.einzeichnen(); else { g.chart.draw(); g.meldePuls(); }
     },
     ende: g.ende,
   };
@@ -392,7 +460,7 @@ export function satsDiagramm(canvas, beimScrubben) {
 
 export function kursDiagramm(canvas, beimScrubben) {
   let punkte = [];
-  const g = grundDiagramm(canvas, { beimScrubben: (i) => melde(beimScrubben, i == null ? null : punkte[i]) });
+  const g = grundDiagramm(canvas, { beimScrubben: (i, pos) => melde(beimScrubben, i == null ? null : punkte[i], pos) });
   return {
     zeige(neu, { kaeufe = [], mitUhrzeit = false, einzeichnen = true } = {}) {
       punkte = neu;
@@ -410,7 +478,7 @@ export function kursDiagramm(canvas, beimScrubben) {
       ];
       g.chart.options.scales = { x: zeitAchse({ min, max, mitUhrzeit }), y: wertAchse({ format: (v) => zahl(v, 0), werte: punkte.map((p) => p.c) }) };
       g.chart.options.layout = { padding: { top: 12, bottom: 0, left: 0, right: 4 } };
-      Object.assign(g.chart.$z, { hauptsatz: 0, nebensaetze: [], balken: false, marken, endbeschriftung: null, punktRgb: "242,242,244", flaechen: [{ art: "verlauf", datensatz: 0, rgb: "242,242,244", alpha: 0.12 }] });
+      Object.assign(g.chart.$z, { hauptsatz: 0, nebensaetze: [], balken: false, marken, endbeschriftung: null, punktRgb: "242,242,244", gluehen: "rgba(255, 236, 214, 0.45)", flaechen: [{ art: "verlauf", datensatz: 0, rgb: "242,242,244", alpha: 0.12 }] });
       g.chart.update("none");
       if (einzeichnen) g.einzeichnen(); else g.chart.draw();
     },

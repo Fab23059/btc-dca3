@@ -4,8 +4,11 @@
 // ausstehend = Uhr. Antippen öffnet das Eintragen.
 // =====================================================================
 
-import { h, icon, fuelle } from "../dom.js";
-import { btc as btcFmt, euro, monatsname, wochentagKurz, datumLang, anzahl, ganz } from "../format.js";
+import { h, svg, icon, fuelle, wenigBewegung } from "../dom.js";
+import { Zaehlwerk } from "../ui/zaehlwerk.js";
+import { fokus } from "../ui/federwerk.js";
+import { tick } from "../ui/haptik.js";
+import { btc as btcFmt, euro, monatsname, wochentagKurz, datumLang, anzahl, ganz, sats } from "../format.js";
 import { zerlege } from "../zeit.js";
 import { leer } from "./gemeinsam.js";
 
@@ -19,12 +22,51 @@ const STATUS = {
 export function erstelleKaeufe(app) {
   const z = app.zustand;
   const zahl = h("p", { class: "kaeufe-zahl zahl-gross" });
+  const zahlWerk = new Zaehlwerk(zahl, (n) => [["ganz", n == null ? "–" : ganz(n)]], { einrollen: true, glimmen: true });
   const unter = h("p", { class: "kaeufe-unter" });
-  const knopf = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit", onclick: (e) => app.eintragen(null, e.currentTarget) }, icon("plus", { groesse: 18, strich: 2 }), "Kauf eintragen");
+  const knopf = h("button", { type: "button", class: "knopf knopf--primaer knopf--breit impuls", onclick: (e) => app.eintragen(null, e.currentTarget) }, icon("plus", { groesse: 18, strich: 2.2 }), h("span", null, "Kauf eintragen"));
+  // Ernte: Jede Woche dieselben 15 € – aber unterschiedlich viele sats
+  const ernteInfo = h("p", { class: "ernte-info" });
+  const ernte = h("div", { class: "ernte", "aria-hidden": "true" });
+  const ernteKarte = h("section", { class: "karte karte--glanz ernte-karte" }, h("h2", { class: "label" }, "Deine Ernte · sats je Kauf"), ernte, ernteInfo);
   const liste = h("div", { class: "kaeufe-liste" });
   const el = h("div", { class: "seite-inhalt" },
     h("header", { class: "seiten-kopf" }, h("p", { class: "label" }, "Deine Käufe"), zahl, unter, knopf),
+    ernteKarte,
     liste);
+  let ernteSig = ""; let besucht = false; let ernteGezeigt = false;
+
+  function zeigeErnte() {
+    const kauf = z.kaeufe.filter((k) => k.gezaehlt);
+    const sig = kauf.map((k) => k.btc.toFixed(8)).join();
+    if (sig === ernteSig) return;
+    ernteSig = sig;
+    if (kauf.length < 2) { ernteKarte.hidden = true; return; }
+    ernteKarte.hidden = false;
+    const werte = kauf.map((k) => k.btc * 1e8);
+    const max = Math.max(...werte); const min = Math.min(...werte);
+    const schnitt = werte.reduce((a, b) => a + b, 0) / werte.length;
+    const sichtbar = kauf.slice(-40);
+    const balken = sichtbar.map((k, i) => {
+      const w = k.btc * 1e8;
+      const b = h("button", {
+        type: "button", class: ["ernte-balken", k.status === "geschaetzt" && "ist-geschaetzt", w === max && "ist-max"],
+        style: { "--hoehe": (0.18 + 0.82 * ((w - min * 0.85) / (max - min * 0.85 || 1))).toFixed(3), "--i": String(i) },
+        "aria-label": `${datumLang(k.montag)}: ${sats(w)} sats`,
+        onclick: () => { ernte.querySelectorAll(".ist-gewaehlt").forEach((x) => x.classList.remove("ist-gewaehlt")); b.classList.add("ist-gewaehlt"); tick(4); ernteInfo.textContent = `${datumLang(k.montag)}: ${sats(w)} sats für 15 € – ${w >= schnitt ? `${zahl2(w / schnitt * 100 - 100)} % mehr` : `${zahl2(100 - w / schnitt * 100)} % weniger`} als im Schnitt.`; },
+      });
+      return b;
+    });
+    fuelle(ernte, balken);
+    if (!ernteGezeigt && !wenigBewegung()) ernte.classList.add("ernte--wartet");
+    ernteInfo.textContent = `Jede Woche dieselben 15 € – in günstigen Wochen gibt es mehr sats. Im Schnitt ${sats(schnitt)} sats pro Kauf.`;
+    if (besucht) laufeErnte();
+  }
+  function laufeErnte() {
+    if (ernteGezeigt) return;
+    ernteGezeigt = true;
+    requestAnimationFrame(() => ernte.classList.remove("ernte--wartet"));
+  }
 
   function zeile(k) {
     const st = STATUS[k.status];
@@ -37,7 +79,7 @@ export function erstelleKaeufe(app) {
         : [h("span", { class: "kauf-menge" }, btcFmt(k.btc), h("span", { class: "kauf-einheit" }, " BTC")),
           h("span", { class: "kauf-kurs" }, `zu ${euro(k.kurs, 0)}${k.kaufdatum !== k.montag ? ` · gekauft ${wochentagKurz(k.kaufdatum)}` : ""}`)];
     return h("button", {
-      type: "button", class: ["kauf-zeile", "tippbar", `ist-${k.status.toLowerCase()}`],
+      type: "button", class: ["kauf-zeile", "tippbar", "impuls", `ist-${k.status.toLowerCase()}`],
       "aria-label": `${datumLang(k.montag, true)}: ${st.text}. Antippen zum ${k.status === "eingetragen" ? "Bearbeiten" : "Eintragen"}.`,
       onclick: (e) => app.eintragen(k.montag, e.currentTarget),
     },
@@ -46,11 +88,18 @@ export function erstelleKaeufe(app) {
     h("span", { class: "kauf-status" }, icon(st.symbol, { groesse: 16, strich: 2 }), h("span", { class: "kauf-status-text" }, st.text)));
   }
 
+  const zahl2 = (x) => Math.round(x).toLocaleString("de-DE");
   return {
     el,
+    betreten() {
+      besucht = true;
+      laufeErnte();
+      fokus([...liste.querySelectorAll(".monat-gruppe, .phasen-trenner")].slice(0, 6), { abstand: 70, start: 120 });
+    },
     aktualisiere() {
       const s = z.summe;
-      zahl.textContent = ganz(s.anzahl);
+      zahlWerk.setze(s.anzahl);
+      zeigeErnte();
       const teile = [z.kaeufe.length ? `${s.anzahl === 1 ? "Kauf" : "Käufe"} seit ${datumLang(z.kaeufe[0].montag, true).replace(/^\w+, /, "")}` : "Käufe"];
       const sub = [];
       if (s.eingetragen) sub.push(`${s.eingetragen} eingetragen`);

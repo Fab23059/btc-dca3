@@ -125,7 +125,7 @@ function zeigeSchnappschuesse(beiAenderung) {
   });
 }
 
-export function oeffneEinstellungen({ zustand, beiAenderung, abschnitt = null }) {
+export function oeffneEinstellungen({ zustand, beiAenderung, abschnitt = null, app = null }) {
   const e = ladeEinstellungen();
   const status = ladeStatus();
   const abgleich = lies(SCHLUESSEL.abgleich, {}) || {};
@@ -164,8 +164,11 @@ export function oeffneEinstellungen({ zustand, beiAenderung, abschnitt = null })
       schalter(e.altAbgleich, (an) => speichereEinstellung("altAbgleich", an), "Abgleich mit alter App")),
       ...abw,
       alt.fehler.length ? zeile("Nicht lesbare Einträge der alten App", alt.fehler.map((f) => `${f.montag}: ${f.grund}`).join("; "), null) : null),
-    gruppe("Bedienung",
-      zeile("Feines Vibrieren", "Beim Fahren über Käufe im Diagramm und beim Speichern.", schalter(e.haptik, (an) => { speichereEinstellung("haptik", an); haptikAn(an); }, "Haptik"))),
+    gruppe("Darstellung",
+      zeile("Dein Name", "Für den Gruß auf der Startseite.", h("input", { type: "text", class: "listen-eingabe", value: e.name, maxlength: 24, autocomplete: "off", "aria-label": "Dein Name", onchange: (ev) => { speichereEinstellung("name", ev.target.value); beiAenderung(); } })),
+      zeile("Atmosphäre", "Nebel, Lichtleck und lebendes Filmkorn. Aus spart etwas Akku.", schalter(e.effekte, (an) => { speichereEinstellung("effekte", an); app?.setzeEffekte(an); }, "Atmosphäre")),
+      zeile("Feines Vibrieren", "Beim Fahren über Käufe, Ringe und beim Speichern.", schalter(e.haptik, (an) => { speichereEinstellung("haptik", an); haptikAn(an); }, "Haptik")),
+      zeile("Begrüßung erneut ansehen", "Das kurze Intro vom ersten Start.", icon("pfeilRechts", { groesse: 18 }), () => { sheet.schliessen(); setTimeout(() => app?.spieleIntro(), 450); })),
     gruppe("Über diese App",
       zeile("Version", `${APP_VERSION} · Daten seit ${status.migriert ? datum(new Date(status.migriert).toISOString().slice(0, 10)) : "heute"} in dieser App`, null),
       zeile("Kursquellen", "CryptoCompare, Coinbase, CoinGecko · Stimmung: alternative.me · Blöcke: mempool.space. Keine Konten, keine Schlüssel, keine Weitergabe deiner Daten.", null),
