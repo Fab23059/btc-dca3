@@ -80,17 +80,18 @@ def zahl(text):
     return float(re.findall(r"[-+]?\d+(?:\.\d+)?", t)[0])
 
 def angezeigt(s):
-    k = s["kacheln"]
     z = s["zeitraeume"]
+    zn = s["zahlen"]
     teile = lambda t: re.findall(r"[-+−]?[\d.]+,\d+", t)
-    a = {"Aktueller Kurs": zahl(k[3].split("Bitcoin")[1]), "Investiert": zahl(k[0].split("Investiert")[1]),
-         "BTC gesamt": zahl(re.search(r"(\d+,\d{8})", k[1]).group(1)), "Depotwert": zahl(s["wert"]),
-         "Ø Kaufpreis": zahl(k[2].split("Kaufpreis")[1]),
+    a = {"Aktueller Kurs": zahl(s["fuss"].split("Bitcoin")[1]),
+         "Investiert": zahl(zn["investiert"]),
+         # Die App zeigt den Bestand in sats (ganze Zahl) – zurück in BTC
+         "BTC gesamt": zahl(zn["sats"]) / 1e8,
+         "Depotwert": zahl(s["wert"]),
+         "Ø Kaufpreis": zahl(zn["durchschnitt"]),
          "G/V gesamt (€)": zahl(teile(z["Gesamt"])[0]), "G/V gesamt (%)": zahl(teile(z["Gesamt"])[1])}
     for n in ("Woche", "Monat", "Jahr"):
         a[f"G/V {n} (€)"] = zahl(teile(z[n])[0]); a[f"G/V {n} (%)"] = zahl(teile(z[n])[1])
-    if s.get("kursverlauf"):
-        a["Kursverlauf 1M (%)"] = zahl(teile(s["kursverlauf"])[-1])
     return a
 
 GENAU = {"Aktueller Kurs": 1, "Ø Kaufpreis": 1, "BTC gesamt": 1e-8}

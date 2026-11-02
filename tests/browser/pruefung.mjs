@@ -27,6 +27,7 @@ const AUS = process.argv[2] ?? "pruefung-ausgabe";
 mkdirSync(AUS, { recursive: true });
 
 const ALTE_APP = execFileSync("git", ["-C", WURZEL, "show", "07912df:index.html"]);
+const CHART_ALT = execFileSync("git", ["-C", WURZEL, "show", "445e49f:vendor/chart-4.4.3.umd.min.js"]);
 const TYPEN = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 
 // ---- Kleiner Webserver: /btc-dca3/ = neue App, /btc-dca2/ = alte App ----
@@ -89,7 +90,8 @@ async function kontext({ jetztMs, breite = 390, hoehe = 844, ausfall = [] }) {
   });
   // Die alte App lädt Chart.js vom CDN – hier aus dem Repository
   await ctx.route(/^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|unpkg\.com)\//, async (route) => {
-    if (route.request().url().includes("chart.umd")) return route.fulfill({ contentType: "text/javascript", body: await readFile(join(WURZEL, "vendor/chart-4.4.3.umd.min.js")) });
+    // Die ALTE App lädt Chart.js von einem CDN – hier aus der Git-Geschichte ausgeliefert
+    if (route.request().url().includes("chart.umd")) return route.fulfill({ contentType: "text/javascript", body: CHART_ALT });
     return route.fulfill({ contentType: "text/javascript", body: "" });
   });
   return ctx;
@@ -104,30 +106,37 @@ async function seite(ctx, jetztMs, name) {
 }
 
 const speicherBild = (p) => p.evaluate(() => Object.fromEntries(Object.keys(localStorage).sort().map((k) => [k, localStorage.getItem(k)])));
-const nurAlt = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => k.startsWith("btcdca_overrides") || k.startsWith("btcdca_celebrated") || k.startsWith("btcdca_lastquote")));
 
-async function neueApp(p, schuss, { intro = "ueberspringen" } = {}) {
+async function neueApp(p, schuss) {
   await p.goto(`${BASIS}/btc-dca3/`);
   await p.waitForFunction(() => document.documentElement.dataset.bereit === "1");
-  if (intro === "ueberspringen") {
-    await p.waitForSelector(".intro", { timeout: 3000 }).then(() => p.waitForTimeout(400)).then(() => p.locator(".intro").click()).catch(() => {});
-    await p.waitForTimeout(900);
-  }
-  await p.waitForFunction(() => /Live/.test(document.querySelector("#kopf-status")?.textContent ?? ""), null, { timeout: 15000 }).catch(() => {});
-  await p.waitForTimeout(1600);
+  // Warten, bis der Status "Live" zeigt (eine Übernahme-Meldung steht vorher ein paar Sekunden dort)
+  await p.waitForFunction(() => /Live/.test(document.querySelector("#status")?.getAttribute("aria-label") ?? ""), null, { timeout: 15000 }).catch(() => {});
+  await p.waitForTimeout(1800);
+  // … und erneut, falls inzwischen eine Meldung in der Statuszeile steht
+  await p.waitForFunction(() => /Live/.test(document.querySelector("#status")?.getAttribute("aria-label") ?? ""), null, { timeout: 12000 }).catch(() => {});
   if (schuss) await p.screenshot({ path: join(AUS, `${schuss}.png`) });
 }
 
+/** Werte lesen. Zählwerke tragen ihren Text als aria-label (die Walzen enthalten alle Ziffern). */
 const lesen = (p) => p.evaluate(() => {
-  // Zählwerke: nur den Vorlesetext nehmen (die Walzen enthalten alle Ziffern 0–9)
-  const sauber = (el) => { if (!el) return null; const c = el.cloneNode(true); c.querySelectorAll(".zaehlwerk-anzeige").forEach((x) => x.remove()); return c.textContent.replace(/\s+/g, " ").trim(); };
-  const t = (s) => sauber(document.querySelector(s));
-  const kacheln = [...document.querySelectorAll("#seite-depot .kennzahl")].map(sauber);
-  return { wert: t("#seite-depot .held-zahl"), zeile: t("#seite-depot .held-zeile"), kacheln, hinweise: t("#seite-depot .hinweise"), status: t("#kopf-status") };
+  const text = (el) => el?.textContent.replace(/\s+/g, " ").trim() ?? null;
+  const zahlen = [...document.querySelectorAll(".stapel .fkopf--zahlen .zk-wert")].map((e) => e.getAttribute("aria-label"));
+  return {
+    wert: document.querySelector(".held-zahl")?.getAttribute("aria-label"),
+    zeile: text(document.querySelector(".held-zeile")),
+    zahlen: { investiert: zahlen[0], sats: zahlen[1], durchschnitt: zahlen[2], wochen: zahlen[3] },
+    fuss: text(document.querySelector(".fuss")),
+    kaeufe: text(document.querySelector(".stapel .fkopf--kaeufe")),
+    status: document.querySelector("#status")?.getAttribute("aria-label"),
+  };
 });
+const schliessen = async (p) => { await p.keyboard.press("Escape"); await p.waitForTimeout(900); };
+const kachel = (p, i) => p.locator(".stapel .kachel").nth(i);
+const zeigeKachel = async (p, i) => { await kachel(p, i).scrollIntoViewIfNeeded(); await p.waitForTimeout(300); };
 
 // ---------------------------------------------------------------------
-// Szenario 1: neue App, Montag 2.11. um 20:47 (vor dem Bitvavo-Kauf)
+// Szenario 1: neue App, Montag 2.11. um 20:47 (vor dem Bitvavo-Kauf) und 21:00
 // ---------------------------------------------------------------------
 for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100", Date.UTC(2026, 10, 2, 20, 0)]]) {
   const ctx = await kontext({ jetztMs });
@@ -135,72 +144,73 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
   await p.goto(`${BASIS}/btc-dca3/leer`);
   await p.evaluate((d) => { for (const [k, w] of Object.entries(d)) localStorage.setItem(k, w); }, altSpeicher);
   const vorher = await speicherBild(p);
-  await neueApp(p, `neu-${name}-depot`);
+  await neueApp(p, `neu-${name}-heute`);
   const zahlen = await lesen(p);
-  // Zeiträume
   zahlen.zeitraeume = {};
-  for (const zr of ["Woche", "Monat", "Jahr", "Gesamt"]) {
-    await p.locator(".zeitraum .segment-option", { hasText: zr }).click();
-    await p.waitForTimeout(250);
-    zahlen.zeitraeume[zr] = await p.evaluate(() => document.querySelector("#seite-depot .held-zeile").textContent.replace(/\s+/g, " ").trim());
-    if (zr === "Woche") await p.screenshot({ path: join(AUS, `neu-${name}-woche.png`) });
+  for (const [zr, knopf] of [["Woche", "Woche"], ["Monat", "Monat"], ["Jahr", "Jahr"], ["Gesamt", "Alles"]]) {
+    await p.locator(".zeitraum-wahl", { hasText: knopf }).click();
+    await p.waitForTimeout(350);
+    zahlen.zeitraeume[zr] = await p.evaluate(() => document.querySelector(".held-zeile").textContent.replace(/\s+/g, " ").trim());
+    if (zr === "Monat") { await p.waitForTimeout(900); await p.screenshot({ path: join(AUS, `neu-${name}-monat.png`) }); }
   }
+  await p.waitForTimeout(900);
   const nachher = await speicherBild(p);
-  const altUnveraendert = Object.keys(altSpeicher).every((k) => nachher[k] === vorher[k]);
-  zahlen.altUnveraendert = altUnveraendert;
+  zahlen.altUnveraendert = Object.keys(altSpeicher).every((k) => nachher[k] === vorher[k]);
   zahlen.eigeneSchluessel = Object.keys(nachher).filter((k) => !k.startsWith("btcdca_"));
   zahlen.fremdeNeueSchluessel = Object.keys(nachher).filter((k) => !(k in vorher) && !k.startsWith("dca3_"));
   ergebnis.szenarien[`neu-${name}`] = zahlen;
 
   if (name === "2100") {
-    // Weitere Seiten und Dialoge fotografieren
-    await p.locator("#tab-kaeufe").click(); await p.waitForTimeout(900); await p.screenshot({ path: join(AUS, "neu-kaeufe.png") });
-    await p.locator("#tab-analyse").click(); await p.waitForTimeout(1600); await p.screenshot({ path: join(AUS, "neu-analyse.png") });
-    ergebnis.szenarien["neu-2100"].kursverlauf = await p.evaluate(() => { const c = document.querySelector("#seite-analyse .kurs-kopf")?.cloneNode(true); c?.querySelectorAll(".zaehlwerk-anzeige").forEach((x) => x.remove()); return c?.textContent.replace(/\s+/g, " ").trim(); });
-    for (const y of [700, 1400, 2100, 2800]) { await p.locator("#seite-analyse").evaluate((s, yy) => s.scrollTo(0, yy), y); await p.waitForTimeout(1800); await p.screenshot({ path: join(AUS, `neu-analyse-${y}.png`) }); }
-    await p.locator("#seite-analyse").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, "neu-analyse-unten.png") });
-    await p.locator("#tab-weg").click(); await p.waitForTimeout(3200); await p.screenshot({ path: join(AUS, "neu-weg.png") });
-    for (const y of [600, 1200, 1800]) { await p.locator("#seite-weg").evaluate((s, yy) => s.scrollTo(0, yy), y); await p.waitForTimeout(1600); await p.screenshot({ path: join(AUS, `neu-weg-${y}.png`) }); }
-    await p.locator("#seite-weg").evaluate((s) => s.scrollTo(0, 0)); await p.waitForTimeout(500);
-    const bb = await p.locator("canvas.baum").boundingBox();
-    await p.mouse.move(bb.x + bb.width * 0.68, bb.y + bb.height * 0.5); await p.waitForTimeout(300);
-    await p.screenshot({ path: join(AUS, "neu-weg-ring.png") }); await p.mouse.move(2, 2);
-    await p.locator("#seite-weg").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, "neu-weg-unten.png") });
-    await p.locator("#tab-depot").click(); await p.waitForTimeout(700);
-    await p.locator("#seite-depot").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, "neu-depot-unten.png") });
-    await p.locator("#seite-depot").evaluate((s) => s.scrollTo(0, 0));
-    // Ansicht "Wochen"
-    await p.locator(".diagramm-kopf .segment-option", { hasText: "Wochen" }).click(); await p.waitForTimeout(1200); await p.screenshot({ path: join(AUS, "neu-depot-wochen.png") });
-    // Scrubbing: Finger übers Diagramm
-    await p.locator(".diagramm-kopf .segment-option", { hasText: "Wert" }).click(); await p.waitForTimeout(1200);
-    const box = await p.locator("#seite-depot .diagramm-canvas").first().boundingBox();
-    await p.mouse.move(box.x + box.width * 0.55, box.y + box.height / 2); await p.waitForTimeout(200);
-    await p.screenshot({ path: join(AUS, "neu-depot-scrubbing.png") });
-    ergebnis.szenarien["neu-2100"].scrub = await p.evaluate(() => document.querySelector("#seite-depot .held").textContent.replace(/\s+/g, " ").trim());
-    await p.mouse.move(5, 5);
-    // Eintragen-Dialog für den geschätzten 26.10.
-    await p.locator("#tab-kaeufe").click(); await p.waitForTimeout(700);
-    await p.locator(".kauf-zeile").filter({ hasText: "geschätzt" }).nth(1).click(); await p.waitForTimeout(900);
-    await p.locator("#ein-btc").fill("24512"); await p.waitForTimeout(200);
-    await p.screenshot({ path: join(AUS, "neu-eintragen-fehler.png") });
+    const cdp = await ctx.newCDPSession(p);
+    const z = ergebnis.szenarien["neu-2100"];
+    // Zeitreise: Finger auf der Linie
+    const box = await p.locator(".linie-leinwand").boundingBox();
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + box.width * 0.8, y: box.y + box.height / 2 }] });
+    for (let a = 0.78; a >= 0.5; a -= 0.02) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: box.x + box.width * a, y: box.y + box.height / 2 }] }); await p.waitForTimeout(20); }
+    await p.waitForTimeout(500);
+    await p.screenshot({ path: join(AUS, "neu-zeitreise.png") });
+    z.zeitreise = await p.evaluate(() => ({ label: document.querySelector(".held-label").textContent, wert: document.querySelector(".held-zahl").getAttribute("aria-label"), kaeufe: document.querySelector(".stapel .fkopf--kaeufe .fkopf-unter").textContent }));
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await p.waitForTimeout(1600);
+    z.nachZeitreise = await p.evaluate(() => document.querySelector(".held-label").textContent);
+
+    // Fenster: Käufe, Baum, Zahlen
+    await zeigeKachel(p, 0); await kachel(p, 0).click(); await p.waitForTimeout(1300);
+    await p.screenshot({ path: join(AUS, "neu-kaeufe.png") });
+    // Eintragen aus einer Zeile heraus
+    await p.locator(".fenster .kauf-zeile", { hasText: "geschätzt" }).nth(1).click(); await p.waitForTimeout(1200);
+    await p.locator("#ein-btc").fill("24512"); await p.waitForTimeout(250);
+    await p.screenshot({ path: join(AUS, "neu-eintragen-hilfe.png") });
     await p.locator("#ein-btc").fill("0,00024512"); await p.waitForTimeout(300);
     await p.screenshot({ path: join(AUS, "neu-eintragen.png") });
-    await p.locator(".sheet-fuss .knopf--primaer").click(); await p.waitForTimeout(900);
+    await p.locator(".formular-fuss .knopf--glut").click(); await p.waitForTimeout(1800);
     await p.screenshot({ path: join(AUS, "neu-nach-speichern.png") });
-    ergebnis.szenarien["neu-2100"].nachEintrag = await p.evaluate(() => JSON.parse(localStorage.getItem("dca3_eintraege"))["2026-10-26"]);
-    ergebnis.szenarien["neu-2100"].altNachEintrag = await p.evaluate(() => localStorage.getItem("btcdca_overrides_v1"));
-    // Einstellungen
-    await p.locator("#knopf-einstellungen").click(); await p.waitForTimeout(900); await p.screenshot({ path: join(AUS, "neu-einstellungen.png") });
-    await p.keyboard.press("Escape"); await p.waitForTimeout(500);
-    // Rechenweg-Detail
-    await p.locator("#tab-depot").click(); await p.waitForTimeout(600);
-    await p.locator("#seite-depot .kennzahl").first().click(); await p.waitForTimeout(900); await p.screenshot({ path: join(AUS, "neu-rechenweg.png") });
-    await p.keyboard.press("Escape"); await p.waitForTimeout(600);
+    z.nachEintrag = await p.evaluate(() => JSON.parse(localStorage.getItem("dca3_eintraege"))["2026-10-26"]);
+    z.altNachEintrag = await p.evaluate(() => localStorage.getItem("btcdca_overrides_v1"));
+    z.zeileNachEintrag = await p.evaluate(() => document.querySelector('.fenster .kauf-zeile[data-montag="2026-10-26"]')?.textContent.replace(/\s+/g, " ").trim());
+    await schliessen(p);
+    await zeigeKachel(p, 1); await kachel(p, 1).click(); await p.waitForTimeout(1400);
+    await p.screenshot({ path: join(AUS, "neu-baum.png") });
+    await schliessen(p);
+    await zeigeKachel(p, 2); await kachel(p, 2).click(); await p.waitForTimeout(1500);
+    await p.screenshot({ path: join(AUS, "neu-zahlen.png") });
+    for (const y of [700, 1400, 2100]) { await p.locator(".fenster-rolle").evaluate((s, yy) => s.scrollTo(0, yy), y); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, `neu-zahlen-${y}.png`) }); }
+    z.zahlenFenster = await p.evaluate(() => [...document.querySelectorAll(".zahl-abschnitt")].map((a) => a.textContent.replace(/\s+/g, " ").trim().slice(0, 140)));
+    await schliessen(p);
+    // Rechenweg (Tablett) und Einstellungen
+    await p.locator("#heute").evaluate((s) => s.scrollTo(0, 0)); await p.waitForTimeout(400);
+    await p.locator(".held").click(); await p.waitForTimeout(1000);
+    await p.screenshot({ path: join(AUS, "neu-rechenweg.png") });
+    await schliessen(p);
+    await p.locator("#knopf-einstellungen").click(); await p.waitForTimeout(1300);
+    await p.screenshot({ path: join(AUS, "neu-einstellungen.png") });
+    await schliessen(p);
+    z.offeneEbenen = await p.locator(".fenster-ebene, .tablett-ebene").count();
 
     // Offline: Netz kappen und neu laden → muss starten und den letzten Stand zeigen
     await ctx.setOffline(true); netz.offline = true;
     await p.reload(); await p.waitForFunction(() => document.documentElement.dataset.bereit === "1", null, { timeout: 15000 }).catch(() => {});
-    await p.waitForTimeout(2500);
+    await p.waitForTimeout(3000);
     await p.screenshot({ path: join(AUS, "neu-offline.png") });
     ergebnis.szenarien.offline = await lesen(p);
     await ctx.setOffline(false); netz.offline = false;
@@ -238,18 +248,26 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
   const p = await seite(ctx, jetztMs, "schmal");
   await p.goto(`${BASIS}/btc-dca3/leer`);
   await p.evaluate((d) => { for (const [k, w] of Object.entries(d)) localStorage.setItem(k, w); }, altSpeicher);
-  await neueApp(p, "schmal-depot");
+  await neueApp(p, "schmal-heute");
   ergebnis.szenarien.schmal = await lesen(p);
-  ergebnis.szenarien.schmal.horizontalScroll = await p.evaluate(() => [...document.querySelectorAll(".seite")].map((s) => s.scrollWidth > s.clientWidth + 1));
-  ergebnis.szenarien.schmal.ueberlauf = await p.evaluate(() => [...document.querySelectorAll(".seite-inhalt *")].filter((e) => { const r = e.getBoundingClientRect(); const s = e.closest(".seite").getBoundingClientRect(); return r.width > 0 && (r.right > s.right + 1 || r.left < s.left - 1) && !e.closest(".diagramm-flaeche, .held-aurora, .tranchen"); }).slice(0, 10).map((e) => `${e.className || e.tagName} [${e.closest("[class]")?.className}] ${Math.round(e.getBoundingClientRect().right)}`));
-  await p.locator("#tab-kaeufe").click(); await p.waitForTimeout(800); await p.screenshot({ path: join(AUS, "schmal-kaeufe.png") });
-  await p.locator("#tab-weg").click(); await p.waitForTimeout(800); await p.screenshot({ path: join(AUS, "schmal-weg.png") });
+  ergebnis.szenarien.schmal.horizontalScroll = await p.evaluate(() => { const h = document.querySelector("#heute"); return h.scrollWidth > h.clientWidth + 1; });
+  const ueberlauf = () => p.evaluate(() => [...document.querySelectorAll("#heute-inhalt *, .fenster-inhalt *")].filter((e) => {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1) && !e.closest(".linie, .kachel-buehne, .nebel, .fkopf--baum, .status");
+  }).slice(0, 10).map((e) => `${e.className?.baseVal ?? e.className ?? e.tagName} ${Math.round(e.getBoundingClientRect().right)}`));
+  ergebnis.szenarien.schmal.ueberlauf = await ueberlauf();
+  await p.locator("#heute").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500);
+  await p.screenshot({ path: join(AUS, "schmal-unten.png") });
+  await p.locator(".stapel .kachel").nth(0).click(); await p.waitForTimeout(1300);
+  await p.locator(".fenster .kauf-zeile", { hasText: "geschätzt" }).first().click(); await p.waitForTimeout(1300);
+  ergebnis.szenarien.schmal.ueberlaufEintragen = await ueberlauf();
+  await p.screenshot({ path: join(AUS, "schmal-eintragen.png") });
   await ctx.close();
 }
 
 // ---------------------------------------------------------------------
-// Szenario 4: Gesten – Wischen zwischen Seiten, Ziehen zum Aktualisieren,
-// Sheet wegwischen, Zurück-Taste, Scrubbing mit dem Finger
+// Szenario 4: Gesten – Ziehen zum Aktualisieren, Fenster mit dem Finger
+// falten, Tablett wegwischen, Zurück-Taste, Zeitreise
 // ---------------------------------------------------------------------
 {
   const jetztMs = Date.UTC(2026, 10, 2, 20, 0);
@@ -266,33 +284,36 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
   };
   const linie = (x0, y0, x1, y1, n = 14) => Array.from({ length: n + 1 }, (_, i) => [x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n]);
   const g = {};
-  // Ziehen zum Aktualisieren (oben auf der Depot-Seite)
-  const ptr = p.waitForFunction(() => document.querySelector(".ptr")?.classList.contains("laedt"), null, { timeout: 4000 }).then(() => true).catch(() => false);
-  await finger(linie(200, 200, 200, 420, 18), 20);
+  // Ziehen zum Aktualisieren
+  const ptr = p.waitForFunction(() => document.querySelector(".ring")?.classList.contains("dreht"), null, { timeout: 4000 }).then(() => true).catch(() => false);
+  await finger(linie(195, 160, 195, 460, 18), 20);
   g.ziehenZumAktualisieren = await ptr;
   await p.waitForTimeout(1500);
-  // Scrubbing mit dem Finger
-  const box = await p.locator("#seite-depot .diagramm-canvas:not([hidden])").boundingBox();
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + 60, y: box.y + box.height / 2 }] });
-  for (let i = 1; i <= 8; i++) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: box.x + 60 + i * 20, y: box.y + box.height / 2 }] }); await p.waitForTimeout(16); }
-  g.scrubLabel = await p.evaluate(() => document.querySelector("#seite-depot .held-label").textContent);
+  // Zeitreise
+  const box = await p.locator(".linie-leinwand").boundingBox();
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + box.width * 0.85, y: box.y + 100 }] });
+  for (const [x, y] of linie(box.x + box.width * 0.84, box.y + 100, box.x + box.width * 0.3, box.y + 100, 16)) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] }); await p.waitForTimeout(18); }
+  g.zeitreiseLabel = await p.evaluate(() => document.querySelector(".held-label").textContent);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await p.waitForTimeout(1000);
-  g.nachScrubLabel = await p.evaluate(() => document.querySelector("#seite-depot .held-label").textContent);
-  // Wischen zur nächsten Seite (unterhalb des Diagramms)
-  await finger(linie(330, 640, 40, 650, 10), 16);
+  await p.waitForTimeout(1500);
+  g.nachZeitreise = await p.evaluate(() => document.querySelector(".held-label").textContent);
+  // Fenster öffnen und mit dem Finger nach unten falten
+  await p.locator(".stapel .kachel").nth(0).scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
+  await p.locator(".stapel .kachel").nth(0).click(); await p.waitForTimeout(1300);
+  await finger(linie(195, 240, 195, 640, 16), 16);
+  await p.waitForTimeout(1200);
+  g.fensterNachZiehen = await p.locator(".fenster-ebene").count();
+  // Tablett (Rechenweg) wegwischen
+  await p.locator("#heute").evaluate((s) => s.scrollTo(0, 0)); await p.waitForTimeout(400);
+  await p.locator(".held").click(); await p.waitForTimeout(900);
+  const kopf = await p.locator(".tablett-kopf").boundingBox();
+  await finger(linie(kopf.x + kopf.width / 2, kopf.y + 20, kopf.x + kopf.width / 2, kopf.y + 420, 12), 14);
   await p.waitForTimeout(900);
-  g.nachWischen = await p.evaluate(() => document.querySelector(".tab.ist-aktiv .tab-text")?.textContent);
-  // Sheet öffnen und am Griff wegwischen
-  await p.locator("#knopf-einstellungen").click(); await p.waitForTimeout(800);
-  const griff = await p.locator(".sheet-griffzone").boundingBox();
-  await finger(linie(griff.x + griff.width / 2, griff.y + 10, griff.x + griff.width / 2, griff.y + 380, 12), 16);
-  await p.waitForTimeout(800);
-  g.sheetNachWischen = await p.locator(".sheet-ebene").count();
-  // Zurück-Taste (Android) schließt ein Sheet
-  await p.locator("#knopf-einstellungen").click(); await p.waitForTimeout(800);
-  await p.goBack().catch(() => {}); await p.waitForTimeout(800);
-  g.sheetNachZurueck = await p.locator(".sheet-ebene").count();
+  g.tablettNachWischen = await p.locator(".tablett-ebene").count();
+  // Zurück-Taste schließt ein Fenster, die App bleibt offen
+  await p.locator("#knopf-einstellungen").click(); await p.waitForTimeout(1000);
+  await p.goBack(); await p.waitForTimeout(1000);
+  g.fensterNachZurueck = await p.locator(".fenster-ebene").count();
   g.nochInDerApp = p.url().includes("/btc-dca3/");
   ergebnis.szenarien.gesten = g;
   await ctx.close();

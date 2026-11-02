@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 2. November 2026 · App-Version 1.0.0 (neue Gestaltung, zweite Prüfrunde)
+Stand: 2. November 2026 · App-Version 1.0.0 (Oberfläche von Grund auf neu gebaut, dritte Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -15,8 +15,8 @@ Unter „So entsteht diese Zahl“ steht dann die Rechnung mit den echten Werten
 | Push-Verschlüsselung gegen den offiziellen Testvektor aus RFC 8291 | `tests/webpush.test.mjs` | Byte für Byte identisch |
 | Dein Baum: gleiche Käufe → gleicher Baum, Ringe kreuzen sich nie, Fläche ∝ sats, Berühren trifft den richtigen Kauf | `tests/jahresringe.test.mjs` | alle bestanden |
 | Komplette App im Browser (Chromium, 390 × 844 und 360 × 780), alte und neue App unter derselben Adresse wie auf GitHub Pages | `tests/browser/pruefung.mjs` | siehe unten |
-| **Unabhängige Gegenrechnung** in Python, ohne eine Zeile App-Code | `tests/browser/nachrechnen.py` | 27 von 27 Werten stimmen – auch nach der neuen Gestaltung erneut geprüft |
-| Vorführvideo der ganzen App (Intro, alle Seiten, Eintragen, Gesten), Bild für Bild durchgesehen | `tests/browser/film.mjs` | Darstellungsfehler gefunden und behoben (siehe Abschnitt 4) |
+| **Unabhängige Gegenrechnung** in Python, ohne eine Zeile App-Code | `tests/browser/nachrechnen.py` | 26 von 26 Werten stimmen – nach dem Neuaufbau der Oberfläche erneut geprüft |
+| Jede Bewegung in Zeitlupe aufgenommen (Entfalten, Falten mit dem Finger, Zeitreise, fließende Linie, Eintragen, Baum) und Bild für Bild durchgesehen; dazu ein Vorführvideo | `tests/browser/film.mjs` | Fehler gefunden und behoben (siehe Abschnitt 4) |
 
 **Ehrliche Einschränkung:** Aus meiner Arbeitsumgebung waren die echten Kursquellen
 (CryptoCompare, Coinbase, CoinGecko …) gesperrt. Ich habe deshalb mit einem festen,
@@ -88,13 +88,12 @@ was auf dem Bildschirm stand. Die App rundet Kurs und Ø Kaufpreis auf ganze Eur
 |---|---|
 | Aktueller Kurs | CryptoCompare, sonst Coinbase, sonst CoinGecko. Offline: letzter bekannter Stand mit Uhrzeit |
 | Investiert | Anzahl gezählter Käufe × 15 € (brutto). Ausstehende zählen nicht |
-| BTC gesamt | Summe der eingetragenen Mengen + geschätzte Mengen (15 € × (1 − Gebühr) ÷ Marktkurs zur Kaufzeit) |
+| BTC gesamt | Summe der eingetragenen Mengen + geschätzte Mengen (15 € × (1 − Gebühr) ÷ Marktkurs zur Kaufzeit). Die App zeigt ihn in sats (1 BTC = 100 Mio sats) |
 | Depotwert | BTC gesamt × aktueller Kurs |
 | Ø Kaufpreis | Investiert ÷ BTC gesamt (Gebühr steckt drin = echter Einstandspreis) |
 | G/V gesamt | Depotwert − Investiert; Prozent: ÷ Investiert |
 | G/V Woche/Monat | (Wert − Investiert) jetzt minus (Wert − Investiert) vor 7/30 Tagen; Prozent: ÷ (Wert zu Beginn + Einzahlungen im Zeitraum) |
 | G/V Jahr | wie oben mit 365 Tagen; solange der Plan jünger ist, identisch mit „gesamt“ |
-| Prozent über dem Kursverlauf | aktueller Kurs ÷ Kurs genau am Anfang des Zeitraums − 1 (1M = 30 Tage) |
 
 | Szenario | Kennzahl | erwartet (Python) | angezeigt (App) | |
 |---|---|---|---|---|
@@ -116,7 +115,6 @@ was auf dem Bildschirm stand. Die App rundet Kurs und Ø Kaufpreis auf ganze Eur
 | Mo 21:00 | G/V Woche | −5,05 € / −1,47 % | −5,05 € / −1,47 % | ✓ |
 | Mo 21:00 | G/V Monat | −10,44 € / −2,99 % | −10,44 € / −2,99 % | ✓ |
 | Mo 21:00 | G/V Jahr | +8,26 € / +2,50 % | +8,26 € / +2,50 % | ✓ |
-| Mo 21:00 | Kursverlauf 1M | −3,27 % | −3,27 % | ✓ |
 
 Beispiel, warum die Zeitraum-Regel wichtig ist: In der Testwoche stieg der Depotwert
 von etwa 328 € auf 338 €. Das sieht nach Gewinn aus. Davon waren aber 15 € neue
@@ -134,16 +132,18 @@ Einzahlung. Richtig ist deshalb **−5,05 €**, wie angezeigt.
 | Eintrag in der neuen App gespeichert | landet nur in `dca3_eintraege`, alte App unberührt |
 | Hauptquelle CryptoCompare ausgefallen | Coinbase springt ein, identische Zahlen |
 | Ohne Netz neu geladen | App startet aus dem Zwischenspeicher, Kopfzeile „Stand 2.11., 21:00“ |
-| Breite 360 und 390 Pixel | kein waagerechtes Scrollen, nichts abgeschnitten, nichts unter der Tableiste |
-| Gesten | Wischen zwischen Seiten, Ziehen zum Aktualisieren, Scrubbing mit dem Finger, Sheet wegwischen, Android-Zurück-Taste schließen Dialoge: alles funktioniert |
+| Breite 360 und 390 Pixel | kein waagerechtes Scrollen, nichts ragt aus dem Bild – auch nicht im Eintragen-Fenster |
+| Gesten | Ziehen zum Aktualisieren, Zeitreise mit dem Finger (Datum und Wert springen in den Moment, danach zurück ins Jetzt), Fenster mit dem Finger zufalten, Tablett wegwischen, Android-Zurück-Taste schließt Fenster: alles funktioniert |
+| Eintragen aus einer Zeile | Wert landet nur in `dca3_eintraege`; die Zeile zeigt danach „eingetragen“ mit der neuen Menge; alte App unberührt |
+| Fremde Bibliotheken | keine mehr – die Linie ist selbst gezeichnet, Chart.js wurde entfernt |
 | Fehler in der Browser-Konsole, Verstöße gegen die Sicherheitsrichtlinie | keine |
 | Lump-Sum-Vergleich, Was-wäre-wenn, Telegram | im Code nicht mehr vorhanden |
 | Push: Schlüssel im Browser erzeugt → Versandskript → unabhängig in Python entschlüsselt | Inhalt korrekt, Absender-Signatur gültig |
 | Baum als Hintergrundbild | PNG 1080 × 2400 wird erzeugt und geladen |
 | Anteil an allen Bitcoin | 21 Mio. BTC ÷ 8,2 Mrd. Menschen ≈ 256.098 sats; Testdepot 518.375 sats = 202 % ✓ |
 | Netzwerkuhr | Blockhöhe zum ersten Kauf über mempool.space; Differenz zur aktuellen Höhe |
-| Gefundene und behobene Darstellungsfehler | Leerzeichen im Begrüßungsgruß fehlten; Herzschlag-Punkt erschien auch im Balkendiagramm; Wert-Linie bei „Woche“/„Monat“ war flach (Achse begann immer bei 0 €, zoomt jetzt auf den echten Bereich); Fehlermeldung „Menge größer als 0“ kam schon beim Eintippen von „0,0…“ |
-| „Bewegung reduzieren“ am Handy (im Browser nachgestellt) | Nebel steht still, keine Konsolenfehler; die Begrüßung erscheint ruhend statt animiert |
+| Gefundene und behobene Fehler (Neuaufbau) | Eintragen-Formular ragte rechts aus dem Bild; beim Zurückfalten zeigte die Zeile kurz noch den alten Stand; Text im Baum-Fenster strich beim Öffnen über den wachsenden Stamm; Ernte-Balken wurden zu flach gezeichnet; der Herzschlag am Linienende verursachte bei 360 px 3 px seitliches Scrollen; die Übernahme-Meldung war für die Statuszeile zu lang |
+| „Bewegung reduzieren“ am Handy | Alle Federn springen direkt ans Ziel, der Nebel steht still |
 
 ## 5. Was du selbst einmal prüfen solltest
 

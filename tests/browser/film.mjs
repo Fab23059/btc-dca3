@@ -65,63 +65,71 @@ cdp.on("Page.screencastFrame", async ({ data, metadata, sessionId }) => {
   bilder.push({ datei, t: metadata.timestamp });
   try { await cdp.send("Page.screencastFrameAck", { sessionId }); } catch { /* Ende */ }
 });
-const finger = async (von, bis, schritte = 16, pause = 18) => {
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: von[0], y: von[1] }] });
-  for (let i = 1; i <= schritte; i++) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: von[0] + ((bis[0] - von[0]) * i) / schritte, y: von[1] + ((bis[1] - von[1]) * i) / schritte }] }); await warte(pause); }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-};
-const scrolle = async (sel, y) => { await p.locator(sel).evaluate((s, yy) => s.scrollTo({ top: yy, behavior: "smooth" }), y); };
-const langsamUeber = async (sel, schritte = 40) => {
-  const b = await p.locator(sel).first().boundingBox();
-  for (let i = 0; i <= schritte; i++) { await p.mouse.move(b.x + 8 + (b.width - 16) * (i / schritte), b.y + b.height * 0.5); await warte(45); }
-  await p.mouse.move(2, 2);
-};
-
-// 1) Erster Start: das Intro
+// 1) Start: Der Wert rollt hoch, die Linie zieht sich, die Fenster steigen auf
 await cdp.send("Page.startScreencast", { format: "jpeg", quality: 88, maxWidth: 780, maxHeight: 1688, everyNthFrame: 1 });
 await p.goto(`${BASIS}/btc-dca3/`);
-await warte(7600);
-// 2) Depot: Zahlen rollen, Linie zeichnet sich, Lichtlauf
-await warte(2600);
-await langsamUeber("#seite-depot .diagramm-canvas:not([hidden])");
-await warte(600);
-await p.locator(".diagramm-kopf .segment-option", { hasText: "Wochen" }).click(); await warte(2200);
-await langsamUeber("#seite-depot .diagramm-canvas:not([hidden])", 26);
-await p.locator(".diagramm-kopf .segment-option", { hasText: "Wert" }).click(); await warte(1200);
-await p.locator(".zeitraum .segment-option", { hasText: "Monat" }).click(); await warte(1800);
-await p.locator(".zeitraum .segment-option", { hasText: "Gesamt" }).click(); await warte(1400);
-await scrolle("#seite-depot", 760); await warte(2400);
-await scrolle("#seite-depot", 0); await warte(900);
-// 3) Wischen zu Käufe
-await finger([340, 700], [40, 700], 14, 16); await warte(2400);
-// 4) Kauf eintragen
-await p.locator(".kauf-zeile").filter({ hasText: "geschätzt" }).first().click(); await warte(1300);
-await p.locator("#ein-btc").click(); await warte(900);
-for (const z of "0,00023") { await p.keyboard.type(z); await warte(110); }
-await warte(700);
+await warte(5200);
+const zug = async (punkte, pause = 16, halten = 0) => {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: punkte[0][0], y: punkte[0][1] }] });
+  for (const [x, y] of punkte.slice(1)) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] }); await warte(pause); }
+  if (halten) await warte(halten);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+};
+const strecke = (x0, y0, x1, y1, n = 30) => Array.from({ length: n + 1 }, (_, i) => [x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n]);
+const nachOben = () => p.locator("#heute").evaluate((s) => s.scrollTo({ top: 0, behavior: "smooth" }));
+const kachel = async (i) => { await p.locator(".stapel .kachel").nth(i).evaluate((k) => k.scrollIntoView({ behavior: "smooth", block: "center" })); await warte(900); await p.locator(".stapel .kachel").nth(i).click(); };
+
+// 2) Zeitreise: langsam zurück, kurz verweilen, wieder vor – loslassen
+const lb = await p.locator(".linie-leinwand").boundingBox();
+const ly = lb.y + lb.height * 0.55;
+await zug([...strecke(lb.x + lb.width * 0.92, ly, lb.x + lb.width * 0.08, ly, 70), ...strecke(lb.x + lb.width * 0.08, ly, lb.x + lb.width * 0.55, ly, 30)], 26, 500);
+await warte(1800);
+
+// 3) Zeitraum: die Linie fließt
+for (const z of ["Monat", "Woche", "Jahr", "Alles"]) { await p.locator(".zeitraum-wahl", { hasText: z }).click(); await warte(1500); }
+
+// 4) Käufe entfalten, eine Zeile eintragen, Fenster mit dem Finger falten
+await kachel(0); await warte(1500);
+await p.locator(".fenster .kauf-zeile", { hasText: "geschätzt" }).first().click(); await warte(1500);
+await p.locator("#ein-btc").click(); await warte(500);
+for (const zeichen of "0,00023") { await p.keyboard.type(zeichen); await warte(120); }
+await warte(900);
 await p.locator(".vorschlag").click(); await warte(1200);
-await p.locator(".sheet-fuss .knopf--primaer").click(); await warte(3200);
-// 5) Analyse
-await p.locator("#tab-analyse").click(); await warte(2600);
-await langsamUeber("#seite-analyse .diagramm-canvas", 30);
-for (const y of [620, 1300, 1950, 2700]) { await scrolle("#seite-analyse", y); await warte(2900); }
-const kachel = p.locator(".mosaik-kachel").nth(8);
-if (await kachel.count()) { await kachel.click(); await warte(1200); }
-// 6) Weg: der Baum
-await p.locator("#tab-weg").click(); await warte(3600);
-const bb = await p.locator("canvas.baum").boundingBox();
-for (let i = 0; i <= 40; i++) { await p.mouse.move(bb.x + bb.width * 0.5 + bb.width * 0.46 * (i / 40), bb.y + bb.height * 0.5); await warte(55); }
-await p.mouse.move(2, 2); await warte(900);
-for (const y of [640, 1250, 1900]) { await scrolle("#seite-weg", y); await warte(2700); }
-await scrolle("#seite-weg", 0); await warte(1200);
+await p.locator(".formular-fuss .knopf--glut").click(); await warte(3200);
+await zug(strecke(195, 230, 195, 700, 34), 18);
+await warte(1800);
+
+// 5) Baum: wächst beim Öffnen, Zeitleiste zurück, Stamm berühren
+await kachel(1); await warte(1800);
+const zl = await p.locator(".zeitleiste").boundingBox();
+await zug([...strecke(zl.x + zl.width, zl.y + zl.height / 2, zl.x + 2, zl.y + zl.height / 2, 60)], 30, 700);
+await warte(1500);
+const bb = await p.locator(".fenster .baum-leinwand").boundingBox();
+await zug(strecke(bb.x + bb.width * 0.5, bb.y + bb.height * 0.5, bb.x + bb.width * 0.95, bb.y + bb.height * 0.5, 40), 30, 400);
+await warte(800);
+await p.locator(".fenster-zu").click(); await warte(1600);
+
+// 6) Zahlen: entfalten, lesen, mit dem Finger zurückfalten
+await kachel(2); await warte(1800);
+for (const y of [500, 1100, 1700]) { await p.locator(".fenster-rolle").evaluate((s, yy) => s.scrollTo({ top: yy, behavior: "smooth" }), y); await warte(1700); }
+await p.locator(".fenster-rolle").evaluate((s) => s.scrollTo({ top: 0, behavior: "smooth" })); await warte(1100);
+await zug(strecke(195, 260, 195, 760, 28), 16);
+await warte(1600);
+
 // 7) Ziehen zum Aktualisieren
-await finger([195, 260], [195, 520], 22, 22); await warte(2200);
-// 8) Einstellungen
-await p.locator("#knopf-einstellungen").click(); await warte(1500);
-await p.locator(".schalter").nth(2).click(); await warte(900);
-await p.locator(".schalter").nth(2).click(); await warte(900);
-await p.keyboard.press("Escape"); await warte(1200);
-await p.locator("#tab-depot").click(); await warte(2000);
+await nachOben(); await warte(1200);
+await zug(strecke(195, 200, 195, 470, 26), 22, 200);
+await warte(2600);
+
+// 8) Rechenweg als Tablett, wegwischen
+await p.locator(".held").click(); await warte(1800);
+const tk = await p.locator(".tablett-kopf").boundingBox();
+await zug(strecke(tk.x + tk.width / 2, tk.y + 20, tk.x + tk.width / 2, tk.y + 480, 18), 14);
+await warte(1300);
+
+// 9) Einstellungen entfalten sich aus dem Zahnrad
+await p.locator("#knopf-einstellungen").click(); await warte(2000);
+await p.locator(".fenster-zu").click(); await warte(1800);
 
 await cdp.send("Page.stopScreencast");
 await ctx.close(); await browser.close(); server.close();
