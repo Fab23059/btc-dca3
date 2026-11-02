@@ -178,8 +178,8 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung }) {
     else setzeHilfe(kursHilfe, "");
 
     // Rechnung: das Fehlende ergänzen
-    const bOk = typeof b === "number" && !Number.isNaN(b) && !btcHilfe.parentElement.classList.contains("hat-fehler");
-    const kOk = typeof k === "number" && !Number.isNaN(k) && !kursHilfe.parentElement.classList.contains("hat-fehler");
+    const bOk = typeof b === "number" && b > 0 && !btcHilfe.parentElement.classList.contains("hat-fehler");
+    const kOk = typeof k === "number" && k > 0 && !kursHilfe.parentElement.classList.contains("hat-fehler");
     const zeile = (titel, wert, erkl) => h("div", { class: "rechnung-zeile" }, h("span", { class: "rechnung-titel" }, titel), h("span", { class: "rechnung-wert" }, wert), erkl ? h("span", { class: "rechnung-erkl" }, erkl) : null);
     if (bOk && kOk) {
       const summe = b * k;
