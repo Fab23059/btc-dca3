@@ -6,6 +6,7 @@
 
 import { h, icon, wenigBewegung } from "../dom.js";
 import { ebeneAnmelden } from "./ebenen.js";
+import { fokus } from "./federwerk.js";
 
 export function oeffneSheet({ titel, untertitel = null, inhalt, fuss = null, beimSchliessen = null, breit = false }) {
   const titelId = `sheet-titel-${Math.random().toString(36).slice(2, 8)}`;
@@ -36,6 +37,8 @@ export function oeffneSheet({ titel, untertitel = null, inhalt, fuss = null, bei
   requestAnimationFrame(() => requestAnimationFrame(() => {
     ebene.classList.add("ist-offen");
     blatt.focus({ preventScroll: true });
+    const kinder = koerper.firstElementChild?.children?.length > 1 ? [...koerper.firstElementChild.children] : [...koerper.children];
+    if (!kinder.some((k) => k.getAnimations?.().length)) fokus(kinder.slice(0, 8), { abstand: 50, start: 120, hub: 18 });
   }));
 
   // ---- Ziehen zum Schließen ----

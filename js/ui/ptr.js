@@ -1,28 +1,37 @@
 // =====================================================================
-// ptr.js – "Zum Aktualisieren ziehen": Am oberen Rand nach unten ziehen,
-// ein Ring füllt sich, beim Loslassen werden die Kurse neu geladen.
+// ptr.js – "Zum Aktualisieren ziehen": Beim Ziehen zünden die 52 Wochen-
+// striche des Ziffernblatts nacheinander. Ist es voll, glüht das Zeichen
+// auf – loslassen lädt neu, während die Striche kreisen.
 // =====================================================================
 
-import { h, svg } from "../dom.js";
+import { h } from "../dom.js";
 import { tick } from "./haptik.js";
+import { ziffernblatt } from "./marke.js";
 
-const SCHWELLE = 72;   // so weit (in Pixeln) muss man ziehen
+const SCHWELLE = 84;   // so weit (in Pixeln) muss man ziehen
 
 export function ziehenZumAktualisieren(seiten, aktualisieren) {
-  const kreis = svg("circle", { cx: 16, cy: 16, r: 11, class: "ptr-ring", pathLength: 100 });
-  const anzeige = h("div", { class: "ptr", "aria-hidden": "true" },
-    svg("svg", { viewBox: "0 0 32 32", width: 32, height: 32 }, svg("circle", { cx: 16, cy: 16, r: 11, class: "ptr-spur" }), kreis));
+  const blatt = ziffernblatt({ klasse: "ptr-blatt" });
+  const striche = [...blatt.querySelectorAll(".marke-strich")];
+  const anzeige = h("div", { class: "ptr", "aria-hidden": "true" }, blatt);
   document.body.append(anzeige);
 
-  let start = null; let laeuft = false;
+  let start = null; let laeuft = false; let angezeigt = 0;
 
   const setze = (dy) => {
-    const weg = Math.min(SCHWELLE * 1.6, Math.pow(Math.max(0, dy), 0.82));
+    const weg = Math.min(SCHWELLE * 1.5, Math.pow(Math.max(0, dy), 0.84));
     const anteil = Math.min(1, weg / SCHWELLE);
     anzeige.style.setProperty("--weg", `${weg}px`);
     anzeige.style.setProperty("--anteil", String(anteil));
-    kreis.style.setProperty("stroke-dashoffset", String(100 - anteil * 100));
-    anzeige.classList.toggle("ist-bereit", anteil >= 1);
+    const an = Math.round(anteil * striche.length);
+    if (an !== angezeigt) {
+      striche.forEach((s, i) => s.classList.toggle("an", i < an));
+      if (an > angezeigt && an % 13 === 0 && an > 0) tick(3);
+      angezeigt = an;
+    }
+    const bereit = anteil >= 1;
+    if (bereit && !anzeige.classList.contains("ist-bereit")) tick(10);
+    anzeige.classList.toggle("ist-bereit", bereit);
   };
 
   for (const seite of seiten) {
@@ -51,10 +60,10 @@ export function ziehenZumAktualisieren(seiten, aktualisieren) {
       if (!war) { anzeige.classList.remove("ist-aktiv", "ist-bereit"); setze(0); return; }
       laeuft = true;
       anzeige.classList.add("laedt");
-      anzeige.style.setProperty("--weg", `${SCHWELLE * 0.8}px`);
-      tick(8);
+      anzeige.style.setProperty("--weg", `${SCHWELLE * 0.85}px`);
       try { await aktualisieren(); } finally {
         laeuft = false;
+        tick(6);
         anzeige.classList.remove("laedt", "ist-aktiv", "ist-bereit");
         setze(0);
       }

@@ -92,7 +92,7 @@ const PFADE = {
 export function icon(name, { groesse = 24, klasse = "icon", strich = 1.75 } = {}) {
   const pfade = PFADE[name] ?? PFADE.info;
   const el = svg("svg", { viewBox: "0 0 24 24", width: groesse, height: groesse, class: klasse, "aria-hidden": "true", fill: "none", stroke: "currentColor", "stroke-width": strich, "stroke-linecap": "round", "stroke-linejoin": "round" },
-    pfade.map((d) => svg("path", { d })));
+    pfade.map((d) => svg("path", { d, pathLength: 1 })));
   if (name === "schaetzung") el.setAttribute("stroke-dasharray", "2.6 2.6");
   return el;
 }
