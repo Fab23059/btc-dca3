@@ -1,0 +1,75 @@
+# =====================================================================
+# Erinnerung – schickt montagabends eine Push-Nachricht aufs Handy.
+# Ersetzt den früheren Nachrichten-Bot.
+#
+# Sicherheit:
+#   * keine fremden Bausteine ("Actions") – nur git und Node, die GitHub mitbringt
+#   * der geheime Schlüssel (Secret PUSH_CONFIG) erreicht nur den Sende-Schritt
+#   * Schreibrecht nur, um sich den Sendetag zu merken
+# =====================================================================
+name: Erinnerung
+
+on:
+  schedule:
+    # GitHub rechnet in UTC und kann sich verspäten oder einen Lauf auslassen.
+    # Deshalb mehrere Versuche; gesendet wird beim ersten ab 20:55 Uhr deutscher Zeit.
+    - cron: "56 18 * * 1"   # Sommer 20:56 | Winter 19:56 (zu früh, wird übersprungen)
+    - cron: "26 19 * * 1"   # Sommer 21:26 | Winter 20:26 (zu früh, wird übersprungen)
+    - cron: "56 19 * * 1"   # Sommer 21:56 | Winter 20:56
+    - cron: "26 20 * * 1"   # Sommer 22:26 | Winter 21:26
+    - cron: "56 20 * * 1"   # Sommer 22:56 | Winter 21:56
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Testnachricht sofort senden"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: erinnerung
+  cancel-in-progress: false
+
+jobs:
+  senden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      REPO: ${{ github.repository }}
+      ZWEIG: ${{ github.ref_name }}
+    steps:
+      - name: Repository holen
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git init -q .
+          git remote add origin "https://github.com/${REPO}.git"
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" fetch -q --depth 1 origin "$ZWEIG"
+          git checkout -q FETCH_HEAD
+          node --version
+
+      - name: Erinnerung senden
+        env:
+          PUSH_CONFIG: ${{ secrets.PUSH_CONFIG }}
+          TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.test }}
+        run: node push/sende-erinnerung.mjs
+
+      - name: Sendetag merken (gegen doppelte Nachrichten)
+        if: github.event_name == 'schedule'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "$(git status --porcelain state/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/letzte-erinnerung.txt
+            git commit -q -m "Erinnerung gesendet [skip ci]"
+            git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" push -q origin "HEAD:${ZWEIG}" \
+              || echo "Merken fehlgeschlagen – nicht schlimm, schlimmstenfalls kommt eine zweite Nachricht."
+          else
+            echo "Nichts zu merken."
+          fi
