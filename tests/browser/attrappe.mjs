@@ -86,6 +86,10 @@ export function antwort(v, jetztMs, adresse, { ausfall = [] } = {}) {
 
   if (u.hostname === "api.coingecko.com") return [429, { status: { error_code: 429, error_message: "Rate limit" } }];
   if (u.hostname === "api.alternative.me") return [200, { data: [{ value: "38", value_classification: "Fear", timestamp: String(jetzt) }] }];
-  if (u.hostname === "mempool.space") return [200, 973412];
+  if (u.hostname === "mempool.space") {
+    const m = u.pathname.match(/\/api\/v1\/mining\/blocks\/timestamp\/(\d+)/);
+    if (m) return [200, { height: 973412 - Math.round((jetzt - Number(m[1])) / 600), hash: "0".repeat(64), timestamp: Number(m[1]) }];
+    return [200, 973412];
+  }
   return null;
 }

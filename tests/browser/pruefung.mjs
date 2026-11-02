@@ -106,17 +106,23 @@ async function seite(ctx, jetztMs, name) {
 const speicherBild = (p) => p.evaluate(() => Object.fromEntries(Object.keys(localStorage).sort().map((k) => [k, localStorage.getItem(k)])));
 const nurAlt = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => k.startsWith("btcdca_overrides") || k.startsWith("btcdca_celebrated") || k.startsWith("btcdca_lastquote")));
 
-async function neueApp(p, schuss) {
+async function neueApp(p, schuss, { intro = "ueberspringen" } = {}) {
   await p.goto(`${BASIS}/btc-dca3/`);
   await p.waitForFunction(() => document.documentElement.dataset.bereit === "1");
+  if (intro === "ueberspringen") {
+    await p.waitForSelector(".intro", { timeout: 3000 }).then(() => p.waitForTimeout(400)).then(() => p.locator(".intro").click()).catch(() => {});
+    await p.waitForTimeout(900);
+  }
   await p.waitForFunction(() => /Live/.test(document.querySelector("#kopf-status")?.textContent ?? ""), null, { timeout: 15000 }).catch(() => {});
   await p.waitForTimeout(1600);
   if (schuss) await p.screenshot({ path: join(AUS, `${schuss}.png`) });
 }
 
 const lesen = (p) => p.evaluate(() => {
-  const t = (s) => document.querySelector(s)?.textContent.replace(/\s+/g, " ").trim() ?? null;
-  const kacheln = [...document.querySelectorAll("#seite-depot .kennzahl")].map((k) => k.textContent.replace(/\s+/g, " ").trim());
+  // Zählwerke: nur den Vorlesetext nehmen (die Walzen enthalten alle Ziffern 0–9)
+  const sauber = (el) => { if (!el) return null; const c = el.cloneNode(true); c.querySelectorAll(".zaehlwerk-anzeige").forEach((x) => x.remove()); return c.textContent.replace(/\s+/g, " ").trim(); };
+  const t = (s) => sauber(document.querySelector(s));
+  const kacheln = [...document.querySelectorAll("#seite-depot .kennzahl")].map(sauber);
   return { wert: t("#seite-depot .held-zahl"), zeile: t("#seite-depot .held-zeile"), kacheln, hinweise: t("#seite-depot .hinweise"), status: t("#kopf-status") };
 });
 
@@ -137,6 +143,7 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
     await p.locator(".zeitraum .segment-option", { hasText: zr }).click();
     await p.waitForTimeout(250);
     zahlen.zeitraeume[zr] = await p.evaluate(() => document.querySelector("#seite-depot .held-zeile").textContent.replace(/\s+/g, " ").trim());
+    if (zr === "Woche") await p.screenshot({ path: join(AUS, `neu-${name}-woche.png`) });
   }
   const nachher = await speicherBild(p);
   const altUnveraendert = Object.keys(altSpeicher).every((k) => nachher[k] === vorher[k]);
@@ -149,9 +156,15 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
     // Weitere Seiten und Dialoge fotografieren
     await p.locator("#tab-kaeufe").click(); await p.waitForTimeout(900); await p.screenshot({ path: join(AUS, "neu-kaeufe.png") });
     await p.locator("#tab-analyse").click(); await p.waitForTimeout(1600); await p.screenshot({ path: join(AUS, "neu-analyse.png") });
-    ergebnis.szenarien["neu-2100"].kursverlauf = await p.evaluate(() => document.querySelector("#seite-analyse .kurs-kopf")?.textContent.replace(/\s+/g, " ").trim());
+    ergebnis.szenarien["neu-2100"].kursverlauf = await p.evaluate(() => { const c = document.querySelector("#seite-analyse .kurs-kopf")?.cloneNode(true); c?.querySelectorAll(".zaehlwerk-anzeige").forEach((x) => x.remove()); return c?.textContent.replace(/\s+/g, " ").trim(); });
+    for (const y of [700, 1400, 2100, 2800]) { await p.locator("#seite-analyse").evaluate((s, yy) => s.scrollTo(0, yy), y); await p.waitForTimeout(1800); await p.screenshot({ path: join(AUS, `neu-analyse-${y}.png`) }); }
     await p.locator("#seite-analyse").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, "neu-analyse-unten.png") });
-    await p.locator("#tab-weg").click(); await p.waitForTimeout(900); await p.screenshot({ path: join(AUS, "neu-weg.png") });
+    await p.locator("#tab-weg").click(); await p.waitForTimeout(3200); await p.screenshot({ path: join(AUS, "neu-weg.png") });
+    for (const y of [600, 1200, 1800]) { await p.locator("#seite-weg").evaluate((s, yy) => s.scrollTo(0, yy), y); await p.waitForTimeout(1600); await p.screenshot({ path: join(AUS, `neu-weg-${y}.png`) }); }
+    await p.locator("#seite-weg").evaluate((s) => s.scrollTo(0, 0)); await p.waitForTimeout(500);
+    const bb = await p.locator("canvas.baum").boundingBox();
+    await p.mouse.move(bb.x + bb.width * 0.68, bb.y + bb.height * 0.5); await p.waitForTimeout(300);
+    await p.screenshot({ path: join(AUS, "neu-weg-ring.png") }); await p.mouse.move(2, 2);
     await p.locator("#seite-weg").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, "neu-weg-unten.png") });
     await p.locator("#tab-depot").click(); await p.waitForTimeout(700);
     await p.locator("#seite-depot").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, "neu-depot-unten.png") });
@@ -228,7 +241,7 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
   await neueApp(p, "schmal-depot");
   ergebnis.szenarien.schmal = await lesen(p);
   ergebnis.szenarien.schmal.horizontalScroll = await p.evaluate(() => [...document.querySelectorAll(".seite")].map((s) => s.scrollWidth > s.clientWidth + 1));
-  ergebnis.szenarien.schmal.ueberlauf = await p.evaluate(() => [...document.querySelectorAll(".seite-inhalt *")].filter((e) => { const r = e.getBoundingClientRect(); const s = e.closest(".seite").getBoundingClientRect(); return r.width > 0 && (r.right > s.right + 1 || r.left < s.left - 1) && !e.closest(".diagramm-flaeche, .held-aurora, .tranchen"); }).slice(0, 10).map((e) => e.className || e.tagName));
+  ergebnis.szenarien.schmal.ueberlauf = await p.evaluate(() => [...document.querySelectorAll(".seite-inhalt *")].filter((e) => { const r = e.getBoundingClientRect(); const s = e.closest(".seite").getBoundingClientRect(); return r.width > 0 && (r.right > s.right + 1 || r.left < s.left - 1) && !e.closest(".diagramm-flaeche, .held-aurora, .tranchen"); }).slice(0, 10).map((e) => `${e.className || e.tagName} [${e.closest("[class]")?.className}] ${Math.round(e.getBoundingClientRect().right)}`));
   await p.locator("#tab-kaeufe").click(); await p.waitForTimeout(800); await p.screenshot({ path: join(AUS, "schmal-kaeufe.png") });
   await p.locator("#tab-weg").click(); await p.waitForTimeout(800); await p.screenshot({ path: join(AUS, "schmal-weg.png") });
   await ctx.close();

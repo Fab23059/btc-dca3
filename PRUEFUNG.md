@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 2. November 2026 · App-Version 1.0.0
+Stand: 2. November 2026 · App-Version 1.0.0 (neue Gestaltung, zweite Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -13,8 +13,10 @@ Unter „So entsteht diese Zahl“ steht dann die Rechnung mit den echten Werten
 | Rechenkern (19 Einzeltests: Zeitzone, Kaufzeit, Einträge, Zeiträume, Haltefrist, Rückgang …) | `tests/rechnen.test.mjs` | alle bestanden |
 | Schutz der alten Daten (statisch und im Lauf) | `tests/schreibschutz.test.mjs` | alle bestanden |
 | Push-Verschlüsselung gegen den offiziellen Testvektor aus RFC 8291 | `tests/webpush.test.mjs` | Byte für Byte identisch |
+| Dein Baum: gleiche Käufe → gleicher Baum, Ringe kreuzen sich nie, Fläche ∝ sats, Berühren trifft den richtigen Kauf | `tests/jahresringe.test.mjs` | alle bestanden |
 | Komplette App im Browser (Chromium, 390 × 844 und 360 × 780), alte und neue App unter derselben Adresse wie auf GitHub Pages | `tests/browser/pruefung.mjs` | siehe unten |
-| **Unabhängige Gegenrechnung** in Python, ohne eine Zeile App-Code | `tests/browser/nachrechnen.py` | 27 von 27 Werten stimmen |
+| **Unabhängige Gegenrechnung** in Python, ohne eine Zeile App-Code | `tests/browser/nachrechnen.py` | 27 von 27 Werten stimmen – auch nach der neuen Gestaltung erneut geprüft |
+| Vorführvideo der ganzen App (Intro, alle Seiten, Eintragen, Gesten), Bild für Bild durchgesehen | `tests/browser/film.mjs` | Darstellungsfehler gefunden und behoben (siehe Abschnitt 4) |
 
 **Ehrliche Einschränkung:** Aus meiner Arbeitsumgebung waren die echten Kursquellen
 (CryptoCompare, Coinbase, CoinGecko …) gesperrt. Ich habe deshalb mit einem festen,
@@ -137,6 +139,11 @@ Einzahlung. Richtig ist deshalb **−5,05 €**, wie angezeigt.
 | Fehler in der Browser-Konsole, Verstöße gegen die Sicherheitsrichtlinie | keine |
 | Lump-Sum-Vergleich, Was-wäre-wenn, Telegram | im Code nicht mehr vorhanden |
 | Push: Schlüssel im Browser erzeugt → Versandskript → unabhängig in Python entschlüsselt | Inhalt korrekt, Absender-Signatur gültig |
+| Baum als Hintergrundbild | PNG 1080 × 2400 wird erzeugt und geladen |
+| Anteil an allen Bitcoin | 21 Mio. BTC ÷ 8,2 Mrd. Menschen ≈ 256.098 sats; Testdepot 518.375 sats = 202 % ✓ |
+| Netzwerkuhr | Blockhöhe zum ersten Kauf über mempool.space; Differenz zur aktuellen Höhe |
+| Gefundene und behobene Darstellungsfehler | Leerzeichen im Begrüßungsgruß fehlten; Herzschlag-Punkt erschien auch im Balkendiagramm; Wert-Linie bei „Woche“/„Monat“ war flach (Achse begann immer bei 0 €, zoomt jetzt auf den echten Bereich); Fehlermeldung „Menge größer als 0“ kam schon beim Eintippen von „0,0…“ |
+| „Bewegung reduzieren“ am Handy (im Browser nachgestellt) | Nebel steht still, keine Konsolenfehler; die Begrüßung erscheint ruhend statt animiert |
 
 ## 5. Was du selbst einmal prüfen solltest
 
