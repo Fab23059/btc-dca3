@@ -1,0 +1,207 @@
+/* =====================================================================
+   teile.css – Die Bausteine. Jeder ist so gebaut, dass er sich nur über
+   Lage (transform) und Deckkraft (opacity) bewegt.
+   ===================================================================== */
+
+/* ---- Druck: Alles Tippbare gibt nach, an der Fingerstelle glimmt Licht ---- */
+.tippbar { position: relative; transition: transform 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.15); -webkit-touch-callout: none; }
+.tippbar.wird-gedrueckt { transform: scale(0.972); transition-duration: 0.14s; transition-timing-function: cubic-bezier(0.3, 0, 0.3, 1); }
+.tippbar::after {
+  content: ""; position: absolute; pointer-events: none;
+  left: var(--druck-x, 50%); top: var(--druck-y, 50%);
+  width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 210, 160, 0.13), rgba(255, 210, 160, 0));
+  opacity: 0; transform: scale(0.3);
+  transition: opacity 0.7s ease-out, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tippbar.wird-gedrueckt::after { opacity: 1; transform: scale(1); transition-duration: 0.18s; }
+
+/* ---- Runde Knöpfe (Einstellungen, Schließen) ---- */
+.rund {
+  width: 36px; height: 36px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; overflow: hidden;
+  background: var(--flaeche-2); color: var(--text-2);
+}
+.rund svg { display: block; }
+
+/* ---- Statuszeile, die sich in Meldungen verwandelt ---- */
+.status { position: relative; height: 36px; display: flex; align-items: center; }
+.status-grund {
+  position: absolute; right: 0; top: 0; height: 36px; width: min(340px, calc(100vw - 92px));
+  border-radius: 999px; background: var(--flaeche-2);
+  clip-path: inset(0 0 0 100% round 999px);
+}
+.status-inhalt { position: relative; display: flex; align-items: center; justify-content: flex-end; height: 36px; padding: 0 13px; }
+.status-zeile { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 520; color: var(--text-2); }
+.status-zeile.geht { position: absolute; right: 13px; }
+.status-punkt { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); flex: none; }
+.status-zeile--live .status-punkt { background: var(--plus); box-shadow: 0 0 8px 1px rgba(147, 198, 160, 0.6); }
+.status-zeile--laedt .status-punkt { background: var(--glut); animation: atmen 1.1s ease-in-out infinite; }
+.status-zeile--alt .status-punkt { background: var(--text-3); }
+.status-zeile[class*="meldung"] { color: var(--text); }
+.status-zeile--meldung-erfolg svg { color: var(--plus); }
+.status-zeile--meldung-fehler svg { color: var(--minus); }
+.status-meldung { max-width: calc(100vw - 170px); overflow: hidden; text-overflow: ellipsis; }
+.status-aktion { color: var(--glut); font-weight: 650; padding: 8px 2px 8px 6px; margin: -8px 0; }
+@keyframes atmen { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+/* ---- Zählwerk: Walzen ---- */
+.ziffern { display: inline-flex; align-items: baseline; white-space: nowrap; line-height: 1.1; }
+.ziffern-teil { display: inline-flex; align-items: baseline; }
+.walze {
+  position: relative; display: inline-block;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+.walze-platz { visibility: hidden; }
+.walze-band { position: absolute; left: 0; right: 0; top: 0; white-space: pre; text-align: center; will-change: transform; }
+.zeichen { display: inline-block; white-space: pre; }
+
+/* ---- Kacheln: die verkleinerten Köpfe der Fenster ---- */
+.kachel {
+  position: relative; display: block; width: 100%; padding: 0; overflow: hidden;
+  text-align: left; border-radius: var(--r-fenster);
+  background: var(--flaeche);
+  box-shadow: inset 0 1px 0 rgba(255, 244, 230, 0.035);
+}
+.kachel-buehne { transform-origin: 0 0; pointer-events: none; }
+
+/* ---- Fenster ---- */
+.fenster-ebene { position: fixed; inset: 0; z-index: 50; }
+.fenster-schleier { position: absolute; inset: 0; background: #000; opacity: 0; }
+.fenster {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  background: var(--flaeche); overflow: hidden; outline: none;
+  will-change: transform, clip-path;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 230, 0.035);
+}
+.fenster-rolle { position: absolute; inset: 0; overflow: hidden; overscroll-behavior: contain; scrollbar-width: none; }
+.fenster-rolle::-webkit-scrollbar { display: none; }
+.fenster-rolle.darf-rollen { overflow-y: auto; }
+.fenster-inhalt { padding-bottom: calc(var(--sicher-unten) + 56px); }
+.fenster-zu {
+  position: absolute; top: 18px; right: 18px; z-index: 3;
+  width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center;
+  background: var(--flaeche-2); color: var(--text);
+}
+.fenster-zu-kreuz { display: grid; place-items: center; will-change: transform; }
+/* Kopf eines Fensters (identisch in Kachel und Fenster) */
+.fkopf { position: relative; height: 200px; padding: 22px 20px 0; overflow: hidden; }
+.fkopf-plus {
+  position: absolute; top: 18px; right: 18px; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--flaeche-2); color: var(--text);
+}
+.fenster .fkopf-plus { visibility: hidden; }
+.fkopf-titel { font-size: 22px; font-weight: 560; font-stretch: 125%; letter-spacing: -0.025em; line-height: 1.15; }
+.fkopf-unter { margin-top: 4px; font-size: 14px; color: var(--text-2); }
+
+/* ---- Tablett ---- */
+.tablett-ebene { position: fixed; inset: 0; z-index: 60; }
+.tablett-schleier { position: absolute; inset: 0; background: #000; opacity: 0; }
+.tablett {
+  position: absolute; left: 8px; right: 8px; bottom: calc(8px + var(--sicher-unten));
+  max-width: 544px; margin: 0 auto;
+  max-height: calc(100dvh - var(--sicher-oben) - 48px);
+  display: flex; flex-direction: column;
+  background: var(--flaeche-2); border-radius: 32px; outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 230, 0.05);
+  will-change: transform;
+}
+.tablett-kopf { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 24px 16px 10px 22px; touch-action: none; }
+.tablett-griff { position: absolute; top: 9px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--flaeche-3); }
+.tablett-titelblock { flex: 1; min-width: 0; padding-top: 4px; }
+.tablett-titel { font-size: 20px; font-weight: 580; font-stretch: 118%; letter-spacing: -0.02em; line-height: 1.2; }
+.tablett-unter { margin-top: 6px; font-size: 14px; color: var(--text-2); }
+.tablett .rund { background: var(--flaeche-3); }
+.tablett-koerper { overflow-y: auto; overscroll-behavior: contain; padding: 6px 22px 18px; }
+.tablett-fuss { padding: 6px 16px 16px; display: grid; gap: 8px; }
+
+/* ---- Knöpfe ---- */
+.knopf {
+  height: 52px; padding: 0 22px; border-radius: 999px; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 16px; font-weight: 620; font-stretch: 112%; letter-spacing: -0.005em;
+  background: var(--flaeche-3); color: var(--text);
+}
+.knopf--glut { background: var(--glut); color: #1D0F04; }
+.knopf--glut::after { background: radial-gradient(closest-side, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0)); }
+.knopf--breit { width: 100%; }
+.knopf--leise { background: transparent; color: var(--text-2); }
+.knopf--gefahr { color: var(--minus); }
+.knopf--klein { height: 36px; padding: 0 14px; font-size: 14px; }
+.knopf:disabled { opacity: 0.36; }
+.knopf-reihe { display: grid; gap: 8px; }
+
+/* ---- Listen (Einstellungen, Formeln) ---- */
+.gruppe { margin-top: 28px; }
+.gruppe:first-child { margin-top: 8px; }
+.gruppe-titel { padding: 0 4px 10px; font-size: 14px; font-weight: 560; color: var(--text-2); }
+.gruppe-flaeche { border-radius: 22px; background: var(--flaeche-2); overflow: hidden; }
+.zeile {
+  position: relative; display: flex; align-items: center; gap: 14px;
+  width: 100%; min-height: 60px; padding: 12px 16px;
+  text-align: left;
+}
+.zeile + .zeile::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--linie); }
+.zeile-text { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.zeile-titel { font-size: 15.5px; font-weight: 540; }
+.zeile-unter { font-size: 13px; color: var(--text-2); line-height: 1.4; }
+.zeile > svg { flex: none; color: var(--text-3); }
+.eingabe-klein {
+  width: 120px; height: 36px; padding: 0 12px; border: 0; border-radius: 12px;
+  background: var(--flaeche-3); color: var(--text); text-align: right; font-size: 15px;
+}
+
+/* ---- Schalter ---- */
+.schalter { position: relative; width: 50px; height: 30px; flex: none; border-radius: 999px; background: var(--flaeche-3); transition: background-color 0.3s; }
+.schalter-knopf {
+  position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #D9D2C8; transition: transform 0.45s cubic-bezier(0.25, 1.4, 0.4, 1);
+}
+.schalter[aria-checked="true"] { background: var(--glut); }
+.schalter[aria-checked="true"] .schalter-knopf { transform: translateX(20px); background: #fff; }
+
+/* ---- Formeln (Rechenweg) ---- */
+.formel { border-radius: 18px; background: var(--flaeche-3); padding: 4px 16px; }
+.formel-zeile { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; font-size: 15px; }
+.formel-zeile + .formel-zeile { border-top: 1px solid var(--linie); }
+.formel-links { color: var(--text-2); }
+.formel-rechts { font-variant-numeric: tabular-nums; font-weight: 560; text-align: right; }
+.formel-zeile--summe .formel-rechts { color: var(--text); font-stretch: 112%; }
+.absatz { font-size: 15px; color: var(--text-2); line-height: 1.55; }
+.absatz + .absatz, .formel + .absatz, .absatz + .formel { margin-top: 14px; }
+.abschnitt { margin-top: 24px; }
+.abschnitt-titel { font-size: 14px; font-weight: 560; color: var(--text-2); margin-bottom: 10px; }
+.fussnote { margin-top: 14px; font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
+
+/* ---- Platzhalter beim Laden: ruhig, kein Flackern ---- */
+.skelett { display: inline-block; height: 1em; border-radius: 6px; background: var(--flaeche-3); animation: atmen 1.6s ease-in-out infinite; vertical-align: middle; }
+
+/* ---- Felder ---- */
+.feld { display: grid; gap: 8px; }
+.feld-label { font-size: 14px; color: var(--text-2); font-weight: 520; }
+.feld-rahmen { position: relative; display: flex; align-items: baseline; gap: 10px; padding: 6px 0 12px; }
+.feld-rahmen::before, .feld-rahmen::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; }
+.feld-rahmen::before { background: var(--flaeche-3); }
+/* Fokus: Die Linie unter dem Feld zündet und läuft von der Fingerstelle aus */
+.feld-rahmen::after {
+  height: 2px; bottom: -0.5px; background: var(--glut);
+  box-shadow: 0 0 12px 1px rgba(var(--glut-rgb), 0.55);
+  transform: scaleX(0); transform-origin: var(--zuend-x, 0%) 50%;
+  transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.feld-rahmen:focus-within::after { transform: scaleX(1); }
+.feld-eingabe {
+  flex: 1; min-width: 0; border: 0; padding: 0; background: none; outline: none;
+  font-size: 30px; font-weight: 480; font-stretch: 118%; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; color: var(--text);
+  caret-color: var(--glut);
+}
+.feld-eingabe::placeholder { color: var(--text-3); }
+.feld-einheit { font-size: 15px; color: var(--text-2); font-weight: 560; }
+.feld-hilfe { font-size: 13.5px; color: var(--text-2); min-height: 1.4em; line-height: 1.45; }
+.feld-hilfe--warnung { color: var(--glut-hell); }
+.feld-hilfe--fehler { color: var(--minus); }
+.hat-fehler .feld-rahmen::after { background: var(--minus); box-shadow: none; transform: scaleX(1); }
+.hilfe-knopf { color: var(--glut); font-weight: 620; padding: 4px 0; }
