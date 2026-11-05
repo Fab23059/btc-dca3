@@ -49,16 +49,23 @@ export function naechsterKauf(zeitplan, jetzt) {
   return null;
 }
 
+/** So lange gilt ein frischer Kauf ohne Eintrag als "geschätzt" (Erinnerung zum Eintragen). */
+export const ERINNERN_MS = 7 * 86_400_000;
+
 /**
  * Baut aus Sparwochen, Einträgen und Kaufkursen die Liste aller Käufe.
  *
  * Status je Woche:
- *   "eingetragen" – du hast echte Werte hinterlegt (das ist die Wahrheit)
- *   "geschaetzt"  – Kaufzeit ist vorbei, Werte aus dem Marktkurs berechnet
+ *   "eingetragen" – du hast echte Werte hinterlegt (aus der Börse)
+ *   "automatisch" – kein Eintrag, aber der Kauf ist sicher: Kaufzeit und Gebühr
+ *                   stehen fest, die Menge folgt aus dem Marktkurs zu genau dieser
+ *                   Minute (so hat auch die alte App gerechnet). Ein vollwertiger Kauf.
+ *   "geschaetzt"  – wie "automatisch", aber der Kauf ist jünger als eine Woche:
+ *                   Die App erinnert ans Eintragen der echten Menge, zählt ihn aber schon.
  *   "ausstehend"  – Kaufzeit noch nicht erreicht → zählt NICHT mit
  *   "ohneKurs"    – Kaufzeit vorbei, aber noch kein Kurs abrufbar → zählt (noch) nicht mit
  *
- * Nur "eingetragen" und "geschaetzt" fließen in Summen und Gewinn/Verlust ein.
+ * "eingetragen", "automatisch" und "geschaetzt" fließen in Summen und Gewinn/Verlust ein.
  */
 export function kaeufeBerechnen({ wochen, eintraege, kaufkurse, jetzt, sparrate }) {
   let kumEur = 0;
@@ -78,14 +85,14 @@ export function kaeufeBerechnen({ wochen, eintraege, kaufkurse, jetzt, sparrate 
     } else if (jetzt < w.ts) {
       status = "ausstehend";
     } else if (markt != null) {
-      status = "geschaetzt";
+      status = jetzt - w.ts < ERINNERN_MS ? "geschaetzt" : "automatisch";
       kurs = markt;
       btc = netto / markt;
     } else {
       status = "ohneKurs";
     }
 
-    const gezaehlt = status === "eingetragen" || status === "geschaetzt";
+    const gezaehlt = status === "eingetragen" || status === "automatisch" || status === "geschaetzt";
     if (gezaehlt) { kumEur += sparrate; kumBtc += btc; nr += 1; }
     return {
       ...w,
@@ -100,6 +107,24 @@ export function kaeufeBerechnen({ wochen, eintraege, kaufkurse, jetzt, sparrate 
       kumBtc: gezaehlt ? kumBtc : null,
     };
   });
+}
+
+/**
+ * Kaufkurse zusammenführen: die der alten App und die neu geholten.
+ *
+ * Reihenfolge: 1. Marktkurs genau zur Kaufminute (die Wahrheit),
+ *              2. der Kurs, mit dem die alte App den Kauf erfasst hat,
+ *              3. ungenauere Kurse (Stunde).
+ * Die alte App hat ihren Kurs meist zur selben Minute geholt – dann sind
+ * beide praktisch gleich. War sie aber vor der Kaufzeit geöffnet, hat sie
+ * einen zu frühen Kurs gemerkt; der Minutenkurs korrigiert das.
+ */
+export function kaufkurseZusammenfuehren(alt, neu) {
+  const aus = { ...(alt ?? {}) };
+  for (const [montag, n] of Object.entries(neu ?? {})) {
+    if (n.genauigkeit === "minute" || !aus[montag]) aus[montag] = n;
+  }
+  return aus;
 }
 
 /** Die Kennzahlen oben auf dem Bildschirm. */
@@ -120,6 +145,7 @@ export function zusammenfassung(kaeufe, aktuellerKurs) {
     gv,
     gvProzent: gv != null && investiert > 0 ? (gv / investiert) * 100 : null,
     eingetragen: gezaehlt.filter((k) => k.status === "eingetragen").length,
+    automatisch: gezaehlt.filter((k) => k.status === "automatisch").length,
     geschaetzt: kaeufe.filter((k) => k.status === "geschaetzt"),
     ausstehend: kaeufe.filter((k) => k.status === "ausstehend"),
     ohneKurs: kaeufe.filter((k) => k.status === "ohneKurs"),

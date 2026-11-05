@@ -14,7 +14,7 @@ export const SCHLUESSEL = Object.freeze({
   eintraege: "dca3_eintraege",          // deine eingetragenen Käufe – das Wertvollste
   sicherungen: "dca3_sicherungen",      // automatische Schnappschüsse vor jeder Änderung
   kaufkurse: "dca3_kaufkurse",          // Marktkurs zur Kaufzeit je Montag (automatisch geholt)
-  altkurse: "dca3_altkurse",            // Montagskurse aus der alten App (nur Notlösung)
+  altkurse: "dca3_altkurse",            // Montagskurse aus der alten App (damit hat sie Käufe ohne Eintrag erfasst)
   tageskurse: "dca3_tageskurse",        // Tagesschlusskurse
   letzterKurs: "dca3_letzter_kurs",     // zuletzt bekannter aktueller Kurs (für den Offline-Start)
   markt: "dca3_markt",                  // Stimmung und Blockhöhe (zuletzt bekannt)

@@ -92,6 +92,16 @@ test("Laufzeit: Migration, Abgleich, Eintragen, Löschen und Import fassen btcdc
   assert.equal(ladeEintraege()["2026-08-03"].btc, 0.00021);
   assert.equal({}.btc, undefined, "keine Prototyp-Verschmutzung");
 
+  // Montagskurse der alten App: beim Start übernommen …
+  const { lies, SCHLUESSEL } = await import("../js/speicher.js");
+  assert.equal(lies(SCHLUESSEL.altkurse)["2026-06-08"], 61_000);
+  // … und auch aus einer Sicherungsdatei (damit hat die alte App die Käufe ohne Eintrag erfasst)
+  const mitKursen = leseSicherungsdatei('{"btcdca_overrides_v1":{},"btcdca_monday_prices_v4":{"2026-06-15":60500,"2026-06-22":"kaputt","2026-06-08":1}}');
+  assert.deepEqual(mitKursen.montagskurse, { "2026-06-15": 60_500 });
+  uebernimmSicherung(mitKursen);
+  assert.equal(lies(SCHLUESSEL.altkurse)["2026-06-15"], 60_500);
+  assert.equal(lies(SCHLUESSEL.altkurse)["2026-06-08"], 61_000, "vorhandene Kurse bleiben");
+
   assert.deepEqual(verboten, [], "es gab Schreibversuche auf btcdca_");
   for (const [k, v] of vorher) {
     if (k === "btcdca_overrides_v1") continue; // oben absichtlich von der "alten App" geändert

@@ -15,24 +15,62 @@ und dorthin zurückfalten.
 
 * **Startseite:**
   * Oben steht dein Depotwert als Zählwerk, darunter Gewinn/Verlust für Woche, Monat, Jahr oder alles.
-  * Darunter liegt die Linie: Wert über der Treppe deiner Einzahlungen.
+  * Mit **€ / ₿** oben rechts wechselst du zwischen Depotwert in Euro und deinem Bestand in sats
+    (dann zeigt die Linie die Treppe deiner Käufe).
+  * Darunter liegt die Linie: Wert über der Treppe deiner Einzahlungen, jeder Kauf als Punkt.
+    **Bei jedem Wechsel des Zeitraums fährt ein Komet die Linie ab.** Er zündet deine Käufe
+    im Vorbeiflug, und im Jetzt läuft eine Lichtwelle aus.
   * **Zeitreise:** Fährst du mit dem Finger über die Linie, springt die ganze Seite in diesen
-    Moment. Die Zahlen rollen zum damaligen Stand, die Käufe- und Baum-Kachel gehen mit.
+    Moment. Die Zahlen rollen zum damaligen Stand, auch der Bitcoin-Kurs von damals.
     Beim Loslassen gleitet alles zurück ins Jetzt.
-  * Darunter stehen der Countdown bis zum nächsten Kauf und drei Kacheln.
+  * Darunter läuft der Countdown bis zum nächsten Kauf, sekundengenau, und es folgen vier Kacheln.
+  * Oben rechts steht immer der **aktuelle Bitcoin-Kurs**. Antippen holt sofort frische Kurse.
+* **Bitcoin:**
+  * Der Kurs live (alle 30 Sekunden), die Veränderung in 24 Stunden, ein 24-h-Verlauf und der
+    Abstand zu deinem Ø-Kaufpreis.
+  * **Kursverlauf** über 1 Stunde, 1 Tag, 1 Woche, 1 Monat, 1 Jahr, 5 Jahre oder alles. Deine
+    Käufe sitzen als Punkte darauf, dein Ø-Kaufpreis ist gestrichelt, Hoch und Tief stehen dran.
+    Finger auf die Linie zeigt Kurs, Zeitpunkt und den Kauf darunter.
+  * Markt heute: 24-h-Hoch und -Tief, **Allzeithoch** und Abstand dazu, sats für 1 € und für
+    15 €, Marktwert, Umsatz.
+  * Wie viele aller Bitcoin schon geschürft sind, die **Marktstimmung** (Fear & Greed, mit
+    gestern und vor einer Woche), der **Halving-Countdown** und aktuelle **Schlagzeilen**.
 * **Käufe:**
   * „Ernte“ zeigt jeden Kauf als Balken, so hoch wie die sats, die es dafür gab.
-  * Darunter stehen alle Sparwochen: ✓ eingetragen · ◌ geschätzt · ◷ ausstehend.
+  * Die **Bilanz** wie in der alten App: Investiert, Wert jetzt, Gewinn/Verlust in € und %,
+    BTC gesamt, Ø Kaufpreis, aktueller Kurs, Anzahl Käufe.
+  * Darunter stehen alle Sparwochen mit dem, was aus jedem einzelnen Kauf geworden ist
+    (Wert heute und Plus/Minus in %). Markiert sind dein günstigster und dein teuerster Kauf.
+    Status: ✓ eingetragen · ✓ automatisch · ◌ noch eintragen · ◷ ausstehend.
   * Eine Zeile antippen → sie entfaltet sich zum Eintragen. Menge **oder** Kurs genügt.
 * **Dein Baum:** Jeder Kauf ist ein Jahresring (siehe unten). Er hat eine Zeitleiste und lässt
   sich als Hintergrundbild speichern.
 * **Zahlen:**
-  * Bitcoin heute, Durchhalten, dein Anteil an allen Bitcoin, nächster Meilenstein
-  * Haltefrist nach § 23 EStG (reine Datumsrechnung)
-  * Tiefpunkt und Erholung, Blöcke seit deinem ersten Kauf mit nächstem Halving, Marktstimmung
+  * Durchhalten, **verteilt gekauft** (was der Sparplan gegenüber einer Einmalanlage am
+    ersten Tag gebracht hat, dazu günstigster und teuerster Kauf und Tage dabei),
+    dein Anteil an allen Bitcoin, der nächste Meilenstein
+  * **Abzeichen** für sats- und Wochen-Meilensteine. Die Ringe füllen sich bis zum nächsten Ziel.
+  * Haltefrist nach § 23 EStG (reine Datumsrechnung), Tiefpunkt und Erholung, Blöcke seit
+    deinem ersten Kauf
+* **Feier:** Fällt ein neuer Meilenstein oder trägst du einen Kauf ein, sprühen Funken und Konfetti.
 * **Jede Zahl lässt sich antippen** und zeigt ihre Rechnung („So entsteht diese Zahl“).
-* **Offline:** Ohne Netz startet die App mit dem letzten Stand. Oben steht dann „Stand …“.
+* **Offline:** Ohne Netz startet die App mit dem letzten Stand. Oben steht dann die Uhrzeit des Stands.
 * **Erinnerung:** ein Hinweis in der App und auf Wunsch eine Push-Nachricht am Montagabend.
+
+### Eingetragen oder automatisch – beides sind echte Käufe
+
+Dein Sparplan kauft immer zur selben Zeit (Binance: montags 8:40 Uhr, Bitvavo: montags
+20:50 Uhr) mit fester Gebühr. Deshalb lässt sich jeder Kauf auch ohne Eintrag genau
+ausrechnen: 15 € abzüglich Gebühr geteilt durch den Marktkurs in genau dieser Minute.
+So hat es schon die alte App gemacht, und so sind deine ersten Käufe bei Binance erfasst.
+
+* **✓ eingetragen**: Du hast die Menge (oder den Kurs) aus der Börse eingetragen. Das ist auf das Satoshi genau.
+* **✓ automatisch**: Kein Eintrag, aber ein vollwertiger Kauf, berechnet aus dem Kurs der Kaufminute.
+  Ist der gerade nicht abrufbar, nimmt die App den Kurs, mit dem die alte App diesen Kauf
+  erfasst hat. Beide liegen praktisch gleich, außer die alte App war an dem Montag vor der
+  Kaufzeit geöffnet und hat einen zu frühen Kurs gemerkt. Dann korrigiert der Minutenkurs das.
+* **◌ noch eintragen**: Nur dein jüngster Kauf, solange er weniger als eine Woche alt ist. Er
+  zählt schon voll mit, die App erinnert dich nur ans Eintragen der echten Menge aus Bitvavo.
 
 ## Dein Baum
 
@@ -59,8 +97,10 @@ sich alles bewegt; daraus folgen Formen, Farben und Schrift. Das ganze Konzept s
   Tiefe entsteht durch Tonwerte.
 * **Licht aus Bewegung:** In Ruhe ist die App matt. Was sich bewegt oder berührt wird, glüht.
   Ein Eingabefeld „zündet“ an der Stelle, an der du tippst.
-* **Atmosphäre:** Hinter allem liegt ein Morgennebel nach Tageszeit. Er wird einmal gerechnet
-  und danach nur verschoben, deshalb kostet er kaum Akku.
+* **Atmosphäre:** Hinter allem treibt ein lebendiger Nebel nach Tageszeit, mit warmem,
+  flackerndem Licht. Er wird auf der Grafikkarte gerechnet, deckt den ganzen Bildschirm ohne
+  Kanten ab und steht still, sobald ein Fenster offen oder die App im Hintergrund ist.
+  Darüber liegt laufendes Filmkorn.
 * **Schrift:** Mona Sans. Die Zahlen stehen in der breiten Form, alle Ziffern sind gleich
   breit, damit sie wie ein Zählwerk rollen können.
 * Ist am Handy „Bewegung reduzieren“ eingeschaltet, steht alles still.
@@ -84,8 +124,8 @@ Vibrieren an/aus.
 | `js/speicher.js` | Speichern im Browser (mit Schreibschutz) |
 | `js/altdaten.js`, `js/abgleich.js` | Übernahme aus der alten App (nur lesend) und aus Sicherungsdateien |
 | `js/bewegung/` | Der Bewegungskern: `feder.js` (Federphysik), `geste.js` (Finger mit Tempo), `ziffern.js` (Zählwerk), `nebel.js` (Atmosphäre) |
-| `js/teile/` | Bausteine: `fenster.js` (Entfalten/Falten), `tablett.js`, `linie.js` (die Linie mit Zeitreise), `meldung.js` (Statuszeile), Zurück-Taste, Vibration |
-| `js/ansichten/` | Startseite (`heute.js`) und die Fenster Käufe, Baum, Zahlen |
+| `js/teile/` | Bausteine: `fenster.js` (Entfalten/Falten), `tablett.js`, `linie.js` (die Linie mit Komet und Zeitreise), `kurslinie.js` (Kursverlauf), `funken.js` (Feier), `meldung.js` (Statuszeile), Zurück-Taste, Vibration |
+| `js/ansichten/` | Startseite (`heute.js`) und die Fenster Bitcoin (`markt.js`), Käufe, Baum, Zahlen |
 | `js/jahresringe.js` | Dein Baum: Geometrie, Zeichnen, Berühren, Hintergrundbild |
 | `js/eintragen.js`, `js/einstellungen.js`, `js/rechenweg.js`, `js/benachrichtigung.js` | Eintragen, Einstellungen, Rechenweg, Erinnerungen |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Damit sie als App installierbar ist und offline startet |
@@ -120,7 +160,8 @@ und keine fremden Bibliotheken.
   gezeichnet. Einzige Fremddatei ist die Schrift. Sie liegt im Repository und wurde beim
   Herunterladen gegen die offizielle Prüfsumme geprüft (siehe unten).
 * **Strenge Sicherheitsrichtlinie (CSP):** Die Seite darf nur eigene Dateien laden und nur mit
-  den freigegebenen Datenquellen sprechen (Kurse, Marktstimmung, Blockzeit). Mit „Trusted Types“ ist technisch ausgeschlossen, dass
+  den freigegebenen Datenquellen sprechen (Kurse, Schlagzeilen, Marktstimmung, Blockzeit).
+  Schlagzeilen werden nur als reiner Text übernommen, Verweise nur, wenn sie mit `https://` beginnen. Mit „Trusted Types“ ist technisch ausgeschlossen, dass
   Text von außen (etwa aus einer Kursquelle) als Programmcode ins Dokument gelangt.
 * **Alle Daten von außen werden geprüft:** Kurse außerhalb plausibler Grenzen werden verworfen.
   Sicherungsdateien werden vollständig kontrolliert, bevor etwas übernommen wird.
@@ -163,7 +204,7 @@ dem Startbildschirm installiert ist.
 ## Für Entwickler
 
 ```
-node --test tests/*.test.mjs                 # Rechenkern, Schreibschutz, Push-Verschlüsselung
+node --test tests/*.test.mjs                 # Rechenkern, Schreibschutz, Push-Verschlüsselung, Offline-Liste
 node tests/browser/pruefung.mjs <ordner>     # Browser-Prüfung (braucht Playwright)
 python3 tests/browser/nachrechnen.py <ordner> # unabhängige Gegenrechnung
 node tests/browser/film.mjs <ordner>         # Vorführvideo aufnehmen (braucht ffmpeg)

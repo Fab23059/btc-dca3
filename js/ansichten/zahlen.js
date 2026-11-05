@@ -8,27 +8,22 @@
 // Jede Zahl lässt sich antippen und zeigt ihre Rechnung.
 // =====================================================================
 
-import { h, fuelle, wenigBewegung } from "../dom.js";
+import { h, svg, fuelle, wenigBewegung } from "../dom.js";
 import { Ziffern } from "../bewegung/ziffern.js";
 import { Feder } from "../bewegung/feder.js";
 import { entfalte } from "../teile/fenster.js";
 import { SPARRATE_EUR } from "../konfig.js";
-import { durchhalten, haltefrist, rueckgang, meilensteine, zielName } from "../kennzahlen.js";
+import { durchhalten, haltefrist, rueckgang, meilensteine, zielName, dcaBilanz, SATS_ZIELE, WOCHEN_ZIELE } from "../kennzahlen.js";
 import { holeBlockZurZeit } from "../kurse.js";
-import { euro, sats, zahl, ganz, anzahl, datumLang, datumMonatKurz, datum, monatsname } from "../format.js";
+import { euro, sats, zahl, ganz, anzahl, datumLang, datumMonatKurz, datum, monatsname, MINUS } from "../format.js";
 import { datumBerlin, zerlege } from "../zeit.js";
 import { euroTeile, ganzTeile, kopfPlus } from "./gemeinsam.js";
 
 const MENSCHEN = 8.2e9;                       // Weltbevölkerung 2026 (UN, gerundet)
 const FAIRER_ANTEIL = (21_000_000 * 1e8) / MENSCHEN;
 
-function stimmungWort(w) {
-  if (w < 25) return "extreme Angst";
-  if (w < 45) return "Angst";
-  if (w < 55) return "neutral";
-  if (w < 75) return "Gier";
-  return "extreme Gier";
-}
+/** 231.599 → "232k", 1.234.000 → "1,23 Mio" */
+const kurzSats = (n) => (n >= 1e6 ? `${zahl(n / 1e6, 2)} Mio` : `${Math.ceil(n / 1000)}k`);
 
 /** Stand zu einem Zeitpunkt (für Kopf und Zeitreise). */
 function standBis(z, t) {
@@ -106,16 +101,6 @@ export function oeffneZahlen(app, herkunft) {
     const s = z.summe;
     const teile = [];
 
-    // ---- Bitcoin heute ----
-    const a = z.aktuell;
-    if (a?.kurs) {
-      const fuer15 = (SPARRATE_EUR / a.kurs) * 1e8;
-      const kursKnopf = h("button", { type: "button", class: "zahl-gross zahl zahl-knopf tippbar", "aria-label": "Bitcoin-Kurs – Rechnung und Gegenprobe", onclick: (e) => app.oeffneRechenweg("kurs", e.currentTarget) },
-        euro(a.kurs, 0), a.aenderung24h != null ? h("span", { class: "zahl-einheit" }, ` ${a.aenderung24h >= 0 ? "+" : "−"}${zahl(Math.abs(a.aenderung24h), 2)} % in 24 h`) : null);
-      teile.push(abschnitt("Bitcoin heute", kursKnopf,
-        satz(`Für 15 € gibt es gerade ${sats(fuer15)} sats.${a.hoch24h && a.tief24h ? ` In den letzten 24 Stunden zwischen ${euro(a.tief24h, 0)} und ${euro(a.hoch24h, 0)}.` : ""}`)));
-    }
-
     // ---- Durchhalten ----
     const d = durchhalten(z.kaeufe, z.jetzt);
     const m = meilensteine(z.kaeufe, z.aktuell?.kurs, SPARRATE_EUR);
@@ -125,6 +110,22 @@ export function oeffneZahlen(app, herkunft) {
       h("div", { class: "wochenpunkte", "aria-hidden": "true" }, punkte),
       satz(d.seit ? `Seit ${datumLang(d.seit, true)} keine Woche ausgelassen.` : "Beginnt mit dem ersten Kauf.",
         m.naechsteWoche ? ` Nächster Halt: ${m.naechsteWoche.ziel} Wochen, noch ${m.naechsteWoche.noch}.` : "")));
+
+    // ---- Verteilt gekauft (DCA-Bilanz) ----
+    const bil = dcaBilanz(z.kaeufe, z.aktuell?.kurs, z.jetzt);
+    if (bil && bil.anzahl >= 2) {
+      const besser = (bil.vorteil ?? bil.vorteilSats) >= 0;
+      teile.push(abschnitt("Verteilt gekauft",
+        bil.vorteil != null
+          ? gross(`${bil.vorteil >= 0 ? "+" : MINUS}${zahl(Math.abs(bil.vorteil), 2)}`, h("span", { class: "zahl-einheit" }, " € durch Verteilen"))
+          : gross(`${besser ? "+" : MINUS}${sats(Math.abs(bil.vorteilSats))}`, h("span", { class: "zahl-einheit" }, " sats durch Verteilen")),
+        satz(`Hättest du alle ${euro(bil.investiert, 0)} gleich am ${datumLang(bil.erster.montag)} auf einmal gekauft, hättest du ${sats(bil.einmalBtc * 1e8)} sats${bil.einmalWert != null ? ` – heute ${euro(bil.einmalWert)} wert` : ""}. Mit deinem Sparplan sind es ${sats(bil.btc * 1e8)} sats${bil.wert != null ? `, also ${euro(bil.wert)}` : ""}. ${besser ? "Verteilt zu kaufen hat sich bisher gelohnt." : "Bisher wäre die Einmalanlage vorn gewesen – das dreht sich oft, wenn der Kurs zwischendurch fällt."}`),
+        h("div", { class: "mk-raster" },
+          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Käufe"), h("span", { class: "mk-feld-wert zahl" }, ganz(bil.anzahl))),
+          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Tage dabei"), h("span", { class: "mk-feld-wert zahl" }, ganz(bil.tage))),
+          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Günstigster Kauf"), h("span", { class: "mk-feld-wert zahl" }, euro(bil.guenstigster.kurs, 0)), h("span", { class: "mk-feld-unter" }, `am ${datumMonatKurz(bil.guenstigster.montag)}`)),
+          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Teuerster Kauf"), h("span", { class: "mk-feld-wert zahl" }, euro(bil.teuerster.kurs, 0)), h("span", { class: "mk-feld-unter" }, `am ${datumMonatKurz(bil.teuerster.montag)}`)))));
+    }
 
     // ---- Fairer Anteil ----
     if (s.anzahl) {
@@ -149,6 +150,38 @@ export function oeffneZahlen(app, herkunft) {
         b.el,
         satz(`Noch ${sats(m.naechstes.fehlt)} sats${m.naechstes.kaeufeNoch ? ` – beim heutigen Kurs etwa ${anzahl(m.naechstes.kaeufeNoch, "Kauf", "Käufe")}` : ""}.`),
         m.erreicht.length ? h("ol", { class: "meilen" }, ...m.erreicht.slice(-4).reverse().map((e) => h("li", null, h("span", { class: "zahl" }, `${zielName(e.ziel)} sats`), h("span", null, `${datumMonatKurz(e.am)} · Kauf ${e.kaufNr}`)))) : null));
+    }
+
+    // ---- Abzeichen ----
+    if (s.anzahl) {
+      const ring = (titel, einheit, anteil, art, unter) => {
+        const U = 2 * Math.PI * 23;
+        const bogen = svg("circle", { cx: 30, cy: 30, r: 23, class: "abz-bogen", "stroke-dasharray": `${U}`, "stroke-dashoffset": `${U}` });
+        laeufer.push({ los: () => { bogen.style.strokeDashoffset = `${(U * (1 - anteil)).toFixed(2)}`; } });
+        return h("div", { class: `abz abz--${art}` },
+          svg("svg", { class: "abz-ring", viewBox: "0 0 60 60", "aria-hidden": "true" }, svg("circle", { cx: 30, cy: 30, r: 23, class: "abz-spur" }), bogen),
+          h("span", { class: "abz-wert zahl" }, titel), h("span", { class: "abz-einheit" }, einheit),
+          unter ? h("span", { class: "abz-unter" }, unter) : null);
+      };
+      const erreichtAm = new Map(m.erreicht.map((e) => [e.ziel, e.am]));
+      const satsZiele = SATS_ZIELE.filter((x, i) => x <= (m.naechstes?.ziel ?? Infinity) || i < 1);
+      const wochenZiele = WOCHEN_ZIELE.filter((w) => w <= (m.naechsteWoche?.ziel ?? Infinity));
+      const zuletztSats = satsZiele.slice(-6);
+      const zuletztWochen = wochenZiele.slice(-4);
+      const ringe = [
+        ...zuletztSats.map((x) => {
+          const da = m.sats >= x;
+          return ring(zielName(x), "sats", da ? 1 : x === m.naechstes?.ziel ? m.naechstes.fortschritt : 0, da ? "da" : "naechstes", da && erreichtAm.get(x) ? datumMonatKurz(erreichtAm.get(x)) : da ? "" : `noch ${kurzSats(Math.max(0, x - m.sats))}`);
+        }),
+        ...zuletztWochen.map((w) => {
+          const da = m.wochen >= w;
+          const vorher = WOCHEN_ZIELE[WOCHEN_ZIELE.indexOf(w) - 1] ?? 0;
+          return ring(`${w}`, "Wochen", da ? 1 : Math.max(0, (m.wochen - vorher) / (w - vorher)), da ? "da" : "naechstes", da ? "geschafft" : `noch ${w - m.wochen}`);
+        }),
+      ];
+      teile.push(abschnitt("Abzeichen",
+        h("div", { class: "abzeichen" }, ...ringe),
+        satz(`${anzahl(m.erreicht.length + m.wochenErreicht.length, "Abzeichen", "Abzeichen")} gesammelt. Jedes neue wird gefeiert, sobald es fällt.`)));
     }
 
     // ---- Haltefrist ----
@@ -187,17 +220,6 @@ export function oeffneZahlen(app, herkunft) {
     const netzSatz = satz("");
     teile.push(abschnitt("Seit deinem ersten Kauf", netzGross, netzSatz));
     zeigeNetz(netzGross, netzSatz);
-
-    // ---- Stimmung ----
-    const st = z.markt?.stimmung;
-    if (st) {
-      const b = balken(st.wert / 100, { art: "stimmung" });
-      laeufer.push(b);
-      teile.push(abschnitt("Marktstimmung",
-        gross(`${st.wert}`, h("span", { class: "zahl-einheit" }, ` · ${stimmungWort(st.wert)}`)),
-        b.el,
-        satz("Fear & Greed Index: 0 ist extreme Angst, 100 extreme Gier. Die Stimmung schwankt – dein Plan bleibt derselbe.")));
-    }
 
     fuelle(koerper, ...teile);
     if (gelaufen) laeufer.forEach((b) => b.los());

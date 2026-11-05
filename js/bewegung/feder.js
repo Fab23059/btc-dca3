@@ -37,7 +37,8 @@ function takt(t) {
   const dt = Math.min(0.05, Math.max(0, (t - zuletzt) / 1000)) * zeitfaktor();
   zuletzt = t;
   for (const f of [...aktiv]) f.schritt(dt);
-  for (const f of beiBild) f(t);
+  // Kopie: Wer sich in seinem Aufruf neu anmeldet (weiterzeichnen), kommt erst im NÄCHSTEN Bild dran
+  for (const f of [...beiBild]) f(t);
   bild = aktiv.size || beiBild.size ? requestAnimationFrame(takt) : 0;
 }
 function wecken() {

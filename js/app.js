@@ -15,13 +15,13 @@ import { $, icon, fuelle } from "./dom.js";
 import { SPARRATE_EUR, ZEITPLAN } from "./konfig.js";
 import { ladeEintraege, ladeEinstellungen, lies, schreibe, SCHLUESSEL } from "./speicher.js";
 import { abgleichMitAlterApp } from "./abgleich.js";
-import { sparwochen, kaeufeBerechnen, zusammenfassung } from "./rechnen.js";
+import { sparwochen, kaeufeBerechnen, zusammenfassung, kaufkurseZusammenfuehren } from "./rechnen.js";
 import { meilensteine, SATS_ZIELE, WOCHEN_ZIELE, zielName } from "./kennzahlen.js";
 import {
   holeAktuell, letzterBekannterKurs, ladeKaufkurse, ladeAltkurse, ergaenzeKaufkurse,
-  holeReihe, holeTagesreihe, holeStimmung, holeBlockhoehe, ladeMarkt, speichereMarkt,
+  holeReihe, holeTagesreihe, holeStimmung, holeBlockhoehe, holeAllzeithoch, ladeMarkt, speichereMarkt,
 } from "./kurse.js";
-import { uhrzeit, zeitpunkt, anzahl, datumMonatKurz, euro, gruss } from "./format.js";
+import { zeitpunkt, anzahl, datumMonatKurz, euro, gruss } from "./format.js";
 import { heuteBerlin } from "./zeit.js";
 import { datumLang } from "./format.js";
 import { Feder } from "./bewegung/feder.js";
@@ -32,10 +32,12 @@ import { erstelleHeute } from "./ansichten/heute.js";
 import { oeffneKaeufe } from "./ansichten/kaeufe.js";
 import { oeffneBaum } from "./ansichten/baum.js";
 import { oeffneZahlen } from "./ansichten/zahlen.js";
+import { oeffneMarkt } from "./ansichten/markt.js";
 import { oeffneEintragen } from "./eintragen.js";
 import { oeffneRechenweg } from "./rechenweg.js";
 import { oeffneEinstellungen } from "./einstellungen.js";
 import { planeErinnerung } from "./benachrichtigung.js";
+import { feiern } from "./teile/funken.js";
 
 // Nie in einem fremden Rahmen laufen (Schutz vor untergeschobenen Klicks).
 if (window.top !== window.self) {
@@ -67,7 +69,7 @@ const zustand = {
 
 function ladeLokal() {
   zustand.eintraege = ladeEintraege();
-  zustand.kaufkurse = { ...ladeAltkurse(), ...ladeKaufkurse() };
+  zustand.kaufkurse = kaufkurseZusammenfuehren(ladeAltkurse(), ladeKaufkurse());
   zustand.aktuell ??= letzterBekannterKurs();
   zustand.markt = ladeMarkt();
 }
@@ -97,6 +99,7 @@ const app = {
   oeffneKaeufe: (herkunft) => oeffneKaeufe(app, herkunft),
   oeffneBaum: (herkunft) => oeffneBaum(app, herkunft),
   oeffneZahlen: (herkunft) => oeffneZahlen(app, herkunft),
+  oeffneMarkt: (herkunft) => oeffneMarkt(app, herkunft),
   eintragen: (montag, herkunft = null) => oeffneEintragen({
     zustand, montag, beiAenderung: nachAenderung,
     herkunft: herkunft ?? document.querySelector(".stapel .kachel"),
@@ -123,7 +126,11 @@ const app = {
 };
 
 const glutEl = $("#glut");
-const glut = new Feder(0.22, { art: "ruhig", genau: 0.002, beiWert: (x) => { glutEl.style.opacity = x.toFixed(3); } });
+const glut = new Feder(0.22, { art: "ruhig", genau: 0.002, beiWert: (x) => {
+  glutEl.style.opacity = x.toFixed(3);
+  document.documentElement.style.setProperty("--energie", ((x - 0.22) / 0.6).toFixed(3));
+  nebel?.licht((x - 0.22) / 0.6);
+} });
 
 // ---------------------------------------------------------------------
 // Kopfzeile: Gruß → Datum; beim Scrollen der Wert
@@ -161,8 +168,8 @@ function zeigeStatus() {
   const a = zustand.aktuell;
   if (zustand.laedt && !a) setzeStatus("Lädt", "laedt");
   else if (zustand.laedt) setzeStatus("Aktualisiert", "laedt");
-  else if (zustand.aktuellFrisch && a) setzeStatus(`Live · ${uhrzeit(a.zeit)}`, "live");
-  else if (a) setzeStatus(`Stand ${zeitpunkt(a.zeit)}`, "alt");
+  else if (zustand.aktuellFrisch && a) setzeStatus(`Live · ₿ ${euro(a.kurs, 0)}`, "live");
+  else if (a) setzeStatus(`₿ ${euro(a.kurs, 0)} · ${zeitpunkt(a.zeit)}`, "alt");
   else setzeStatus("Offline", "alt");
 }
 
@@ -202,9 +209,11 @@ async function aktualisieren({ erzwingen = false } = {}) {
   const merke = (p) => p.then(() => rendern());
   laufend = Promise.allSettled([
     merke(holeAktuell().then((a) => { zustand.aktuell = a; zustand.aktuellFrisch = true; })),
-    merke(ergaenzeKaufkurse(zustand.wochen).then((r) => { zustand.kaufkurse = { ...ladeAltkurse(), ...r.kurse }; })),
+    merke(ergaenzeKaufkurse(zustand.wochen).then((r) => { zustand.kaufkurse = kaufkurseZusammenfuehren(ladeAltkurse(), r.kurse); })),
     merke(holeTagesreihe(ersterKauf, { erzwingen }).then((r) => { zustand.tage = r; })),
     merke(holeReihe("monat", { erzwingen }).then((r) => { zustand.reihen.monat = r; })),
+    merke(holeReihe("tag", { erzwingen }).then((r) => { zustand.reihen.tag = r; })),
+    holeAllzeithoch().catch(() => null),
     merke(holeStimmung().then((s) => { speichereMarkt({ stimmung: s }); zustand.markt = ladeMarkt(); })),
     merke(holeBlockhoehe().then((b) => { speichereMarkt({ block: b }); zustand.markt = ladeMarkt(); })),
   ]).then((ergebnisse) => {
@@ -238,6 +247,7 @@ function pruefeNeuenKauf() {
   letzterBlick = Math.max(letzterBlick, jetzt);
   if (!neu) return;
   app.licht(1);
+  feiern({ staerke: 0.6 });
   toast("Dein Sparplan hat gekauft", { art: "erfolg", dauer: 7000, aktion: { text: "Eintragen", los: () => app.eintragen(neu.montag) } });
 }
 
@@ -261,6 +271,7 @@ function pruefeMeilensteine() {
   schreibe(SCHLUESSEL.gefeiert, [...new Set([...gefeiert, ...erreicht])]);
   const top = neu[neu.length - 1];
   app.licht(1);
+  setTimeout(() => feiern({ staerke: 1 }), 300);
   toast(top[0] === "s" ? `${zielName(Number(top.slice(1)))} sats erreicht` : `${top.slice(1)} Wochen ohne Pause`, { art: "erfolg", dauer: 6000 });
 }
 
@@ -278,6 +289,8 @@ function effekte(an) {
 function start() {
   druckAktivieren();
   statusAnbinden({ el: $("#status"), kopfLinks });
+  // Antippen der Statuszeile holt sofort frische Kurse (wie "Aktualisieren" in der alten App)
+  $("#status").addEventListener("click", () => { if (!zustand.laedt) { app.licht(0.6); aktualisieren({ erzwingen: true }); } });
   const knopf = $("#knopf-einstellungen");
   fuelle(knopf, icon("zahnrad", { groesse: 19, strich: 1.6 }));
   knopf.addEventListener("click", () => app.oeffneEinstellungen());
@@ -313,7 +326,7 @@ function start() {
   }
 
   aktualisieren();
-  setInterval(kursTick, 60_000);
+  setInterval(kursTick, 30_000);
   setInterval(() => aktualisieren(), 10 * 60_000);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && Date.now() - zustand.letzteAktualisierung > 60_000) aktualisieren();

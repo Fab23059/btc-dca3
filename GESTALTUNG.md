@@ -4,6 +4,12 @@ Diese App wurde nicht erst gezeichnet und dann animiert. Zuerst wurde festgelegt
 **wie sich alles bewegt**. Erst daraus folgen Formen, Raster, Farben und Schrift.
 Ein Bild der App zeigt deshalb immer nur einen Zwischenstand einer Bewegung.
 
+**Zweite Fassung (1.1): lauter.** Die erste Fassung war bewusst leise. Gewünscht war mehr
+Wirkung: mehr Licht, mehr Bewegung, mehr Atmosphäre. Die Bewegungen sind dieselben
+geblieben, aber jede ist aufgedreht: Der Komet fährt bei jedem Zeitraumwechsel, der Nebel
+lebt, das Filmkorn springt, Meilensteine werden mit Funken gefeiert. Die Regel, dass nur
+Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
+
 ---
 
 ## 1. Die Bewegungen (zuerst)
@@ -13,11 +19,13 @@ Ein Bild der App zeigt deshalb immer nur einen Zwischenstand einer Bewegung.
 | B1 | **Entfalten** | Ein Fenster wächst aus seiner Kachel (oder einer Zeile, einem Knopf) auf den ganzen Bildschirm. Der Inhalt bleibt stehen, nur der Rahmen öffnet sich. Zurück faltet es sich in genau die Stelle, aus der es kam. | Feder „Raum“ (Antwort 0,5 s, Dämpfung 0,86) |
 | B2 | **Falten mit dem Finger** | Ein offenes Fenster lässt sich nach unten ziehen. Es schrumpft dabei auf seinem Rückweg, genau unter dem Finger. Loslassen: Der Schwung entscheidet, ob es zufällt oder zurückspringt. | dieselbe Feder, Startgeschwindigkeit = Fingertempo |
 | B3 | **Zeitreise** | Finger auf die Linie: Alles auf dem Bildschirm springt in diesen Moment. Die Zahlen rollen, der Baum hat so viele Ringe wie damals, der Nebel zieht mit. Loslassen: Die Zeit gleitet zurück ins Jetzt. | Finger 1 : 1, Rückweg Feder „Zeiger“ |
-| B4 | **Linie fließt** | Beim Wechsel Woche → Monat → Jahr → Alles wird die Linie nicht neu gezeichnet, sie fließt in ihre neue Form. | Feder „Raum“, jeder Punkt einzeln |
+| B4 | **Komet** | Bei jedem Wechsel Woche → Monat → Jahr → Alles (und € ↔ ₿) fährt ein glühender Punkt die Linie von links nach rechts ab. Er zieht einen Schweif und verliert Funken, die Käufe auf der Linie zünden im Vorbeiflug, im Jetzt läuft eine Lichtwelle aus. Dasselbe gilt im Kursverlauf des Bitcoin-Fensters. Kommen neue Kurse herein, fließt die Linie in ihre neue Form. | Feder „Aufzug“ (1,25 s, ohne Nachschwingen), Funken mit Schwerkraft |
 | B5 | **Zählwerk** | Ziffern rollen wie ein mechanisches Zählwerk, die rechte zuerst. | Feder „Zeiger“ je Ziffer |
 | B6 | **Tablett** | Kleine Dinge (Rechenweg, Rückfragen) kommen als Tablett von unten. Ändert sich der Inhalt, wächst oder schrumpft das Tablett, statt neu aufzugehen. | Feder „Raum“ |
 | B7 | **Die Statuszeile spricht** | Meldungen erscheinen nicht als neue Kästchen. Die vorhandene Statuszeile oben verwandelt sich in die Nachricht und danach zurück. | Feder „Zeiger“ |
-| B8 | **Aufgang** | Beim Start rollt der Wert von null hoch, die Linie zieht sich von links nach rechts, die Fenster steigen nacheinander auf. | Feder „Raum“, 60 ms versetzt |
+| B8 | **Aufgang** | Beim Start rollt der Wert von null hoch, der Komet zieht die Linie, die Kacheln steigen federnd nacheinander auf. Über jede läuft dabei einmal eine Lichtkante. Balken wachsen aus dem Boden, Zeilen gleiten herein, Abzeichen-Ringe füllen sich. | federnd (Dämpfung 0,74), 95 ms versetzt |
+| B9 | **Feier** | Ein neuer Meilenstein oder ein frisch eingetragener Kauf: Funken und Konfetti sprühen aus der Stelle, an der es passiert ist. | eigene Leinwand, Schwerkraft und Luftwiderstand |
+| B10 | **Die Zeit läuft** | Der Countdown bis zum nächsten Kauf rollt jede Sekunde weiter, ein Lichtpuls wandert durch seinen Balken. | Zählwerk (B5) |
 
 **Regeln, die für alle Bewegungen gelten**
 
@@ -29,9 +37,11 @@ Ein Bild der App zeigt deshalb immer nur einen Zwischenstand einer Bewegung.
 4. **Eine Achse, eine Bedeutung.** Waagerecht ist Zeit. Senkrecht ist Tiefe: hinein und
    wieder heraus. Tippen öffnet.
 5. **Nur Lage und Deckkraft bewegen sich.** Die Grafikkarte kann das ohne Ruckeln.
-   Unschärfe, Milchglas, Schatten oder Größenänderungen werden nie animiert.
-6. **Licht entsteht durch Bewegung.** In Ruhe ist die App matt. Was sich bewegt oder
-   berührt wird, leuchtet – stärker, je schneller und je wichtiger. Danach glimmt es aus.
+   Unschärfe, Milchglas oder Größenänderungen von Flächen werden nie animiert. Glühen
+   entsteht auf Leinwänden (Linie, Nebel, Funken) oder als ruhender Schein.
+6. **Licht entsteht durch Bewegung.** Was sich bewegt oder berührt wird, leuchtet – stärker,
+   je schneller und je wichtiger. Danach glimmt es aus. Die große Zahl, der Nebel und der
+   Schein hinter ihr hängen an derselben „Energie“: Rollen die Ziffern, glüht alles auf.
 
 ## 2. Was daraus folgt (danach)
 
@@ -40,7 +50,7 @@ Ein Bild der App zeigt deshalb immer nur einen Zwischenstand einer Bewegung.
 | B1, Regel 1 | **Jede Kachel ist die verkleinerte Ansicht ihres eigenen Fensters.** Die Startseite zeigt die oberen Teile der Fenster, in 0,92-facher Größe. Beim Entfalten muss deshalb nichts ausgetauscht werden. |
 | B1 | Alle Fenster haben dieselbe Breite und dieselbe Kopfhöhe. So öffnet sich alles in dieselbe Richtung, und die Startseite bekommt einen ruhigen Takt. |
 | B1 | Inhalte in Fenstern sind oben verankert, nie mittig. Beim Aufziehen verrutscht nichts. |
-| Regel 5 | **Kein Milchglas, keine Schatten.** Tiefe entsteht nur durch Tonwerte: Grund, Fläche, gehobene Fläche. Das sieht auch in jedem Zwischenbild der Bewegung sauber aus. |
+| Regel 5 | **Kein Milchglas.** Tiefe entsteht durch Tonwerte (Grund, Fläche, gehobene Fläche) und durch warmes Licht, das von oben rechts in die Kacheln und Fenster fällt. |
 | Regel 5 | Keine Rahmenlinien um Flächen. Haarlinien gibt es nur innerhalb von Listen. |
 | B5 | **Alle Zahlen haben feste Ziffernbreiten.** Nur so können sie rollen, ohne zu springen. Deshalb ist die Schrift Mona Sans: Ihre Ziffern sind gleich breit, und die breite Form wirkt ruhig und hochwertig. |
 | Regel 6 | **Es gibt nur eine Akzentfarbe, Glut-Orange.** Sie steht nur dort, wo Bewegung oder Handlung ist: an der Linie, am Zeiger der Zeitreise, am jüngsten Ring, am Hauptknopf. |
@@ -56,9 +66,17 @@ Ein Bild der App zeigt deshalb immer nur einen Zwischenstand einer Bewegung.
   `#A0988E`, `#6A635B`; Glut `#FF8A2A`; Plus `#93C6A0`, Minus `#E39A87` (nur in Zahlen).
 * **Schrift:** Mona Sans (SIL Open Font License). Zahlen und Titel in der breiten Form (125 %),
   Text in der normalen Breite. Keine Großbuchstaben-Etiketten, keine Kursivschrift.
-* **Atmosphäre:** Morgennebel aus zwei großen, weich vorgerechneten Bildern. Er treibt sehr
-  langsam und zieht beim Scrollen und bei der Zeitreise mit. Das Korn ist ins Bild
-  eingebacken und läuft nicht mit, das spart Rechenzeit.
+* **Atmosphäre:** Der Nebel ist eine Rechnung auf der Grafikkarte (WebGL): zwei Schichten
+  verwirbeltes Rauschen, die verschieden schnell treiben, dazu drei warme Lichtquellen, die
+  unregelmäßig flackern. Weil das Feld unendlich ist, gibt es keine Kanten und keine
+  sichtbaren Ebenen. Scrollen und Zeitreise verschieben nur den Blick. Gerechnet wird in
+  einem Drittel der Auflösung, höchstens 30-mal pro Sekunde, und nur, wenn die Startseite
+  sichtbar ist. Die Farben folgen der Tageszeit (abends glühend orange, nachts kühl violett).
+  Ohne WebGL gibt es zwei vorgerechnete Bilder, die weich auslaufen.
+* **Filmkorn** liegt über allem, auch über Fenstern, und springt zwölfmal pro Sekunde
+  wie echter Film. Es bewegt sich nur per Verschiebung, gezeichnet wird nichts neu.
+* „Atmosphäre“ in den Einstellungen schaltet Nebel, Flimmern und laufendes Korn ab
+  (spart Akku). „Bewegung reduzieren“ am Handy hält alles an.
 
 ## 4. Was wir aus der vorigen Fassung behalten haben – und was nicht
 
@@ -79,7 +97,7 @@ Nicht übernommen haben wir:
 | Kursiv-Überschriften | Die Kursivschrift wirkte wie eine beliebige Vorlage. |
 | Milchglas | Ruckelt in der Bewegung. |
 | Leuchten überall | Ohne Hierarchie verliert das Leuchten seine Bedeutung. |
-| Laufendes Filmkorn | Kostet ständig Rechenzeit. |
+| Laufendes Filmkorn | *In 1.1 zurückgeholt:* Es springt jetzt per Verschiebung statt per Neuzeichnen und kostet kaum etwas. |
 | Schwebende Tableiste | Die vier Seiten werden durch Fenster ersetzt, die sich aus der Startseite entfalten. |
-| Ringdiagramme und Tachos | Wieder ein Kartenraster; die Kennzahlen stehen jetzt als ruhige Typografie in einem Fenster. |
+| Ringdiagramme und Tachos | Kein Kartenraster. *In 1.1* gibt es zwei Ausnahmen mit Bedeutung: die Abzeichen-Ringe (sie füllen sich bis zum nächsten Ziel) und die Stimmungsuhr mit federndem Zeiger. |
 | Fremde Diagramm-Bibliothek | Die Linie ist jetzt selbst gebaut, nur so kann sie fließen. |

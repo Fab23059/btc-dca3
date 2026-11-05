@@ -85,12 +85,20 @@ const ly = lb.y + lb.height * 0.55;
 await zug([...strecke(lb.x + lb.width * 0.92, ly, lb.x + lb.width * 0.08, ly, 70), ...strecke(lb.x + lb.width * 0.08, ly, lb.x + lb.width * 0.55, ly, 30)], 26, 500);
 await warte(1800);
 
-// 3) Zeitraum: die Linie fließt
-for (const z of ["Monat", "Woche", "Jahr", "Alles"]) { await p.locator(".zeitraum-wahl", { hasText: z }).click(); await warte(1500); }
+// 3) Zeitraum: der Komet fährt die Linie ab, dann € ↔ ₿
+for (const z of ["Monat", "Woche", "Jahr", "Alles"]) { await p.locator(".zeitraum-wahl", { hasText: z }).click(); await warte(2000); }
+await p.locator(".einheit-wahl", { hasText: "₿" }).click(); await warte(2200);
+await p.locator(".einheit-wahl", { hasText: "€" }).click(); await warte(2200);
+
+// 3b) Bitcoin: Kurs, Verlauf über alle Zeiträume, Marktdaten
+await kachel(0); await warte(3200);
+for (const z of ["1W", "1J", "Max"]) { await p.locator(".fenster .zeitraum-wahl", { hasText: z }).click(); await warte(2200); }
+for (const y of [700, 1400, 2200]) { await p.locator(".fenster-rolle").evaluate((s, yy) => s.scrollTo({ top: yy, behavior: "smooth" }), y); await warte(1900); }
+await p.locator(".fenster-zu").click(); await warte(1600);
 
 // 4) Käufe entfalten, eine Zeile eintragen, Fenster mit dem Finger falten
-await kachel(0); await warte(1500);
-await p.locator(".fenster .kauf-zeile", { hasText: "geschätzt" }).first().click(); await warte(1500);
+await kachel(1); await warte(1500);
+await p.locator(".fenster .kauf-zeile", { hasText: "eintragen" }).first().click(); await warte(1500);
 await p.locator("#ein-btc").click(); await warte(500);
 for (const zeichen of "0,00023") { await p.keyboard.type(zeichen); await warte(120); }
 await warte(900);
@@ -100,7 +108,7 @@ await zug(strecke(195, 230, 195, 700, 34), 18);
 await warte(1800);
 
 // 5) Baum: wächst beim Öffnen, Zeitleiste zurück, Stamm berühren
-await kachel(1); await warte(1800);
+await kachel(2); await warte(1800);
 const zl = await p.locator(".zeitleiste").boundingBox();
 await zug([...strecke(zl.x + zl.width, zl.y + zl.height / 2, zl.x + 2, zl.y + zl.height / 2, 60)], 30, 700);
 await warte(1500);
@@ -110,7 +118,7 @@ await warte(800);
 await p.locator(".fenster-zu").click(); await warte(1600);
 
 // 6) Zahlen: entfalten, lesen, mit dem Finger zurückfalten
-await kachel(2); await warte(1800);
+await kachel(3); await warte(1800);
 for (const y of [500, 1100, 1700]) { await p.locator(".fenster-rolle").evaluate((s, yy) => s.scrollTo({ top: yy, behavior: "smooth" }), y); await warte(1700); }
 await p.locator(".fenster-rolle").evaluate((s) => s.scrollTo({ top: 0, behavior: "smooth" })); await warte(1100);
 await zug(strecke(195, 260, 195, 760, 28), 16);

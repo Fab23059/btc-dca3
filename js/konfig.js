@@ -25,7 +25,7 @@ export const ZEITPLAN = Object.freeze([
 export const SPEICHER_PRAEFIX = "dca3_";
 
 /** Version der App (erscheint in den Einstellungen und im Export). */
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0";
 
 /**
  * Die einzigen fremden Server, mit denen die App spricht – alle ohne Schlüssel,

@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 2. November 2026 · App-Version 1.0.0 (Oberfläche von Grund auf neu gebaut, dritte Prüfrunde)
+Stand: 5. November 2026 · App-Version 1.1.0 (Bitcoin-Fenster, Bilanz, Abzeichen, automatisch erfasste Käufe; vierte Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -10,12 +10,13 @@ Unter „So entsteht diese Zahl“ steht dann die Rechnung mit den echten Werten
 
 | Prüfung | Womit | Ergebnis |
 |---|---|---|
-| Rechenkern (19 Einzeltests: Zeitzone, Kaufzeit, Einträge, Zeiträume, Haltefrist, Rückgang …) | `tests/rechnen.test.mjs` | alle bestanden |
+| Rechenkern (22 Einzeltests: Zeitzone, Kaufzeit, Einträge, automatisch erfasste Käufe, Kaufkurse der alten App, Zeiträume, Haltefrist, Rückgang, DCA-Bilanz …) | `tests/rechnen.test.mjs` | alle bestanden |
+| Jede Datei der App ist für den Offline-Start zwischengespeichert | `tests/offline.test.mjs` | bestanden (hat einen echten Fehler gefunden, siehe Abschnitt 4) |
 | Schutz der alten Daten (statisch und im Lauf) | `tests/schreibschutz.test.mjs` | alle bestanden |
 | Push-Verschlüsselung gegen den offiziellen Testvektor aus RFC 8291 | `tests/webpush.test.mjs` | Byte für Byte identisch |
 | Dein Baum: gleiche Käufe → gleicher Baum, Ringe kreuzen sich nie, Fläche ∝ sats, Berühren trifft den richtigen Kauf | `tests/jahresringe.test.mjs` | alle bestanden |
 | Komplette App im Browser (Chromium, 390 × 844 und 360 × 780), alte und neue App unter derselben Adresse wie auf GitHub Pages | `tests/browser/pruefung.mjs` | siehe unten |
-| **Unabhängige Gegenrechnung** in Python, ohne eine Zeile App-Code | `tests/browser/nachrechnen.py` | 26 von 26 Werten stimmen – nach dem Neuaufbau der Oberfläche erneut geprüft |
+| **Unabhängige Gegenrechnung** in Python, ohne eine Zeile App-Code | `tests/browser/nachrechnen.py` | 26 von 26 Werten stimmen – nach Version 1.1 erneut geprüft |
 | Jede Bewegung in Zeitlupe aufgenommen (Entfalten, Falten mit dem Finger, Zeitreise, fließende Linie, Eintragen, Baum) und Bild für Bild durchgesehen; dazu ein Vorführvideo | `tests/browser/film.mjs` | Fehler gefunden und behoben (siehe Abschnitt 4) |
 
 **Ehrliche Einschränkung:** Aus meiner Arbeitsumgebung waren die echten Kursquellen
@@ -43,7 +44,8 @@ Platzhalter ein. Nachgestellt mit identischen Daten am Montag, 2.11., um 20:47 U
 
 Die neue App zeigt den Montag bis zur Kaufzeit als **„ausstehend“** an. Er erscheint
 sichtbar als Hinweis („Heute 20:50 Uhr kauft dein Sparplan“), fließt aber in keine
-Summe ein. Ab 20:50 Uhr gilt er als „geschätzt“, bis du die echte Menge einträgst.
+Summe ein. Ab 20:50 Uhr zählt er voll mit. Eine Woche lang erinnert die App ans Eintragen
+der echten Menge („noch eintragen“), danach gilt er als „automatisch“ erfasster Kauf.
 
 ### Fehler 2 – neu gefunden: Der Platzhalterkurs wird dauerhaft gemerkt
 
@@ -53,10 +55,16 @@ Summe ein. Ab 20:50 Uhr gilt er als „geschätzt“, bis du die echte Menge ein
 statt des Marktkurses um 20:50 Uhr (66.304,15 €). Betroffen ist jeder Montag, an dem du
 die App vor dem Kauf geöffnet hast und **keinen** echten Wert eingetragen hast.
 
-Die neue App übernimmt diese gemerkten Kurse deshalb **nicht** als Grundlage. Sie holt
-den Kurs zur Kaufzeit neu, minutengenau, und speichert ihn erst 10 Minuten nach dem Kauf.
-Die alten Kurse dienen nur als Notvorrat, falls beim allerersten Start kein Netz da ist.
-Deine eingetragenen Werte sind davon nicht betroffen, sie hatten schon immer Vorrang.
+Die neue App holt deshalb den Kurs zur Kaufzeit neu, minutengenau, und speichert ihn erst
+10 Minuten nach dem Kauf. Die Kurse der alten App kommen an zweiter Stelle: Sie gelten, wenn
+kein Minutenkurs abrufbar ist, und gehen ungenaueren Stundenkursen vor. Deine eingetragenen
+Werte sind davon nicht betroffen, sie hatten schon immer Vorrang.
+
+**Wichtig (geändert in 1.1):** Käufe, die die alte App automatisch erfasst hat und die nie
+eingetragen wurden (bei dir die vier Binance-Käufe im Juni), zählt die neue App als
+vollwertige Käufe („✓ automatisch“). Version 1.0 hat sie als „geschätzt“ markiert und
+zum Nachtragen aufgefordert. Gerechnet wurde zwar schon damals richtig, aber die Anzeige
+war irreführend. Die Rechnung ist unverändert: 15 € × (1 − Gebühr) ÷ Kurs der Kaufminute.
 
 ### Fehler 3 – Zeitraum-Gewinn mit ungenauem Startkurs
 
@@ -131,8 +139,12 @@ Einzahlung. Richtig ist deshalb **−5,05 €**, wie angezeigt.
 | Alte App nach der neuen geöffnet | läuft, zeigt dieselben Einträge |
 | Eintrag in der neuen App gespeichert | landet nur in `dca3_eintraege`, alte App unberührt |
 | Hauptquelle CryptoCompare ausgefallen | Coinbase springt ein, identische Zahlen |
-| Ohne Netz neu geladen | App startet aus dem Zwischenspeicher, Kopfzeile „Stand 2.11., 21:00“ |
+| Ohne Netz neu geladen | App startet aus dem Zwischenspeicher, Kopfzeile mit Kurs und Uhrzeit des Stands |
 | Breite 360 und 390 Pixel | kein waagerechtes Scrollen, nichts ragt aus dem Bild – auch nicht im Eintragen-Fenster |
+| *1.1:* Status der Käufe ohne Eintrag (Testdaten wie bei dir: Juni nie eingetragen) | 8./15.6. und 17.8. „automatisch“, 2.11. „eintragen“ – alle zählen voll mit |
+| *1.1:* Ohne Netz neu geladen | **Fehler gefunden und behoben:** Die drei neuen Dateien fehlten in der Offline-Liste, die App startete ohne Netz nicht. Jetzt startet sie („₿ 65.254 € · 2.11., 21:00“), und `tests/offline.test.mjs` verhindert, dass das wieder passiert. |
+| *1.1:* Bildrate gemessen (Chromium, 390 × 844) | **Fehler gefunden und behoben:** Das Weiterzeichnen der Funken meldete sich im selben Bild immer wieder neu an, das blockierte die Seite. Danach: 60 Bilder pro Sekunde auf der Startseite, während der Komet fährt und im Bitcoin-Fenster. |
+| *1.1:* Bitcoin-Fenster mit nachgebauten Quellen | Kurs, 24-h-Hoch und -Tief, Allzeithoch, Geschürft, Stimmung (38, gestern 41, vor einer Woche 58), Halving-Countdown, Schlagzeilen – alle angezeigt, keine Verstöße gegen die Sicherheitsrichtlinie |
 | Gesten | Ziehen zum Aktualisieren, Zeitreise mit dem Finger (Datum und Wert springen in den Moment, danach zurück ins Jetzt), Fenster mit dem Finger zufalten, Tablett wegwischen, Android-Zurück-Taste schließt Fenster: alles funktioniert |
 | Eintragen aus einer Zeile | Wert landet nur in `dca3_eintraege`; die Zeile zeigt danach „eingetragen“ mit der neuen Menge; alte App unberührt |
 | Fremde Bibliotheken | keine mehr – die Linie ist selbst gezeichnet, Chart.js wurde entfernt |

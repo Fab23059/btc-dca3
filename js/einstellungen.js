@@ -45,6 +45,7 @@ export async function exportieren() {
     eintraege: ladeEintraege(),
     kaufkurse: ladeKaufkurse(),
     tageskurse: lies(SCHLUESSEL.tageskurse, {})?.kurse ?? {},
+    altkurse: lies(SCHLUESSEL.altkurse, {}) ?? {},
   };
   const name = `btc-sparplan-sicherung-${heuteBerlin()}.json`;
   const blob = new Blob([JSON.stringify(daten, null, 2)], { type: "application/json" });
@@ -81,7 +82,7 @@ function zeigeImportVorschau(v, beiAenderung) {
   const beschriften = () => {
     const n = v.neu.length + (ueberschreiben ? v.abweichend.length : 0);
     knopf.textContent = n ? `${anzahl(n, "Kauf", "Käufe")} übernehmen` : "Nichts zu übernehmen";
-    knopf.disabled = n === 0 && !Object.keys(v.tage).length;
+    knopf.disabled = n === 0 && !Object.keys(v.tage).length && !Object.keys(v.montagskurse ?? {}).length;
   };
   const sheet = oeffneSheet({
     titel: "Sicherung einlesen",
@@ -91,6 +92,7 @@ function zeigeImportVorschau(v, beiAenderung) {
         h("div", { class: "formel-zeile" }, h("span", { class: "formel-links" }, "Neue Käufe"), h("span", { class: "formel-rechts" }, String(v.neu.length))),
         h("div", { class: "formel-zeile" }, h("span", { class: "formel-links" }, "Schon identisch vorhanden"), h("span", { class: "formel-rechts" }, String(v.gleich.length))),
         h("div", { class: "formel-zeile" }, h("span", { class: "formel-links" }, "Abweichend von deinen Einträgen"), h("span", { class: "formel-rechts" }, String(v.abweichend.length))),
+        Object.keys(v.montagskurse ?? {}).length ? h("div", { class: "formel-zeile" }, h("span", { class: "formel-links" }, "Automatisch erfasste Kaufkurse"), h("span", { class: "formel-rechts" }, String(Object.keys(v.montagskurse).length))) : null,
         v.fehler.length ? h("div", { class: "formel-zeile" }, h("span", { class: "formel-links" }, "Nicht lesbar"), h("span", { class: "formel-rechts" }, String(v.fehler.length))) : null),
       v.abweichend.length ? zeile("Abweichende ebenfalls übernehmen", `Betrifft ${v.abweichend.map(datumMonatKurz).join(", ")}. Sonst bleiben deine Einträge.`, schalter(false, (an) => { ueberschreiben = an; beschriften(); }, "Abweichende übernehmen")) : null,
       v.fehler.length ? h("p", { class: "fussnote" }, `Nicht lesbar: ${v.fehler.map((f) => `${f.montag} (${f.grund})`).join("; ")}`) : null,

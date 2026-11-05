@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { berlinZeitpunkt, heuteBerlin, jahrestag, plusTage, montagVon } from "../js/zeit.js";
-import { sparwochen, kaeufeBerechnen, zusammenfassung, zeitraumErgebnis, wochenZerlegung, wertverlauf, kursBei, naechsterKauf } from "../js/rechnen.js";
-import { haltefrist, rueckgang, volatilitaet, meilensteine, durchhalten } from "../js/kennzahlen.js";
+import { sparwochen, kaeufeBerechnen, zusammenfassung, zeitraumErgebnis, wochenZerlegung, wertverlauf, kursBei, naechsterKauf, kaufkurseZusammenfuehren } from "../js/rechnen.js";
+import { haltefrist, rueckgang, volatilitaet, meilensteine, durchhalten, dcaBilanz } from "../js/kennzahlen.js";
 import { ZEITPLAN, SPARRATE_EUR } from "../js/konfig.js";
 import { nah } from "./hilfen.mjs";
 
@@ -71,7 +71,7 @@ test("Einträge gehen immer vor; fehlende Angabe wird aus Sparrate und Gebühr b
   assert.ok(nah(k[1].btc, (15 * 0.996) / 55_000));
   assert.equal(k[2].btc, 0.00025);
   assert.equal(k[2].kurs, 59_000);
-  assert.equal(k[3].status, "geschaetzt");
+  assert.equal(k[3].status, "automatisch");   // ohne Eintrag, aber älter als eine Woche: vollwertiger Kauf
   assert.ok(nah(k[3].btc, (15 * 0.996) / kurse["2026-06-29"].kurs));
   // Bitvavo-Phase: 0,25 % Gebühr
   assert.ok(nah(k[4].btc, (15 * 0.9975) / kurse["2026-07-06"].kurs));
@@ -82,6 +82,50 @@ test("Einträge gehen immer vor; fehlende Angabe wird aus Sparrate und Gebühr b
   assert.ok(nah(s.durchschnitt, (k.length * 15) / btc));
   assert.ok(nah(s.gv, btc * 62_000 - k.length * 15));
   assert.ok(nah(s.gvProzent, (s.gv / s.investiert) * 100));
+});
+
+test("Automatisch erfasste Käufe der alten App zählen voll – nur der frischeste erinnert ans Eintragen", () => {
+  const jetzt = UTC("2026-11-05T18:00:00Z");
+  const w = sparwochen(ZEITPLAN, jetzt);
+  const kurse = testKurse(w);
+  // Wie beim Nutzer: Binance (Juni) nie eingetragen, Bitvavo eingetragen, der letzte Montag noch offen
+  const e = {};
+  for (const x of w) if (x.boerse === "Bitvavo" && x.montag !== "2026-11-02") e[x.montag] = { btc: 0.00022 };
+  const k = kaeufeBerechnen({ wochen: w, eintraege: e, kaufkurse: kurse, jetzt, sparrate: 15 });
+  const s = zusammenfassung(k, 62_000);
+  assert.deepEqual(k.slice(0, 4).map((x) => x.status), ["automatisch", "automatisch", "automatisch", "automatisch"]);
+  assert.ok(k.slice(0, 4).every((x) => x.gezaehlt && x.nr != null));
+  assert.equal(k.at(-1).status, "geschaetzt");          // 2.11.: jünger als eine Woche
+  assert.ok(k.at(-1).gezaehlt);
+  assert.equal(s.anzahl, w.length);
+  assert.equal(s.automatisch, 4);
+  assert.equal(s.geschaetzt.length, 1);
+  assert.equal(s.investiert, w.length * 15);
+  // Eine Woche später ist auch der 2.11. ein normaler automatischer Kauf
+  const k2 = kaeufeBerechnen({ wochen: w, eintraege: e, kaufkurse: kurse, jetzt: UTC("2026-11-09T20:00:00Z"), sparrate: 15 });
+  assert.equal(k2.at(-1).status, "automatisch");
+});
+
+test("Kaufkurse: Minutenkurs vor dem Kurs der alten App vor dem Stundenkurs", () => {
+  const alt = {
+    "2026-06-08": { kurs: 60_000, genauigkeit: "altapp" },
+    "2026-06-15": { kurs: 61_000, genauigkeit: "altapp" },   // kein neuer Kurs da
+    "2026-10-26": { kurs: 66_000, genauigkeit: "altapp" },   // zur falschen Zeit gemerkt
+    "2026-06-22": { kurs: 59_000, genauigkeit: "altapp" },   // neu nur als Stundenkurs
+  };
+  const neu = {
+    "2026-06-08": { kurs: 60_012, genauigkeit: "minute" },
+    "2026-10-26": { kurs: 64_000, genauigkeit: "minute" },
+    "2026-06-22": { kurs: 60_500, genauigkeit: "stunde" },
+    "2026-06-29": { kurs: 62_000, genauigkeit: "stunde" },
+  };
+  const z = kaufkurseZusammenfuehren(alt, neu);
+  assert.equal(z["2026-06-08"].kurs, 60_012);
+  assert.equal(z["2026-06-15"].kurs, 61_000);
+  assert.equal(z["2026-10-26"].kurs, 64_000);
+  assert.equal(z["2026-06-22"].kurs, 59_000);
+  assert.equal(z["2026-06-29"].kurs, 62_000);
+  assert.deepEqual(kaufkurseZusammenfuehren({}, neu), neu);
 });
 
 test("Ohne Kurs zählt ein Kauf (noch) nicht – statt mit einem Platzhalter zu rechnen", () => {
@@ -198,4 +242,21 @@ test("Nächster Kauf", () => {
   assert.equal(n.montag, "2026-11-02");
   const n2 = naechsterKauf(ZEITPLAN, UTC("2026-11-02T20:00:00Z"));
   assert.equal(n2.montag, "2026-11-09");
+});
+
+test("DCA-Bilanz: Vergleich mit einer Einmalanlage am ersten Kauftag", () => {
+  const k = [
+    { gezaehlt: true, ts: 0, btc: (15 * 0.996) / 60_000, kurs: 60_000, brutto: 15, gebuehr: 0.004 },
+    { gezaehlt: true, ts: 7 * 86_400_000, btc: (15 * 0.996) / 50_000, kurs: 50_000, brutto: 15, gebuehr: 0.004 },
+    { gezaehlt: false, ts: 14 * 86_400_000, btc: null, kurs: null, brutto: 0, gebuehr: 0.004 },
+  ];
+  const b = dcaBilanz(k, 55_000, 10 * 86_400_000);
+  assert.equal(b.anzahl, 2);
+  assert.equal(b.tage, 10);
+  assert.ok(nah(b.einmalBtc, (30 * 0.996) / 60_000));
+  assert.ok(nah(b.vorteil, (b.btc - b.einmalBtc) * 55_000));
+  assert.ok(b.vorteil > 0);                       // im Tief nachgekauft → besser als Einmalanlage
+  assert.equal(b.guenstigster.kurs, 50_000);
+  assert.equal(b.teuerster.kurs, 60_000);
+  assert.equal(dcaBilanz([], 55_000, 0), null);
 });

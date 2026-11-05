@@ -12,8 +12,9 @@
 .held-label { font-size: 15px; font-weight: 500; color: var(--text-2); height: 22px; }
 .held-zahl {
   display: block; margin-top: 4px;
-  font-size: clamp(56px, 16.8vw, 72px); font-weight: 470; font-stretch: 125%;
+  font-size: clamp(58px, 17.4vw, 76px); font-weight: 470; font-stretch: 125%;
   letter-spacing: -0.052em; color: var(--text);
+  text-shadow: 0 0 calc(24px + 46px * var(--energie, 0)) rgba(var(--glut-rgb), calc(0.16 + 0.55 * var(--energie, 0))), 0 2px 18px rgba(0, 0, 0, 0.5);
 }
 .held-zahl .ziffern-teil--rest { font-size: 0.4em; font-weight: 520; letter-spacing: -0.02em; color: var(--text-2); margin-left: 0.06em; }
 .held-zeile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 10px; min-height: 22px; font-size: 15px; font-weight: 520; }
@@ -52,10 +53,10 @@
   flex: 1; height: 42px; font-size: 14.5px; font-weight: 580; font-stretch: 112%;
   color: var(--text-3); transition: color 0.3s;
 }
-.zeitraum-wahl[aria-pressed="true"] { color: var(--text); }
+.zeitraum-wahl[aria-pressed="true"] { color: var(--text); text-shadow: 0 0 16px rgba(var(--glut-rgb), 0.75); }
 .zeitraum-marke {
   position: absolute; left: 0; bottom: 0; width: 6px; height: 6px; border-radius: 3px;
-  background: var(--glut); box-shadow: 0 0 10px 1px rgba(var(--glut-rgb), 0.8);
+  background: #FFB067; box-shadow: 0 0 12px 2px rgba(var(--glut-rgb), 0.95), 0 0 30px 6px rgba(var(--glut-rgb), 0.35);
   transform-origin: 50% 50%; will-change: transform;
 }
 
@@ -64,7 +65,13 @@
 .takt-zeile { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 520; color: var(--text-2); }
 .takt-zeit { color: var(--text); white-space: nowrap; }
 .takt-balken { display: block; height: 2px; margin-top: 10px; border-radius: 1px; background: var(--flaeche-3); overflow: hidden; }
-.takt-fuellung { display: block; height: 100%; background: linear-gradient(90deg, rgba(var(--glut-rgb), 0.25), var(--glut)); transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(0.2, 0.9, 0.2, 1); }
+.takt-balken { position: relative; overflow: visible; height: 3px; }
+.takt-fuellung { position: relative; display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, rgba(var(--glut-rgb), 0.2), var(--glut) 85%, #FFD2A0); box-shadow: 0 0 12px rgba(var(--glut-rgb), 0.6); transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(0.2, 0.9, 0.2, 1); overflow: hidden; }
+/* Ein Lichtpuls wandert die Füllung entlang – die Zeit läuft */
+.takt-fuellung::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255, 236, 214, 0.9), transparent); animation: puls-wandert 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@keyframes puls-wandert { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(340%, 0, 0); } }
+.takt-zeit { font-size: 14px; font-weight: 600; font-stretch: 112%; }
+.takt-zeit .ziffern { line-height: 1.1; }
 
 /* ---- Stapel der Fenster ---- */
 .stapel { display: grid; gap: var(--abstand); margin: 28px var(--rand) 0; }
@@ -84,9 +91,13 @@
 
 /* Käufe */
 .kk-ernte { position: absolute; left: 20px; right: 20px; top: 92px; height: 64px; }
-.ernte { display: block; width: 100%; height: 100%; overflow: visible; }
-.ernte-balken { fill: var(--glut); opacity: 0.92; transition: opacity 0.35s; }
-.ernte-balken--geschaetzt, .ernte-balken--ohneKurs { fill: var(--text-3); opacity: 0.8; }
+.ernte { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.35)); }
+.ernte-balken { fill: var(--glut); opacity: 0.95; transition: opacity 0.35s; transform-box: fill-box; transform-origin: 50% 100%; }
+.ernte.waechst .ernte-balken { animation: wachsen 0.9s cubic-bezier(0.2, 1.3, 0.35, 1) both; animation-delay: calc(var(--i, 0) * 28ms + 150ms); }
+@keyframes wachsen { from { transform: scaleY(0.02); opacity: 0; } 40% { opacity: 1; } to { transform: none; } }
+.ernte-balken--automatisch { fill: #FFA45A; }
+.ernte-balken--geschaetzt { fill: rgba(var(--glut-rgb), 0.45); }
+.ernte-balken--ohneKurs { fill: var(--text-3); opacity: 0.8; }
 .ernte-balken.ist-zukunft { opacity: 0.12; }
 .kk-fuss { position: absolute; left: 20px; right: 20px; top: 166px; display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 520; color: var(--text-2); white-space: nowrap; }
 .kk-offen { color: var(--glut-hell); }
@@ -115,6 +126,8 @@
 .kauf-hinweis-text { font-size: 14px; color: var(--glut-hell); line-height: 1.5; }
 .kauf-monat { margin-top: 18px; }
 .kauf-monat-titel { padding: 0 20px 6px; font-size: 14px; font-weight: 560; color: var(--text-2); }
+.kauf-liste.steigt-auf .kauf-zeile { animation: zeile-rein 0.7s cubic-bezier(0.2, 0.9, 0.25, 1) both; animation-delay: calc(var(--i, 0) * 38ms + 120ms); }
+@keyframes zeile-rein { from { opacity: 0; transform: translate3d(0, 22px, 0); } to { opacity: 1; transform: none; } }
 .kauf-zeile {
   position: relative; display: flex; align-items: center; gap: 14px;
   width: 100%; min-height: 68px; padding: 10px 20px; text-align: left;
@@ -132,7 +145,25 @@
 .kz-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 560; color: var(--text-3); white-space: nowrap; }
 .kz-status--eingetragen { color: var(--text-2); }
 .kz-status--eingetragen svg { color: var(--plus); }
+.kz-status--automatisch { color: var(--text-2); }
+.kz-status--automatisch svg { color: var(--glut-hell); }
 .kz-status--geschaetzt { color: var(--glut-hell); }
+.kz-rechts { display: grid; justify-items: end; gap: 1px; flex: none; text-align: right; }
+.kz-rechts .kz-status { font-size: 11.5px; margin-top: 2px; }
+.kz-gv { font-size: 15.5px; font-weight: 620; font-stretch: 112%; }
+.kz-gv--plus { color: var(--plus); text-shadow: 0 0 12px rgba(147, 198, 160, 0.35); }
+.kz-gv--minus { color: var(--minus); }
+.kz-wert { font-size: 12.5px; color: var(--text-2); }
+.kz-rang { justify-self: start; margin-top: 3px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 620; letter-spacing: 0.02em; }
+.kz-rang--bester { color: #1D0F04; background: linear-gradient(90deg, var(--glut), #FFC98F); box-shadow: 0 0 14px rgba(var(--glut-rgb), 0.55); }
+.kz-rang--teuerster { color: var(--text-2); background: var(--flaeche-3); }
+.kauf-hinweis-los { margin-top: 10px; height: 36px; padding: 0 16px; border-radius: 999px; background: var(--glut); color: #1D0F04; font-weight: 650; font-size: 14px; }
+.bilanz { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 4px 20px 18px; border-radius: 22px; overflow: hidden; background: var(--linie); }
+.bilanz-feld { display: grid; gap: 2px; padding: 12px 14px; background: var(--flaeche-2); }
+.bilanz-titel { font-size: 12.5px; color: var(--text-2); font-weight: 520; }
+.bilanz-wert { font-size: 17px; font-weight: 600; font-stretch: 112%; letter-spacing: -0.01em; white-space: nowrap; }
+.bilanz-feld--plus .bilanz-wert { color: var(--plus); }
+.bilanz-feld--minus .bilanz-wert { color: var(--minus); }
 .kauf-zeile--kopf { min-height: 68px; }
 /* Gerade gespeichert: Der Haken landet mit einem kurzen Aufglühen */
 .kauf-zeile.ist-frisch .kz-status svg { animation: landen 1.4s 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -205,6 +236,7 @@
 .zb-marke { position: absolute; top: -5px; width: 1.5px; height: 14px; margin-left: -0.75px; background: var(--text); border-radius: 1px; }
 .wochenpunkte { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; max-width: 338px; }
 .wochenpunkt { width: 6px; height: 6px; border-radius: 50%; background: var(--glut); }
+.wochenpunkt--automatisch { background: #FFA45A; }
 .wochenpunkt--geschaetzt { background: rgba(var(--glut-rgb), 0.45); }
 .wochenpunkt--ausstehend { background: transparent; box-shadow: inset 0 0 0 1px var(--text-3); }
 .wochenpunkt--ohneKurs { background: var(--text-3); }
@@ -242,3 +274,92 @@
   opacity: 0; transition: opacity 0.25s;
 }
 .fenster.ist-gerollt::after { opacity: 1; }
+
+/* ---------------------------------------------------------------------
+   Bitcoin: Kachel und Fenster
+   --------------------------------------------------------------------- */
+.fkopf--markt .fkopf-titel { display: inline-flex; align-items: center; gap: 10px; }
+.live-punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); position: relative; }
+.live-punkt.ist-live { background: var(--plus); box-shadow: 0 0 10px 2px rgba(147, 198, 160, 0.7); }
+.live-punkt.ist-live::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid rgba(147, 198, 160, 0.8); animation: herzschlag 2s cubic-bezier(0.15, 0.7, 0.3, 1) infinite; }
+.mk-kurs { position: absolute; left: 20px; top: 74px; }
+.mk-zahl { font-size: 46px; font-weight: 480; font-stretch: 125%; letter-spacing: -0.05em; text-shadow: 0 0 calc(18px + 26px * var(--energie, 0)) rgba(var(--glut-rgb), calc(0.18 + 0.4 * var(--energie, 0))); }
+.mk-zahl .ziffern-teil--rest { font-size: 0.46em; color: var(--text-2); letter-spacing: 0; margin-left: 0.08em; }
+.mk-zeile { position: absolute; left: 20px; top: 134px; display: flex; gap: 8px; align-items: baseline; font-size: 14.5px; font-weight: 560; }
+.mk-zeile-zusatz { color: var(--text-3); font-weight: 500; }
+.mk-funke-halter { position: absolute; right: 20px; top: 70px; width: 40%; max-width: 210px; height: 66px; }
+.mk-funke { width: 100%; height: 100%; overflow: visible; }
+.mk-funke-linie { fill: none; stroke: var(--glut); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.mk-funke-schein { fill: none; stroke: rgba(var(--glut-rgb), 0.35); stroke-width: 7; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: blur(4px); }
+.mk-funke-flaeche { fill: url(#mk-verlauf); }
+.mk-funke-ende { fill: #FFEBD6; filter: drop-shadow(0 0 5px rgba(var(--glut-rgb), 1)); }
+.mk-funke.zeichnet .mk-funke-linie { stroke-dasharray: 1; stroke-dashoffset: 1; animation: zeichnen 1.4s 0.2s cubic-bezier(0.3, 0.7, 0.2, 1) forwards; }
+.mk-funke.zeichnet .mk-funke-schein, .mk-funke.zeichnet .mk-funke-flaeche, .mk-funke.zeichnet .mk-funke-ende { animation: auftauchen 0.9s 1.1s ease-out both; }
+@keyframes auftauchen { from { opacity: 0; } to { opacity: 1; } }
+.mk-fuss { position: absolute; left: 20px; right: 20px; top: 166px; display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 520; color: var(--text-2); white-space: nowrap; }
+.mk-fuss-rechts { color: var(--text); }
+.mk-fuss-rechts.ist-plus { color: var(--plus); }
+.mk-fuss-rechts.ist-minus { color: var(--minus); }
+
+.mk-verlauf { padding: 4px 0 6px; }
+.zeitraum--markt { margin-top: 0; }
+.zeitraum-wahl--klein { height: 40px; font-size: 13.5px; }
+.mk-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 24px; margin: 12px var(--rand) 0; padding: 0 4px; font-size: 14.5px; font-weight: 540; }
+.mk-info strong { font-size: 17px; font-weight: 620; font-stretch: 112%; }
+.mk-info-zeit { color: var(--text-2); }
+.mk-info-kauf { color: var(--glut-hell); }
+.mk-info-alt { color: var(--text-3); font-size: 12.5px; }
+.kurslinie { position: relative; margin-top: 6px; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.kurslinie-leinwand { display: block; width: 100%; height: 230px; cursor: crosshair; }
+.kurslinie.ist-leer .kurslinie-leinwand { height: 120px; }
+.markt-koerper { padding-top: 0; }
+.mk-raster { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 16px; margin-top: 14px; }
+.mk-feld { display: grid; gap: 3px; align-content: start; }
+.mk-feld-wert { font-size: 21px; font-weight: 520; font-stretch: 118%; letter-spacing: -0.025em; }
+.mk-feld-unter { font-size: 12.5px; color: var(--text-3); }
+
+/* Stimmungs-Uhr */
+.uhr-halter { position: relative; width: 240px; max-width: 100%; margin: 14px auto 0; }
+.uhr { display: block; width: 100%; height: auto; overflow: visible; }
+.uhr-spur { fill: none; stroke: var(--flaeche-3); stroke-width: 12; stroke-linecap: round; }
+.uhr-bogen { fill: none; stroke: url(#uhr-verlauf); stroke-width: 10; stroke-linecap: round; opacity: 0.85; filter: drop-shadow(0 0 6px rgba(255, 170, 110, 0.35)); }
+.uhr-strich { stroke: var(--text-3); stroke-width: 1.5; stroke-linecap: round; }
+.uhr-nadel { stroke: #FFEBD6; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.9)); }
+.uhr-nabe { fill: #FFEBD6; filter: drop-shadow(0 0 8px rgba(var(--glut-rgb), 1)); }
+.uhr-wert { position: absolute; left: 0; right: 0; bottom: -6px; display: grid; justify-items: center; font-size: 34px; font-weight: 500; font-stretch: 125%; letter-spacing: -0.04em; line-height: 1; transform: translateY(100%); }
+.uhr-wort { margin-top: 6px; font-size: 14px; font-weight: 560; letter-spacing: 0; color: var(--text-2); }
+.uhr-halter + .zahl-satz { margin-top: 74px; }
+
+/* Schlagzeilen */
+.nachrichten { display: grid; margin-top: 8px; }
+.nachricht { display: grid; gap: 4px; padding: 14px 0; color: var(--text); text-decoration: none; border-radius: 12px; }
+.nachricht + .nachricht { border-top: 1px solid var(--linie); }
+.nachricht-titel { font-size: 15.5px; font-weight: 540; line-height: 1.35; }
+.nachricht-meta { font-size: 12.5px; color: var(--text-3); }
+
+/* Abzeichen: Ringe, die sich beim Öffnen füllen; erreichte glühen */
+.abzeichen { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 16px 8px; margin-top: 16px; }
+.abz { position: relative; display: grid; justify-items: center; text-align: center; }
+.abz-ring { width: 64px; height: 64px; transform: rotate(-90deg); overflow: visible; }
+.abz-spur { fill: none; stroke: var(--flaeche-3); stroke-width: 4; }
+.abz-bogen { fill: none; stroke: var(--glut); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.abz--da .abz-bogen { stroke: #FFB067; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.9)); }
+.abz--da .abz-ring { animation: abz-glimmen 3.2s ease-in-out infinite; }
+.abz--naechstes .abz-bogen { stroke: rgba(var(--glut-rgb), 0.85); }
+@keyframes abz-glimmen { 0%, 100% { filter: drop-shadow(0 0 0 rgba(var(--glut-rgb), 0)); } 50% { filter: drop-shadow(0 0 10px rgba(var(--glut-rgb), 0.55)); } }
+.abz-wert { position: absolute; top: 18px; left: 0; right: 0; font-size: 15px; font-weight: 650; font-stretch: 112%; letter-spacing: -0.02em; line-height: 1; }
+.abz-einheit { position: absolute; top: 37px; left: 0; right: 0; font-size: 8.5px; font-weight: 650; color: var(--text-2); letter-spacing: 0.02em; text-transform: uppercase; }
+.abz-unter { margin-top: 6px; font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.abz--da .abz-unter { color: var(--glut-hell); }
+.abz--naechstes .abz-wert { color: var(--text-2); }
+
+/* Einheit € / ₿: eine kleine Pille gleitet hinüber */
+.held-rahmen { position: relative; }
+.einheit { position: absolute; top: 2px; right: var(--rand); display: flex; padding: 3px; border-radius: 999px; background: rgba(28, 25, 22, 0.72); box-shadow: inset 0 0 0 1px rgba(255, 240, 222, 0.06); }
+.einheit-wahl { position: relative; z-index: 1; width: 34px; height: 26px; border-radius: 999px; font-size: 14px; font-weight: 650; color: var(--text-3); transition: color 0.3s; }
+.einheit-wahl[aria-pressed="true"] { color: #1D0F04; }
+.einheit-pille { position: absolute; top: 3px; left: 3px; width: 34px; height: 26px; border-radius: 999px; background: linear-gradient(180deg, #FFB067, var(--glut)); box-shadow: 0 0 16px rgba(var(--glut-rgb), 0.6); transition: transform 0.5s cubic-bezier(0.3, 1.5, 0.4, 1); }
+.einheit[data-wert="btc"] .einheit-pille { transform: translate3d(34px, 0, 0); }
+.held-zahl .ziffern-teil--einheit { font-size: 0.36em; font-weight: 540; letter-spacing: -0.01em; color: var(--text-2); margin-left: 0.12em; }
+.held-rahmen[data-einheit="btc"] .held-zahl { font-size: clamp(46px, 13.6vw, 64px); }
+.held-zeitraum { color: rgba(242, 237, 230, 0.5); }

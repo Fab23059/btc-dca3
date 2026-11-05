@@ -165,3 +165,29 @@ export function zielName(z) {
   if (z >= 1_000_000) return `${(z / 1_000_000).toLocaleString("de-DE")} Mio`;
   return `${(z / 1000).toLocaleString("de-DE")}k`;
 }
+
+/**
+ * DCA-Bilanz: Was hat das Verteilen gebracht?
+ * Vergleich: alles Eingezahlte auf einmal zum ersten Kauf (gleiche Gebühr, gleicher Kurs).
+ */
+export function dcaBilanz(kaeufe, aktuellerKurs, jetzt) {
+  const gez = kaeufe.filter((k) => k.gezaehlt && k.btc > 0 && k.kurs > 0);
+  if (!gez.length) return null;
+  const investiert = gez.reduce((s, k) => s + k.brutto, 0);
+  const btc = gez.reduce((s, k) => s + k.btc, 0);
+  const erster = gez[0];
+  const einmalBtc = (investiert * (1 - erster.gebuehr)) / erster.kurs;
+  const guenstigster = gez.reduce((a, k) => (k.kurs < a.kurs ? k : a));
+  const teuerster = gez.reduce((a, k) => (k.kurs > a.kurs ? k : a));
+  const hatKurs = typeof aktuellerKurs === "number" && Number.isFinite(aktuellerKurs);
+  const wert = hatKurs ? btc * aktuellerKurs : null;
+  const einmalWert = hatKurs ? einmalBtc * aktuellerKurs : null;
+  return {
+    anzahl: gez.length,
+    tage: Math.max(1, Math.round((jetzt - erster.ts) / 86_400_000)),
+    investiert, btc, einmalBtc, wert, einmalWert,
+    vorteil: hatKurs ? wert - einmalWert : null,
+    vorteilSats: (btc - einmalBtc) * 1e8,
+    guenstigster, teuerster, erster,
+  };
+}

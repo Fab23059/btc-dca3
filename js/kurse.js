@@ -22,6 +22,8 @@ const CG = "https://api.coingecko.com/api/v3";
 
 const kursOk = (n) => typeof n === "number" && Number.isFinite(n) && n >= GRENZEN.kursMin && n <= GRENZEN.kursMax;
 const zahlOk = (n) => typeof n === "number" && Number.isFinite(n);
+const positiv = (n) => (zahlOk(n) && n > 0 ? n : null);
+const umlaufOk = (n) => (zahlOk(n) && n > 18_000_000 && n <= 21_000_000 ? n : null);
 
 /** Holt JSON – nur von erlaubten Servern, mit Zeitgrenze, ohne Cookies und ohne Herkunftsangabe. */
 async function holeJson(adresse) {
@@ -103,23 +105,32 @@ export async function holeAktuell() {
     ["CryptoCompare", async () => {
       const d = (await holeJson(`${CC}/pricemultifull?fsyms=BTC&tsyms=EUR`))?.RAW?.BTC?.EUR;
       if (!d || !kursOk(d.PRICE)) return null;
-      return { kurs: d.PRICE, aenderung24h: zahlOk(d.CHANGEPCT24HOUR) ? d.CHANGEPCT24HOUR : null, hoch24h: kursOk(d.HIGH24HOUR) ? d.HIGH24HOUR : null, tief24h: kursOk(d.LOW24HOUR) ? d.LOW24HOUR : null };
+      return {
+        kurs: d.PRICE, aenderung24h: zahlOk(d.CHANGEPCT24HOUR) ? d.CHANGEPCT24HOUR : null,
+        hoch24h: kursOk(d.HIGH24HOUR) ? d.HIGH24HOUR : null, tief24h: kursOk(d.LOW24HOUR) ? d.LOW24HOUR : null,
+        marktwert: positiv(d.MKTCAP), volumen24h: positiv(d.TOTALVOLUME24HTO) ?? positiv(d.VOLUME24HOURTO), umlauf: umlaufOk(d.CIRCULATINGSUPPLY) ?? umlaufOk(d.SUPPLY),
+      };
     }],
     ["Coinbase", async () => {
       const [t, s] = await Promise.all([holeJson(`${CB}/ticker`), holeJson(`${CB}/stats`).catch(() => null)]);
       const kurs = Number(t?.price);
       if (!kursOk(kurs)) return null;
       const offen = Number(s?.open);
-      return { kurs, aenderung24h: kursOk(offen) ? (kurs / offen - 1) * 100 : null, hoch24h: kursOk(Number(s?.high)) ? Number(s.high) : null, tief24h: kursOk(Number(s?.low)) ? Number(s.low) : null };
+      return { kurs, aenderung24h: kursOk(offen) ? (kurs / offen - 1) * 100 : null, hoch24h: kursOk(Number(s?.high)) ? Number(s.high) : null, tief24h: kursOk(Number(s?.low)) ? Number(s.low) : null, volumen24h: positiv(Number(s?.volume) * kurs) };
     }],
     ["CoinGecko", async () => {
       const d = (await holeJson(`${CG}/coins/markets?vs_currency=eur&ids=bitcoin&price_change_percentage=24h`))?.[0];
       if (!d || !kursOk(d.current_price)) return null;
-      return { kurs: d.current_price, aenderung24h: zahlOk(d.price_change_percentage_24h) ? d.price_change_percentage_24h : null, hoch24h: kursOk(d.high_24h) ? d.high_24h : null, tief24h: kursOk(d.low_24h) ? d.low_24h : null };
+      if (kursOk(d.ath)) merkeAllzeithoch(d.ath, typeof d.ath_date === "string" ? d.ath_date.slice(0, 10) : null);
+      return { kurs: d.current_price, aenderung24h: zahlOk(d.price_change_percentage_24h) ? d.price_change_percentage_24h : null, hoch24h: kursOk(d.high_24h) ? d.high_24h : null, tief24h: kursOk(d.low_24h) ? d.low_24h : null, marktwert: positiv(d.market_cap), volumen24h: positiv(d.total_volume), umlauf: umlaufOk(d.circulating_supply) };
     }],
   ]);
   const ergebnis = { ...r, zeit: Date.now() };
+  // Fehlende Marktdaten (andere Quelle) aus dem letzten Stand ergänzen
+  const vorher = letzterBekannterKurs();
+  for (const k of ["marktwert", "volumen24h", "umlauf"]) if (ergebnis[k] == null && vorher?.[k] != null) ergebnis[k] = vorher[k];
   schreibe(SCHLUESSEL.letzterKurs, ergebnis);
+  if (ergebnis.hoch24h) merkeAllzeithoch(ergebnis.hoch24h, null, { nurWennHoeher: true });
   return ergebnis;
 }
 
@@ -241,6 +252,7 @@ const MIN = 60_000;
 const STD = 3_600_000;
 
 export const REIHEN = Object.freeze({
+  stunde: { titel: "1S", ttl: 1 * MIN,  spanne: 3_600_000,        cc: ["histominute", 60, 1, 60],     cb: [60, 3600],         cg: null, alt: "1h" },
   tag:    { titel: "1T", ttl: 5 * MIN,  spanne: 86_400_000,       cc: ["histominute", 290, 5, 300],   cb: [300, 86_400],      cg: 1,    alt: "1d" },
   woche:  { titel: "1W", ttl: 30 * MIN, spanne: 7 * 86_400_000,   cc: ["histohour", 170, 1, 3600],    cb: [3600, 7 * 86_400], cg: 7,    alt: "1w" },
   monat:  { titel: "1M", ttl: 30 * MIN, spanne: 30 * 86_400_000,  cc: ["histohour", 744, 1, 3600],    cb: [21_600, 31 * 86_400], cg: 31, alt: "1m" },
@@ -347,10 +359,65 @@ export async function holeTagesreihe(seitTs, { erzwingen = false } = {}) {
 // ---------------------------------------------------------------------
 
 export async function holeStimmung() {
-  const j = await holeJson("https://api.alternative.me/fng/?limit=1");
-  const wert = Number.parseInt(j?.data?.[0]?.value, 10);
-  if (!Number.isInteger(wert) || wert < 0 || wert > 100) throw new Error("Stimmung: ungültig");
-  return { wert, zeit: Date.now() };
+  const j = await holeJson("https://api.alternative.me/fng/?limit=8");
+  const werte = (Array.isArray(j?.data) ? j.data : []).map((d) => Number.parseInt(d?.value, 10));
+  const ok = (w) => Number.isInteger(w) && w >= 0 && w <= 100;
+  const wert = werte[0];
+  if (!ok(wert)) throw new Error("Stimmung: ungültig");
+  return { wert, gestern: ok(werte[1]) ? werte[1] : null, woche: ok(werte[7]) ? werte[7] : null, zeit: Date.now() };
+}
+
+// ---------------------------------------------------------------------
+// Allzeithoch (in Euro): aus den Tageshochs der letzten ~5 Jahre,
+// laufend nachgeführt, sobald ein neues 24-h-Hoch darüber liegt.
+// ---------------------------------------------------------------------
+
+export function ladeAllzeithoch() {
+  const a = ladeMarkt().ath;
+  return a && kursOk(a.wert) ? a : null;
+}
+
+function merkeAllzeithoch(wert, tag, { nurWennHoeher = false } = {}) {
+  const vorher = ladeAllzeithoch();
+  if (nurWennHoeher && (!vorher || wert <= vorher.wert)) return;
+  if (vorher && wert < vorher.wert && vorher.quelle !== "schaetzung") return;
+  speichereMarkt({ ath: { wert, tag: tag ?? new Date().toISOString().slice(0, 10), zeit: vorher?.zeit ?? Date.now(), quelle: vorher?.quelle ?? "laufend" } });
+}
+
+export async function holeAllzeithoch() {
+  const vorher = ladeAllzeithoch();
+  if (vorher && vorher.quelle === "tageshochs" && Date.now() - vorher.zeit < 12 * STD) return vorher;
+  const j = await holeJson(`${CC}/v2/histoday?fsym=BTC&tsym=EUR&limit=2000`);
+  if (j?.Response !== "Success" || !Array.isArray(j?.Data?.Data)) throw new Error("Allzeithoch: keine Daten");
+  let best = null;
+  for (const d of j.Data.Data) if (zahlOk(d.time) && kursOk(d.high) && (!best || d.high > best.high)) best = d;
+  if (!best) throw new Error("Allzeithoch: leer");
+  const a = { wert: Math.max(best.high, vorher?.wert ?? 0), tag: vorher && vorher.wert > best.high ? vorher.tag : utcTag(best.time * 1000), zeit: Date.now(), quelle: "tageshochs" };
+  speichereMarkt({ ath: a });
+  return a;
+}
+
+// ---------------------------------------------------------------------
+// Nachrichten (Schlagzeilen, englisch) – nur Text und Verweis, nie HTML
+// ---------------------------------------------------------------------
+
+export async function holeNachrichten() {
+  const vorher = ladeMarkt().nachrichten;
+  if (vorher && Date.now() - vorher.zeit < 30 * MIN && vorher.liste?.length) return vorher;
+  const j = await holeJson(`${CC}/v2/news/?lang=EN&categories=BTC`);
+  const liste = (Array.isArray(j?.Data) ? j.Data : [])
+    .map((n) => ({
+      titel: typeof n?.title === "string" ? n.title.replace(/\s+/g, " ").trim().slice(0, 180) : "",
+      adresse: typeof n?.url === "string" ? n.url : "",
+      quelle: typeof n?.source_info?.name === "string" ? n.source_info.name.slice(0, 40) : typeof n?.source === "string" ? n.source.slice(0, 40) : "",
+      zeit: zahlOk(n?.published_on) ? n.published_on * 1000 : null,
+    }))
+    .filter((n) => n.titel && /^https:\/\/[^\s]+$/.test(n.adresse))
+    .slice(0, 8);
+  if (!liste.length) throw new Error("Nachrichten: leer");
+  const r = { liste, zeit: Date.now() };
+  speichereMarkt({ nachrichten: r });
+  return r;
 }
 
 export async function holeBlockhoehe() {

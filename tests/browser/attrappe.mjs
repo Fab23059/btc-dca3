@@ -60,7 +60,11 @@ export function antwort(v, jetztMs, adresse, { ausfall = [] } = {}) {
     const c = kurs(v, jetzt);
     if (u.pathname === "/data/pricemultifull") {
       const vor = kurs(v, jetzt - 86400);
-      return [200, { RAW: { BTC: { EUR: { PRICE: runde(c), CHANGEPCT24HOUR: (c / vor - 1) * 100, HIGH24HOUR: runde(Math.max(c, vor) * 1.01), LOW24HOUR: runde(Math.min(c, vor) * 0.99), LASTUPDATE: jetzt } } } }];
+      return [200, { RAW: { BTC: { EUR: { PRICE: runde(c), CHANGEPCT24HOUR: (c / vor - 1) * 100, HIGH24HOUR: runde(Math.max(c, vor) * 1.01), LOW24HOUR: runde(Math.min(c, vor) * 0.99), LASTUPDATE: jetzt, MKTCAP: c * 19_962_000, CIRCULATINGSUPPLY: 19_962_000, TOTALVOLUME24HTO: c * 412_000 } } } }];
+    }
+    if (u.pathname === "/data/v2/news/") {
+      const titel = ["Bitcoin holds steady as long-term holders keep accumulating", "Miners prepare for the next difficulty adjustment", "Spot ETF inflows continue for a third week", "Lightning Network capacity reaches a new high", "Analysts: volatility at multi-month low", "Exchange reserves fall to lowest level since 2018"];
+      return [200, { Type: 100, Data: titel.map((t, i) => ({ id: String(i), title: t, url: `https://example.org/news/${i}`, published_on: jetzt - (i + 1) * 5400, source: "beispiel", source_info: { name: ["CoinDesk", "Decrypt", "The Block", "Bitcoin Magazine", "Cointelegraph", "CryptoSlate"][i] } })) }];
     }
     if (u.pathname === "/data/price") return [200, { EUR: runde(c) }];
     const m = u.pathname.match(/^\/data\/v2\/histo(minute|hour|day)$/);
@@ -85,7 +89,7 @@ export function antwort(v, jetztMs, adresse, { ausfall = [] } = {}) {
   }
 
   if (u.hostname === "api.coingecko.com") return [429, { status: { error_code: 429, error_message: "Rate limit" } }];
-  if (u.hostname === "api.alternative.me") return [200, { data: [{ value: "38", value_classification: "Fear", timestamp: String(jetzt) }] }];
+  if (u.hostname === "api.alternative.me") return [200, { data: [38, 41, 45, 52, 49, 55, 61, 58].map((w, i) => ({ value: String(w), value_classification: "Fear", timestamp: String(jetzt - i * 86400) })) }];
   if (u.hostname === "mempool.space") {
     const m = u.pathname.match(/\/api\/v1\/mining\/blocks\/timestamp\/(\d+)/);
     if (m) return [200, { height: 973412 - Math.round((jetzt - Number(m[1])) / 600), hash: "0".repeat(64), timestamp: Number(m[1]) }];

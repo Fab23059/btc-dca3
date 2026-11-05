@@ -72,8 +72,6 @@ export function abgleichMitAlterApp({ aktiv = true } = {}) {
     // Einmalig: Kursdaten der alten App als Startpolster übernehmen (nur in eigene Schlüssel).
     const tage = liesAlteTageskurse();
     if (Object.keys(tage).length) schreibe(SCHLUESSEL.tageskurse, { zeit: 0, kurse: { ...tage, ...(lies(SCHLUESSEL.tageskurse, {})?.kurse ?? {}) } });
-    const montage = liesAlteMontagskurse();
-    if (Object.keys(montage).length) schreibe(SCHLUESSEL.altkurse, montage);
     const gefeiert = liesAlteGefeiert();
     if (gefeiert.length && !lies(SCHLUESSEL.gefeiert)) schreibe(SCHLUESSEL.gefeiert, gefeiert);
     for (const [name, r] of Object.entries(liesAlteReihen())) {
@@ -81,6 +79,10 @@ export function abgleichMitAlterApp({ aktiv = true } = {}) {
       if (!lies(reiheSchluessel("alt_" + name))) schreibe(reiheSchluessel("alt_" + name), { zeit: 0, punkte: r.punkte });
     }
   }
+
+  // Montagskurse der alten App bei jedem Start nachziehen: Dort automatisch erfasste
+  // Käufe (ohne Eintrag) rechnen hier mit genau dem Kurs, den die alte App kannte.
+  merkeAlteMontagskurse(liesAlteMontagskurse());
 
   if (!aktiv && status.migriert) return bericht;
 
@@ -112,6 +114,15 @@ export function abgleichMitAlterApp({ aktiv = true } = {}) {
 
   if (!status.migriert) setzeStatus({ migriert: Date.now() });
   return bericht;
+}
+
+/** Montagskurse der alten App in den eigenen Speicher übernehmen (vorhandene bleiben). */
+export function merkeAlteMontagskurse(montage) {
+  if (!montage || !Object.keys(montage).length) return 0;
+  const vorh = lies(SCHLUESSEL.altkurse, {}) || {};
+  const neu = Object.keys(montage).filter((m) => vorh[m] == null);
+  if (neu.length) schreibe(SCHLUESSEL.altkurse, { ...montage, ...vorh });
+  return neu.length;
 }
 
 /** Für eine Abweichung: den Wert der alten App übernehmen (auf ausdrücklichen Wunsch). */
@@ -146,10 +157,10 @@ export function leseSicherungsdatei(text) {
   try { obj = JSON.parse(text); } catch { throw new Error("Die Datei ist keine gültige Sicherung (kein JSON)."); }
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("Die Datei ist keine gültige Sicherung.");
 
-  let rohEintraege; let art; let tageRoh;
+  let rohEintraege; let art; let tageRoh; let montagRoh;
   const alt = altesSicherungsformat(obj);
-  if (obj.format === "btc-sparplan") { rohEintraege = obj.eintraege; tageRoh = obj.tageskurse; art = "neu"; }
-  else if (alt) { rohEintraege = alt.eintraege; tageRoh = alt.tageskurse; art = "alt"; }
+  if (obj.format === "btc-sparplan") { rohEintraege = obj.eintraege; tageRoh = obj.tageskurse; montagRoh = obj.altkurse; art = "neu"; }
+  else if (alt) { rohEintraege = alt.eintraege; tageRoh = alt.tageskurse; montagRoh = alt.montagskurse; art = "alt"; }
   else throw new Error("In der Datei wurden keine Käufe gefunden.");
 
   const { gueltig, fehler } = pruefeEintraege(rohEintraege ?? {});
@@ -168,7 +179,14 @@ export function leseSicherungsdatei(text) {
       if (/^\d{4}-\d{2}-\d{2}$/.test(tag) && typeof k === "number" && Number.isFinite(k) && k >= 100 && k <= 50_000_000) tage[tag] = k;
     }
   }
-  return { art, gueltig, fehler, neu, gleich, abweichend, tage, exportiert: typeof obj.exportiert === "string" ? obj.exportiert.slice(0, 40) : null };
+  // Montagskurse der alten App (Käufe, die sie automatisch erfasst hat)
+  const montagskurse = {};
+  if (montagRoh && typeof montagRoh === "object") {
+    for (const [tag, k] of Object.entries(montagRoh)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(tag) && typeof k === "number" && Number.isFinite(k) && k >= 100 && k <= 50_000_000) montagskurse[tag] = k;
+    }
+  }
+  return { art, gueltig, fehler, neu, gleich, abweichend, tage, montagskurse, exportiert: typeof obj.exportiert === "string" ? obj.exportiert.slice(0, 40) : null };
 }
 
 /** Übernimmt eine gelesene Sicherung. Abweichende Einträge nur, wenn ausdrücklich gewünscht. */
@@ -181,5 +199,6 @@ export function uebernimmSicherung(vorschau, { abweichendeUeberschreiben = false
     const vorh = lies(SCHLUESSEL.tageskurse, {}) || {};
     schreibe(SCHLUESSEL.tageskurse, { zeit: vorh.zeit ?? 0, kurse: { ...vorschau.tage, ...(vorh.kurse ?? {}) } });
   }
+  merkeAlteMontagskurse(vorschau.montagskurse ?? {});
   return montage.length;
 }

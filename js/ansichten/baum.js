@@ -157,7 +157,7 @@ export function oeffneBaum(app, herkunft) {
   const zeigeInfo = (i) => {
     const k = gez()[i];
     if (i == null || !k) { info.textContent = `${anzahl(n(), "Ring", "Ringe")} · Fahr über die Zeitleiste oder den Stamm.`; return; }
-    fuelle(info, h("strong", null, `Kauf ${k.nr} · ${datumLang(k.kaufdatum)}`), h("span", null, ` · ${sats(k.btc * 1e8)} sats für ${euro(k.brutto, 0)}${k.status === "geschaetzt" ? " · geschätzt" : ""}`));
+    fuelle(info, h("strong", null, `Kauf ${k.nr} · ${datumLang(k.kaufdatum)}`), h("span", null, ` · ${sats(k.btc * 1e8)} sats für ${euro(k.brutto, 0)}${k.status === "geschaetzt" ? " · noch nicht eingetragen" : k.status === "automatisch" ? " · automatisch erfasst" : ""}`));
   };
   zeigeInfo(null);
 

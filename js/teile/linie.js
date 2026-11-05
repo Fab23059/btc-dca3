@@ -8,7 +8,9 @@
 //   B3  Zeitreise: Der Finger fährt über die Linie, der Moment wird
 //       gemeldet (alle Zahlen rollen dorthin), die Zukunft rechts davon
 //       verblasst. Loslassen: Die Zeit gleitet zurück ins Jetzt.
-//   B8  Beim ersten Mal zieht sich die Linie von links nach rechts.
+//   B8  Bei jedem Zeitraumwechsel fährt ein Komet die Linie von links
+//       nach rechts ab: Schweif, Funken, die Käufe zünden im Vorbeiflug,
+//       im Jetzt läuft eine Lichtwelle aus.
 //   R6  Licht aus Bewegung: Der Zeiger leuchtet stärker, je schneller
 //       der Finger ist.
 //
@@ -42,7 +44,7 @@ export function naechsterPunkt(punkte, t) {
   return Math.abs(punkte[hi].t - t) < Math.abs(t - punkte[lo].t) ? hi : lo;
 }
 
-export function linie(behaelter, { beimScrubben = () => {} } = {}) {
+export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {} } = {}) {
   const leinwand = h("canvas", { class: "linie-leinwand", role: "img", "aria-label": "Verlauf: Wert deines Depots über deinen Einzahlungen" });
   const kopf = h("span", { class: "linie-kopf", "aria-hidden": "true" });
   const achseL = h("span", { class: "linie-achse linie-achse--links" });
@@ -57,9 +59,15 @@ export function linie(behaelter, { beimScrubben = () => {} } = {}) {
   let scrub = null;                                 // Spalte (Kommazahl) oder null
   let glanz = 0;                                    // Leuchtkraft des Zeigers
   let leer = true;
+  let marken = [];                                  // Käufe auf der Linie: { spalte, zuend }
+  let treppe = true;                                // Treppe der Einzahlungen zeigen?
+  const funken = [];                                // Funken, die der Komet verliert
+  let bildZeit = 0; let letzterKopf = -1;
+  let blitzWert = 0;                                // Aufblitzen bei der Ankunft im Jetzt
 
   const morph = new Feder(1, { art: "raum", genau: 0.001, beiWert: () => malen() });
-  const aufzug = new Feder(1, { antwort: 1.1, daempfung: 1, genau: 0.001, beiWert: () => malen() });
+  const aufzug = new Feder(1, { antwort: 1.25, daempfung: 1, genau: 0.001, beiWert: () => malen() });
+  const blitz = new Feder(0, { antwort: 1.1, daempfung: 1, genau: 0.002, beiWert: (x) => { blitzWert = x; malen(); } });
   const zeiger = new Feder(0, { art: "zeiger", genau: 0.05, beiWert: (x) => { scrub = x; melde(); malen(); } });
   const licht = new Feder(0, { art: "ruhig", genau: 0.002, beiWert: (x) => { glanz = x; malen(); } });
 
@@ -90,6 +98,8 @@ export function linie(behaelter, { beimScrubben = () => {} } = {}) {
     max += rand * 0.6;
     const y = (v) => OBEN + (1 - (v - min) / (max - min || 1)) * (H - OBEN - UNTEN);
     for (let i = 0; i < N; i++) { ys[i] = y(werte[i]); inv[i] = y(einz[i]); }
+    const kaeufe = daten.filter((p) => p.kauf);
+    marken = kaeufe.length <= 120 ? kaeufe.map((p) => ({ spalte: Math.round(((p.t - a) / (b - a || 1)) * (N - 1)), zuend: -1 })) : [];
     return { ys, inv, a, b };
   }
 
@@ -115,58 +125,137 @@ export function linie(behaelter, { beimScrubben = () => {} } = {}) {
     if (!B || leer) return;
     const d = aktuell();
     if (!d) return;
+    const jetzt = performance.now();
+    const dt = bildZeit ? Math.min(0.05, (jetzt - bildZeit) / 1000) : 0;
+    bildZeit = jetzt;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, B, H);
+    const faehrt = aufzug.wert < 0.999;
     const bis = Math.max(1, Math.round(aufzug.wert * (N - 1)));
     const s = scrub == null ? null : klemme(Math.round(scrub), 0, N - 1);
+    const ende = s ?? bis;
 
-    // Fläche unter der Linie: ein Hauch Glut, der nach unten verlischt
+    // Fläche unter der Linie: Glut, die nach unten verlischt
     const g = ctx.createLinearGradient(0, OBEN, 0, H);
-    g.addColorStop(0, `rgba(${GLUT}, 0.13)`); g.addColorStop(1, `rgba(${GLUT}, 0)`);
+    g.addColorStop(0, `rgba(${GLUT}, 0.26)`); g.addColorStop(0.55, `rgba(${GLUT}, 0.07)`); g.addColorStop(1, `rgba(${GLUT}, 0)`);
     ctx.beginPath(); ctx.moveTo(x(0), H);
-    for (let i = 0; i <= bis; i++) ctx.lineTo(x(i), d.ys[i]);
-    ctx.lineTo(x(bis), H); ctx.closePath();
+    for (let i = 0; i <= ende; i++) ctx.lineTo(x(i), d.ys[i]);
+    ctx.lineTo(x(ende), H); ctx.closePath();
     ctx.fillStyle = g; ctx.fill();
 
     // Treppe der Einzahlungen
-    ctx.beginPath();
-    for (let i = 0; i <= bis; i++) (i ? ctx.lineTo(x(i), d.inv[i]) : ctx.moveTo(x(i), d.inv[i]));
-    ctx.strokeStyle = "rgba(242, 237, 230, 0.24)"; ctx.lineWidth = 1; ctx.lineJoin = "miter"; ctx.stroke();
+    if (treppe) {
+      ctx.beginPath();
+      for (let i = 0; i <= bis; i++) (i ? ctx.lineTo(x(i), d.inv[i]) : ctx.moveTo(x(i), d.inv[i]));
+      ctx.strokeStyle = "rgba(242, 237, 230, 0.26)"; ctx.lineWidth = 1; ctx.lineJoin = "miter"; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+    }
 
-    // Die Linie – bei der Zeitreise verblasst die "Zukunft" rechts vom Finger
+    // Die Linie: breiter Schein darunter, heller Kern darüber.
+    // Bei der Zeitreise verblasst die "Zukunft" rechts vom Finger.
+    const pfad = (von, b2) => { ctx.beginPath(); ctx.moveTo(x(von), d.ys[von]); for (let i = von + 1; i <= b2; i++) ctx.lineTo(x(i), d.ys[i]); };
+    const kern = ctx.createLinearGradient(0, 0, B, 0);
+    kern.addColorStop(0, `rgba(${GLUT}, 0.75)`); kern.addColorStop(0.7, `rgb(${GLUT})`); kern.addColorStop(1, "#FFC98F");
     const strich = (von, b2, alpha, schein) => {
       if (b2 <= von) return;
-      ctx.beginPath(); ctx.moveTo(x(von), d.ys[von]);
-      for (let i = von + 1; i <= b2; i++) ctx.lineTo(x(i), d.ys[i]);
-      ctx.strokeStyle = `rgba(${GLUT}, ${alpha})`; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
-      ctx.shadowColor = `rgba(${GLUT}, ${schein})`; ctx.shadowBlur = schein ? 12 : 0;
-      ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      if (schein) {
+        pfad(von, b2);
+        ctx.strokeStyle = `rgba(${GLUT}, ${0.2 * schein})`; ctx.lineWidth = 7;
+        ctx.shadowColor = `rgba(${GLUT}, ${0.9 * schein})`; ctx.shadowBlur = 22;
+        ctx.stroke(); ctx.shadowBlur = 0;
+      }
+      pfad(von, b2);
+      ctx.globalAlpha = alpha; ctx.strokeStyle = kern; ctx.lineWidth = 2.2;
+      ctx.stroke(); ctx.globalAlpha = 1;
     };
-    if (s == null) strich(0, bis, 1, 0.45);
-    else { strich(0, s, 1, 0.5); strich(s, bis, 0.28, 0); }
+    const energie = 0.75 + 0.25 * glanz + 0.6 * (1 - blitzWert) * (blitzWert > 0 ? 1 : 0);
+    if (s == null) strich(0, bis, 1, Math.min(1.4, energie));
+    else { strich(0, s, 1, 1 + 0.4 * glanz); strich(s, bis, 0.22, 0); }
 
-    // Komet beim Aufziehen
-    if (aufzug.wert < 1) punkt(x(bis), d.ys[bis], 3.5, 0.9);
+    // Käufe als Punkte auf der Linie – sie zünden, wenn der Komet vorbeizieht
+    for (const m of marken) {
+      if (m.spalte > bis || m.spalte < 0 || m.spalte >= N) continue;
+      if (m.zuend < 0) m.zuend = faehrt ? jetzt : jetzt - 2000;
+      const alter = (jetzt - m.zuend) / 1000;
+      const pop = alter < 0.6 ? 1 + 1.6 * Math.exp(-alter * 7) * Math.sin(Math.min(Math.PI, alter * 9)) : 1;
+      const zukunft = s != null && m.spalte > s;
+      const py = d.ys[m.spalte];
+      if (alter < 0.6) {
+        const halo = ctx.createRadialGradient(x(m.spalte), py, 0, x(m.spalte), py, 14);
+        halo.addColorStop(0, `rgba(${GLUT}, ${0.6 * (1 - alter / 0.6)})`); halo.addColorStop(1, `rgba(${GLUT}, 0)`);
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x(m.spalte), py, 14, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = zukunft ? "rgba(255, 227, 196, 0.25)" : "rgba(255, 233, 210, 0.92)";
+      ctx.beginPath(); ctx.arc(x(m.spalte), py, 1.9 * pop, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Komet beim Aufziehen: langer Schweif, heller Kopf, Funken
+    if (faehrt) {
+      const schweif = Math.min(bis, 110);
+      const kx = x(bis); const ky = d.ys[bis];
+      const sg = ctx.createLinearGradient(x(bis - schweif), 0, kx, 0);
+      sg.addColorStop(0, "rgba(255, 200, 140, 0)"); sg.addColorStop(1, "rgba(255, 236, 214, 0.95)");
+      pfad(bis - schweif, bis);
+      ctx.strokeStyle = sg; ctx.lineWidth = 3.6; ctx.shadowColor = `rgba(${GLUT}, 1)`; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+      punkt(kx, ky, 4.5, 1.1);
+      if (letzterKopf >= 0 && bis > letzterKopf && !wenigBewegung()) {
+        const n = Math.min(5, 1 + Math.round((bis - letzterKopf) / 5));
+        for (let i = 0; i < n; i++) {
+          funken.push({ x: kx, y: ky, vx: -20 - Math.random() * 90, vy: -70 + Math.random() * 90, leben: 0.35 + Math.random() * 0.6, alt: 0, r: 0.7 + Math.random() * 1.3 });
+        }
+      }
+      letzterKopf = bis;
+    } else letzterKopf = -1;
+
+    // Funken: fliegen, fallen leicht, verglühen
+    if (funken.length) {
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = funken.length - 1; i >= 0; i--) {
+        const f = funken[i];
+        f.alt += dt; f.vy += 140 * dt; f.vx *= 0.97; f.x += f.vx * dt; f.y += f.vy * dt;
+        const rest = 1 - f.alt / f.leben;
+        if (rest <= 0) { funken.splice(i, 1); continue; }
+        ctx.fillStyle = `rgba(255, ${Math.round(150 + 80 * rest)}, ${Math.round(70 + 90 * rest)}, ${(0.9 * rest).toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.6 + rest * 0.6), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    // Ankunft im Jetzt: eine Lichtwelle läuft vom Endpunkt aus
+    if (blitzWert > 0 && blitzWert < 1) {
+      const ex = x(N - 1); const ey = d.ys[N - 1];
+      const r = 6 + 54 * blitzWert;
+      ctx.strokeStyle = `rgba(255, 214, 170, ${(0.85 * (1 - blitzWert)).toFixed(3)})`; ctx.lineWidth = 2 * (1 - blitzWert) + 0.5;
+      ctx.beginPath(); ctx.arc(ex, ey, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(${GLUT}, ${(0.5 * (1 - blitzWert)).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(ex, ey, r * 0.55, 0, Math.PI * 2); ctx.stroke();
+      punkt(ex, ey, 3 + 4 * (1 - blitzWert), 1.4 * (1 - blitzWert));
+    }
 
     // Zeiger der Zeitreise
     if (s != null) {
       const xs = x(s);
       const lg = ctx.createLinearGradient(0, 0, 0, H);
-      lg.addColorStop(0, `rgba(${GLUT}, 0)`); lg.addColorStop(0.5, `rgba(${GLUT}, ${0.35 + 0.4 * glanz})`); lg.addColorStop(1, `rgba(${GLUT}, 0)`);
-      ctx.fillStyle = lg; ctx.fillRect(xs - 0.5, 0, 1, H);
-      punkt(xs, d.ys[s], 4.5, 0.55 + 0.45 * glanz);
+      lg.addColorStop(0, `rgba(${GLUT}, 0)`); lg.addColorStop(0.5, `rgba(${GLUT}, ${0.45 + 0.45 * glanz})`); lg.addColorStop(1, `rgba(${GLUT}, 0)`);
+      ctx.fillStyle = lg; ctx.fillRect(xs - 0.75, 0, 1.5, H);
+      punkt(xs, d.ys[s], 5, 0.7 + 0.5 * glanz);
     }
     // Lage des "Jetzt"-Punkts (der atmende Punkt ist ein eigenes Element)
-    const ende = d.ys[N - 1];
-    kopf.style.transform = `translate3d(${x(N - 1).toFixed(1)}px, ${ende.toFixed(1)}px, 0)`;
-    kopf.classList.toggle("ist-sichtbar", aufzug.wert >= 1 && s == null);
+    const endeY = d.ys[N - 1];
+    kopf.style.transform = `translate3d(${x(N - 1).toFixed(1)}px, ${endeY.toFixed(1)}px, 0)`;
+    kopf.classList.toggle("ist-sichtbar", !faehrt && s == null);
+
+    // Solange etwas glüht oder fliegt: weiterzeichnen
+    const glueht = marken.some((m) => m.zuend >= 0 && jetzt - m.zuend < 650);
+    if (funken.length || glueht) malen();
+    else bildZeit = 0;
   }
 
   function punkt(px, py, r, staerke) {
-    const halo = ctx.createRadialGradient(px, py, 0, px, py, r * 5);
-    halo.addColorStop(0, `rgba(${GLUT}, ${0.55 * staerke})`); halo.addColorStop(1, `rgba(${GLUT}, 0)`);
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px, py, r * 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#FFE3C4"; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+    const halo = ctx.createRadialGradient(px, py, 0, px, py, r * 6);
+    halo.addColorStop(0, `rgba(${GLUT}, ${Math.min(1, 0.6 * staerke)})`); halo.addColorStop(1, `rgba(${GLUT}, 0)`);
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px, py, r * 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#FFEBD6"; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
   }
 
   // ---- Zeitreise ----
@@ -214,8 +303,9 @@ export function linie(behaelter, { beimScrubben = () => {} } = {}) {
 
   return {
     /** Neue Daten zeigen. fliessen: Linie fließt von der alten Form; aufziehen: von links einzeichnen. */
-    zeige(daten, { fliessen = true, aufziehen = false } = {}) {
+    zeige(daten, { fliessen = true, aufziehen = false, mitTreppe = true } = {}) {
       if (!B) mass();
+      treppe = mitTreppe;
       leer = !daten || daten.length < 2;
       behaelter.classList.toggle("ist-leer", leer);
       if (leer) { ctx.clearRect(0, 0, leinwand.width, leinwand.height); kopf.classList.remove("ist-sichtbar"); return; }
@@ -226,7 +316,17 @@ export function linie(behaelter, { beimScrubben = () => {} } = {}) {
         alt = { ys: Float32Array.from(vorher.ys), inv: Float32Array.from(vorher.inv) };
         morph.springe(0); morph.zu(1);
       } else { alt = null; morph.springe(1); }
-      if (aufziehen && !wenigBewegung()) { aufzug.springe(0); aufzug.zu(1); } else malen();
+      if (aufziehen && !wenigBewegung()) {
+        for (const m of marken) m.zuend = -1;
+        funken.length = 0;
+        aufzug.springe(0);
+        blitz.springe(0);
+        aufzug.zu(1).then(() => {
+          if (aufzug.wert < 0.999) return;            // unterbrochen (neuer Lauf)
+          blitz.springe(0); blitz.zu(1).then(() => { blitzWert = 0; malen(); });
+          beiAnkunft();
+        });
+      } else malen();
     },
     achsen(links, rechts) { achseL.textContent = links; achseR.textContent = rechts; },
     get scrubbt() { return scrub != null; },

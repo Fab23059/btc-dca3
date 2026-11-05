@@ -57,7 +57,7 @@ const phase = (m) => (m <= "2026-06-29" ? { h: 8, min: 40, fee: 0.004 } : { h: 2
 const kaufTs = (m) => berlinZeitpunkt(m, phase(m).h, phase(m).min);
 
 // Eingetragene Käufe wie in der alten App: Binance mit Menge+Kurs, Bitvavo meist nur Menge.
-// Zwei Wochen absichtlich ohne Eintrag (geschätzt), dazu die letzten beiden (26.10. und 2.11.).
+// Zwei Wochen absichtlich ohne Eintrag (automatisch erfasst), dazu die letzten beiden (26.10. und 2.11.).
 const overrides = {};
 for (const m of montage) {
   if (["2026-08-17", "2026-09-28", "2026-10-26", "2026-11-02"].includes(m)) continue;
@@ -175,10 +175,15 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
     z.nachZeitreise = await p.evaluate(() => document.querySelector(".held-label").textContent);
 
     // Fenster: Käufe, Baum, Zahlen
-    await zeigeKachel(p, 0); await kachel(p, 0).click(); await p.waitForTimeout(1300);
+    await zeigeKachel(p, 0); await kachel(p, 0).click(); await p.waitForTimeout(3200);
+    await p.screenshot({ path: join(AUS, "neu-bitcoin.png") });
+    z.bitcoinFenster = await p.evaluate(() => [...document.querySelectorAll(".fenster-markt .zahl-abschnitt")].map((a) => a.textContent.replace(/\s+/g, " ").trim().slice(0, 120)));
+    await schliessen(p);
+    await zeigeKachel(p, 1); await kachel(p, 1).click(); await p.waitForTimeout(1300);
     await p.screenshot({ path: join(AUS, "neu-kaeufe.png") });
-    // Eintragen aus einer Zeile heraus
-    await p.locator(".fenster .kauf-zeile", { hasText: "geschätzt" }).nth(1).click(); await p.waitForTimeout(1200);
+    z.statusJuni = await p.evaluate(() => ["2026-06-08", "2026-06-15", "2026-08-17", "2026-10-26", "2026-11-02"].map((m) => `${m}: ${document.querySelector(`.fenster .kauf-zeile[data-montag="${m}"] .kz-status`)?.textContent ?? "–"}`));
+    // Eintragen aus einer Zeile heraus (26.10., automatisch erfasst)
+    await p.locator('.fenster .kauf-zeile[data-montag="2026-10-26"]').click(); await p.waitForTimeout(1200);
     await p.locator("#ein-btc").fill("24512"); await p.waitForTimeout(250);
     await p.screenshot({ path: join(AUS, "neu-eintragen-hilfe.png") });
     await p.locator("#ein-btc").fill("0,00024512"); await p.waitForTimeout(300);
@@ -189,10 +194,10 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
     z.altNachEintrag = await p.evaluate(() => localStorage.getItem("btcdca_overrides_v1"));
     z.zeileNachEintrag = await p.evaluate(() => document.querySelector('.fenster .kauf-zeile[data-montag="2026-10-26"]')?.textContent.replace(/\s+/g, " ").trim());
     await schliessen(p);
-    await zeigeKachel(p, 1); await kachel(p, 1).click(); await p.waitForTimeout(1400);
+    await zeigeKachel(p, 2); await kachel(p, 2).click(); await p.waitForTimeout(1400);
     await p.screenshot({ path: join(AUS, "neu-baum.png") });
     await schliessen(p);
-    await zeigeKachel(p, 2); await kachel(p, 2).click(); await p.waitForTimeout(1500);
+    await zeigeKachel(p, 3); await kachel(p, 3).click(); await p.waitForTimeout(1500);
     await p.screenshot({ path: join(AUS, "neu-zahlen.png") });
     for (const y of [700, 1400, 2100]) { await p.locator(".fenster-rolle").evaluate((s, yy) => s.scrollTo(0, yy), y); await p.waitForTimeout(500); await p.screenshot({ path: join(AUS, `neu-zahlen-${y}.png`) }); }
     z.zahlenFenster = await p.evaluate(() => [...document.querySelectorAll(".zahl-abschnitt")].map((a) => a.textContent.replace(/\s+/g, " ").trim().slice(0, 140)));
@@ -258,8 +263,8 @@ for (const [name, jetztMs] of [["2047", Date.UTC(2026, 10, 2, 19, 47)], ["2100",
   ergebnis.szenarien.schmal.ueberlauf = await ueberlauf();
   await p.locator("#heute").evaluate((s) => s.scrollTo(0, 99999)); await p.waitForTimeout(500);
   await p.screenshot({ path: join(AUS, "schmal-unten.png") });
-  await p.locator(".stapel .kachel").nth(0).click(); await p.waitForTimeout(1300);
-  await p.locator(".fenster .kauf-zeile", { hasText: "geschätzt" }).first().click(); await p.waitForTimeout(1300);
+  await p.locator(".stapel .kachel").nth(1).click(); await p.waitForTimeout(1300);
+  await p.locator('.fenster .kauf-zeile[data-montag="2026-11-02"]').click(); await p.waitForTimeout(1300);
   ergebnis.szenarien.schmal.ueberlaufEintragen = await ueberlauf();
   await p.screenshot({ path: join(AUS, "schmal-eintragen.png") });
   await ctx.close();

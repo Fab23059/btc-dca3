@@ -15,6 +15,7 @@ import { entfalte } from "./teile/fenster.js";
 import { toast } from "./teile/meldung.js";
 import { tick } from "./teile/haptik.js";
 import { kaufZeile, markiereFrisch } from "./ansichten/kaeufe.js";
+import { feiern } from "./teile/funken.js";
 import { setzeEintrag, loescheEintrag, ladeEintraege, speichereEintraege } from "./speicher.js";
 import { holeKursZumZeitpunkt } from "./kurse.js";
 import { SPARRATE_EUR, ZEITPLAN, GRENZEN } from "./konfig.js";
@@ -52,7 +53,7 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
   const heute = heuteBerlin();
   const eintraege = ladeEintraege();
   if (!montag) {
-    const offen = [...zustand.kaeufe].reverse().find((k) => k.status !== "eingetragen" && k.status !== "ausstehend");
+    const offen = [...zustand.kaeufe].reverse().find((k) => k.status === "geschaetzt" || k.status === "ohneKurs");
     montag = offen?.montag ?? zustand.kaeufe[zustand.kaeufe.length - 1]?.montag ?? ERSTER_MONTAG;
   }
   const urspruenglich = montag;
@@ -251,7 +252,9 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
       return;
     }
     tick(10);
-    // Der Knopf verwandelt sich in einen leuchtenden Haken, dann schließt sich das Sheet
+    // Der Knopf verwandelt sich in einen leuchtenden Haken, Funken sprühen, dann schließt sich das Sheet
+    const r = speichern.getBoundingClientRect();
+    feiern({ x: r.left + r.width / 2, y: r.top + r.height / 2, staerke: 0.35 });
     speichern.classList.add("ist-fertig");
     speichern.append(h("span", { class: "knopf-haken", "aria-hidden": "true" }, svg("svg", { viewBox: "0 0 24 24" }, svg("path", { d: "M5 12.5l4.5 4.5L19 7.5", pathLength: 1 }))));
     speichern.disabled = false; speichern.style.setProperty("pointer-events", "none");

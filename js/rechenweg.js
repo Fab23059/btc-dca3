@@ -35,10 +35,10 @@ function gegenprobeBlock() {
 export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
   const s = z.summe;
   const kurs = z.aktuell?.kurs;
-  const geschaetzt = s.geschaetzt.length;
   const gez = z.kaeufe.filter((k) => k.gezaehlt);
+  const geschaetzt = gez.filter((k) => k.status !== "eingetragen").length;   // automatisch erfasst (inkl. frisch, noch nicht eingetragen)
   const btcEin = gez.filter((k) => k.status === "eingetragen").reduce((a, k) => a + k.btc, 0);
-  const btcGes = gez.filter((k) => k.status === "geschaetzt").reduce((a, k) => a + k.btc, 0);
+  const btcGes = gez.filter((k) => k.status !== "eingetragen").reduce((a, k) => a + k.btc, 0);
   let titel; let inhalt;
 
   if (art === "wert") {
@@ -66,7 +66,7 @@ export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
     inhalt = [
       formel(fz("Käufe", ganzText(s.anzahl)), fz("× Sparrate", euro(15)), fz("= investiert", euro(s.investiert), "summe")),
       absatz("Gezählt wird brutto, also inklusive Gebühr: Pro Woche gehen 15\u00A0€ vom Konto ab. Die Gebühr steckt im Ø Kaufpreis."),
-      absatz(`Davon ${anzahl(s.eingetragen, "Kauf", "Käufe")} mit deinen eingetragenen Werten${geschaetzt ? ` und ${geschaetzt} geschätzt aus dem Marktkurs zur Kaufzeit` : ""}.`),
+      absatz(`Davon ${anzahl(s.eingetragen, "Kauf", "Käufe")} mit deinen eingetragenen Werten${geschaetzt ? ` und ${geschaetzt} automatisch erfasst (Marktkurs zur Kaufminute, wie in der alten App)` : ""}.`),
       s.ausstehend.length ? absatz("Ein ausstehender Kauf (Kaufzeit noch nicht erreicht) ist nicht enthalten.") : null,
     ];
   } else if (art === "bestand") {
@@ -74,10 +74,10 @@ export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
     inhalt = [
       formel(
         fz(`${anzahl(s.eingetragen, "Kauf", "Käufe")} eingetragen`, `${btcFmt(btcEin)} BTC`),
-        fz(`${anzahl(geschaetzt, "Kauf", "Käufe")} geschätzt`, `${btcFmt(btcGes)} BTC`),
+        fz(`${anzahl(geschaetzt, "Kauf", "Käufe")} automatisch`, `${btcFmt(btcGes)} BTC`),
         fz("= Bestand", `${btcFmt(s.btc)} BTC`, "summe"),
         fz("in Satoshi", `${sats(s.sats)} sats`)),
-      absatz("Geschätzte Menge = 15\u00A0€ × (1 − Gebühr) ÷ Marktkurs zur Kaufzeit. Binance: 0,40\u00A0% Gebühr, Bitvavo: 0,25\u00A0%."),
+      absatz("Automatische Menge = 15\u00A0€ × (1 − Gebühr) ÷ Marktkurs zur Kaufminute. Binance: 0,40\u00A0% Gebühr, Bitvavo: 0,25\u00A0%."),
       absatz("1 Bitcoin = 100.000.000 Satoshi (sats)."),
     ];
   } else if (art === "durchschnitt") {

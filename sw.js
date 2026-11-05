@@ -8,7 +8,7 @@
 // Bei jeder Änderung an den App-Dateien: VERSION um eins erhöhen.
 // =====================================================================
 
-const VERSION = 3;
+const VERSION = 4;
 const PRAEFIX = "dca3-app-";
 const CACHE = `${PRAEFIX}${VERSION}`;
 
@@ -19,8 +19,8 @@ const DATEIEN = [
   "js/abgleich.js", "js/rechnen.js", "js/kennzahlen.js", "js/kurse.js", "js/dom.js", "js/jahresringe.js",
   "js/zeitraeume.js", "js/eintragen.js", "js/rechenweg.js", "js/einstellungen.js", "js/benachrichtigung.js", "js/notfall.js",
   "js/bewegung/feder.js", "js/bewegung/geste.js", "js/bewegung/ziffern.js", "js/bewegung/nebel.js",
-  "js/teile/fenster.js", "js/teile/tablett.js", "js/teile/meldung.js", "js/teile/linie.js", "js/teile/ebenen.js", "js/teile/haptik.js",
-  "js/ansichten/gemeinsam.js", "js/ansichten/heute.js", "js/ansichten/kaeufe.js", "js/ansichten/baum.js", "js/ansichten/zahlen.js",
+  "js/teile/fenster.js", "js/teile/tablett.js", "js/teile/meldung.js", "js/teile/linie.js", "js/teile/kurslinie.js", "js/teile/funken.js", "js/teile/ebenen.js", "js/teile/haptik.js",
+  "js/ansichten/gemeinsam.js", "js/ansichten/heute.js", "js/ansichten/kaeufe.js", "js/ansichten/baum.js", "js/ansichten/zahlen.js", "js/ansichten/markt.js",
   "fonts/mona-sans.woff2",
   "icons/icon.svg", "icons/icon-192.png", "icons/abzeichen-96.png", "icons/koernung.png",
 ];

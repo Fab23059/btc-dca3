@@ -11,7 +11,7 @@
 
 import { h, svg, icon, fuelle } from "../dom.js";
 import { entfalte } from "../teile/fenster.js";
-import { btc as btcFmt, sats, euro, anzahl, datumMonatKurz, monatsname, wochentagKurz, uhrzeit, datumLang } from "../format.js";
+import { btc as btcFmt, sats, euro, zahl, anzahl, datumMonatKurz, monatsname, wochentagKurz, uhrzeit, datumLang, euroMitVorzeichen, prozent, MINUS } from "../format.js";
 import { zerlege as zerlegeDatum } from "../zeit.js";
 import { kopfPlus } from "./gemeinsam.js";
 
@@ -19,9 +19,11 @@ import { kopfPlus } from "./gemeinsam.js";
 function ernte() {
   const el = svg("svg", { class: "ernte", viewBox: "0 0 100 40", preserveAspectRatio: "none", "aria-hidden": "true" });
   let balken = [];
+  let erstes = true;
   return {
     el,
     setze(kaeufe) {
+      if (erstes && kaeufe.some((k) => k.gezaehlt)) { erstes = false; el.classList.add("waechst"); setTimeout(() => el.classList.remove("waechst"), 2600); }
       const gez = kaeufe.filter((k) => k.gezaehlt);
       // Höhe ab einem Sockel, damit günstige Wochen sichtbar herausragen
       const max = Math.max(...gez.map((k) => k.btc), 1e-12);
@@ -31,7 +33,7 @@ function ernte() {
       const b = 100 / n;
       balken = gez.map((k, i) => {
         const hoehe = 5 + ((k.btc - sockel) / Math.max(1e-12, max - sockel)) * 35;
-        return { ts: k.ts, el: svg("rect", { x: (i * b + b * 0.18).toFixed(3), y: (40 - hoehe).toFixed(3), width: (b * 0.64).toFixed(3), height: hoehe.toFixed(3), rx: Math.min(0.8, b * 0.2), class: `ernte-balken ernte-balken--${k.status}` }) };
+        return { ts: k.ts, el: svg("rect", { x: (i * b + b * 0.18).toFixed(3), y: (40 - hoehe).toFixed(3), width: (b * 0.64).toFixed(3), height: hoehe.toFixed(3), rx: Math.min(0.8, b * 0.2), class: `ernte-balken ernte-balken--${k.status}`, style: { "--i": String(i) } }) };
       });
       el.replaceChildren(...balken.map((x) => x.el));
     },
@@ -56,7 +58,7 @@ export function kaeufeKopf(app) {
     if (!s.anzahl) { unter.textContent = "Noch kein Kauf"; fuelle(links); fuelle(rechts); return; }
     unter.textContent = t == null ? `${anzahl(s.anzahl, "Kauf", "Käufe")} seit ${datumMonatKurz(z.kaeufe[0].montag)}` : `${anzahl(gez.length, "Kauf", "Käufe")} bis hierhin`;
     const geschaetzt = s.geschaetzt.length;
-    fuelle(links, `${s.eingetragen} eingetragen`, geschaetzt ? h("span", { class: "kk-offen" }, ` · ${geschaetzt} geschätzt`) : null);
+    fuelle(links, `${s.eingetragen} eingetragen`, s.automatisch ? ` · ${s.automatisch} automatisch` : null, geschaetzt ? h("span", { class: "kk-offen" }, ` · ${geschaetzt} offen`) : null);
     const satsSumme = gez.reduce((a, k) => a + k.btc, 0) * 1e8;
     rechts.textContent = `${sats(satsSumme)} sats`;
   };
@@ -69,7 +71,8 @@ export function kaeufeKopf(app) {
 
 const STATUS = {
   eingetragen: { text: "eingetragen", symbol: "haken" },
-  geschaetzt: { text: "geschätzt", symbol: "schaetzung" },
+  automatisch: { text: "automatisch", symbol: "haken" },
+  geschaetzt: { text: "eintragen", symbol: "schaetzung" },
   ausstehend: { text: "ausstehend", symbol: "uhr" },
   ohneKurs: { text: "ohne Kurs", symbol: "schaetzung" },
 };
@@ -78,16 +81,31 @@ const STATUS = {
 let frisch = { montag: null, bis: 0 };
 export function markiereFrisch(montag) { frisch = { montag, bis: Date.now() + 2500 }; }
 
-/** Eine Zeile – gleich aufgebaut wie der Kopf des Eintragen-Fensters. */
-export function kaufZeile(k, { beiTipp } = {}) {
+/**
+ * Eine Zeile – gleich aufgebaut wie der Kopf des Eintragen-Fensters.
+ * Mit aktuellem Kurs zeigt sie rechts, was aus diesem einen Kauf geworden ist.
+ */
+export function kaufZeile(k, { beiTipp, kurs = null, rang = null } = {}) {
   const { tag } = zerlegeDatum(k.montag);
   const st = STATUS[k.status];
   const menge = k.btc != null ? h("span", { class: "kz-menge zahl" }, btcFmt(k.btc), h("span", { class: "kz-einheit" }, " BTC")) : h("span", { class: "kz-menge kz-menge--leer" }, k.status === "ausstehend" ? `${uhrzeit(k.ts)} Uhr` : "Kurs fehlt");
   const unter = k.btc != null ? h("span", { class: "kz-unter zahl" }, `${sats(k.btc * 1e8)} sats · ${euro(k.kurs, 0)}`) : h("span", { class: "kz-unter" }, k.boerse ?? "");
+  const statusEl = h("span", { class: `kz-status kz-status--${k.status}` }, icon(st.symbol, { groesse: 14, strich: 2.2 }), h("span", null, st.text));
+  let rechts = statusEl;
+  if (kurs != null && k.gezaehlt && k.btc != null) {
+    const wert = k.btc * kurs;
+    const gv = wert - k.brutto;
+    const p = (gv / k.brutto) * 100;
+    const art = gv > 0.004 ? "plus" : gv < -0.004 ? "minus" : "null";
+    rechts = h("span", { class: "kz-rechts" },
+      h("span", { class: `kz-gv kz-gv--${art} zahl` }, `${p > 0 ? "+" : p < 0 ? MINUS : ""}${zahl(Math.abs(p), 1)} %`),
+      h("span", { class: "kz-wert zahl" }, euro(wert)),
+      statusEl);
+  }
   const kinder = [
     h("span", { class: "kz-datum" }, h("span", { class: "kz-tag zahl" }, String(tag)), h("span", { class: "kz-wochentag" }, wochentagKurz(k.montag))),
-    h("span", { class: "kz-mitte" }, menge, unter),
-    h("span", { class: `kz-status kz-status--${k.status}` }, icon(st.symbol, { groesse: 15, strich: 2 }), h("span", null, st.text)),
+    h("span", { class: "kz-mitte" }, menge, unter, rang ? h("span", { class: `kz-rang kz-rang--${rang}` }, rang === "bester" ? "Günstigster Kauf" : "Teuerster Kauf") : null),
+    rechts,
   ];
   if (!beiTipp || k.status === "ausstehend") return h("div", { class: "kauf-zeile", "data-montag": k.montag }, kinder);
   const istFrisch = frisch.montag === k.montag && Date.now() < frisch.bis;
@@ -101,17 +119,40 @@ export function oeffneKaeufe(app, herkunft) {
   const kopf = kaeufeKopf(app);
   const liste = h("div", { class: "kauf-liste" });
   const hinweis = h("div", { class: "kauf-hinweis" });
-  const inhalt = h("div", { class: "fenster-kaeufe" }, kopf.el, hinweis, liste);
+  const bilanz = h("section", { class: "bilanz" });
+  const inhalt = h("div", { class: "fenster-kaeufe" }, kopf.el, bilanz, hinweis, liste);
+
+  function baueBilanz() {
+    const s = z.summe;
+    const kurs = z.aktuell?.kurs ?? null;
+    const feld = (titel, wert, art = "") => h("div", { class: ["bilanz-feld", art && `bilanz-feld--${art}`] }, h("span", { class: "bilanz-titel" }, titel), h("span", { class: "bilanz-wert zahl" }, wert));
+    const gvArt = s.gv == null ? "" : s.gv >= 0 ? "plus" : "minus";
+    fuelle(bilanz,
+      feld("Investiert", euro(s.investiert)),
+      feld("Wert jetzt", s.wert != null ? euro(s.wert) : "–"),
+      feld("Gewinn / Verlust", s.gv != null ? `${euroMitVorzeichen(s.gv)}` : "–", gvArt),
+      feld("in Prozent", s.gvProzent != null ? prozent(s.gvProzent) : "–", gvArt),
+      feld("BTC gesamt", `${btcFmt(s.btc)}`),
+      feld("Ø Kaufpreis", s.durchschnitt ? euro(s.durchschnitt) : "–"),
+      feld("Aktueller Kurs", kurs ? euro(kurs) : "–", kurs && s.durchschnitt ? (kurs >= s.durchschnitt ? "plus" : "minus") : ""),
+      feld("Käufe", `${s.anzahl}`));
+  }
 
   function baueListe() {
     kopf.aktualisiere();
+    baueBilanz();
     const s = z.summe;
+    const kurs = z.aktuell?.kurs ?? null;
+    const gez = z.kaeufe.filter((k) => k.gezaehlt && k.kurs != null);
+    const bester = gez.length > 2 ? gez.reduce((a, k) => (k.kurs < a.kurs ? k : a)) : null;
+    const teuerster = gez.length > 2 ? gez.reduce((a, k) => (k.kurs > a.kurs ? k : a)) : null;
     if (s.geschaetzt.length) {
-      const aeltester = s.geschaetzt[0];
+      const neuester = s.geschaetzt[s.geschaetzt.length - 1];
       fuelle(hinweis, h("p", { class: "kauf-hinweis-text" },
-        `${anzahl(s.geschaetzt.length, "Kauf ist", "Käufe sind")} nur geschätzt. Trag die echte Menge aus Bitvavo ein, dann stimmt alles aufs Satoshi.`));
+        `Dein Kauf vom ${datumMonatKurz(neuester.montag)} zählt schon mit – gerechnet mit dem Marktkurs zur Kaufminute. Trag die echte Menge aus ${neuester.boerse ?? "der Börse"} ein, dann stimmt er aufs Satoshi.`),
+        h("button", { type: "button", class: "kauf-hinweis-los tippbar", onclick: (e) => app.eintragen(neuester.montag, e.currentTarget) }, "Jetzt eintragen"));
       hinweis.hidden = false;
-      hinweis.dataset.montag = aeltester.montag;
+      hinweis.dataset.montag = neuester.montag;
     } else hinweis.hidden = true;
 
     const gruppen = new Map();
@@ -123,9 +164,13 @@ export function oeffneKaeufe(app, herkunft) {
     }
     fuelle(liste, ...[...gruppen.values()].map((g) => h("section", { class: "kauf-monat" },
       h("h3", { class: "kauf-monat-titel" }, g.titel),
-      ...g.kaeufe.map((k) => kaufZeile(k, { beiTipp: (el) => app.eintragen(k.montag, el) })))));
+      ...g.kaeufe.map((k) => kaufZeile(k, { kurs, rang: k === bester ? "bester" : k === teuerster ? "teuerster" : null, beiTipp: (el) => app.eintragen(k.montag, el) })))));
   }
   baueListe();
+  // Beim Öffnen gleiten die ersten Zeilen nacheinander herein
+  liste.querySelectorAll(".kauf-zeile").forEach((z, i) => { if (i < 14) z.style.setProperty("--i", String(i)); });
+  liste.classList.add("steigt-auf");
+  setTimeout(() => liste.classList.remove("steigt-auf"), 1800);
   app.koepfe.add(kopf);
   const beobachter = () => baueListe();
   app.beiAenderung.add(beobachter);

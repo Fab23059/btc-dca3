@@ -67,7 +67,11 @@ function kursTabelle(k) {
   return aus;
 }
 
-/** Automatisch geholte Montagskurse der alten App (Vorsicht: teils vor der Kaufzeit gemerkt). */
+/**
+ * Automatisch geholte Montagskurse der alten App. Mit ihnen hat sie Käufe ohne
+ * Eintrag erfasst. (Vorsicht: einzelne können vor der Kaufzeit gemerkt sein –
+ * deshalb geht der Minutenkurs vor, siehe kaufkurseZusammenfuehren().)
+ */
 export const liesAlteMontagskurse = () => kursTabelle(ALT.montagskurse);
 
 /** Tagesschlusskurse der alten App. */
@@ -82,11 +86,13 @@ export function liesAlteGefeiert() {
 /**
  * Sicherungsdatei der alten App (Knopf "Export" dort): ein Objekt mit
  * btcdca_overrides_v1, btcdca_monday_prices_v4 und btcdca_daily_closes_v2.
+ * Die Montagskurse sind wichtig: Mit ihnen hat die alte App die Käufe erfasst,
+ * die nie eingetragen wurden (die ersten Wochen bei Binance).
  * Gibt die Rohdaten zurück oder null, wenn es keine solche Datei ist.
  */
 export function altesSicherungsformat(obj) {
   if (!obj || typeof obj !== "object" || !(ALT.eintraege in obj)) return null;
-  return { eintraege: obj[ALT.eintraege], tageskurse: obj[ALT.tageskurse] };
+  return { eintraege: obj[ALT.eintraege], tageskurse: obj[ALT.tageskurse], montagskurse: obj[ALT.montagskurse] };
 }
 
 /** Zwischengespeicherte Kursreihen der alten App (für einen Start ohne Netz). */
