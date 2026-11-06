@@ -97,7 +97,6 @@ export function erstelleHeute(app) {
   // ---- Takt bis zum nächsten Kauf ----
   const taktText = h("span", { class: "takt-text" });
   const taktZeit = h("span", { class: "takt-zeit zahl" });
-  const taktWerk = new Ziffern(taktZeit, { teile: (t) => [["ganz", t ?? "–"]], beschreibung: (t) => `Nächster Kauf in ${t}` });
   const taktFuellung = h("span", { class: "takt-fuellung" });
   const takt = h("div", { class: "takt" },
     h("div", { class: "takt-zeile" }, taktText, taktZeit),
@@ -107,14 +106,14 @@ export function erstelleHeute(app) {
     if (!nk) { takt.hidden = true; return; }
     const rest = Math.max(0, nk.ts - Date.now());
     const tage = Math.floor(rest / TAG); const std = Math.floor((rest % TAG) / 3_600_000); const min = Math.floor((rest % 3_600_000) / 60_000);
-    const sek = Math.floor((rest % 60_000) / 1000);
-    const zwei = (n) => String(n).padStart(2, "0");
-    taktText.textContent = `Nächster Kauf · ${wochentagKurz(nk.montag)}, ${datumMonatKurz(nk.montag)} · ${uhrzeit(nk.ts)}`;
-    taktWerk.setze(`${tage ? `${tage} T ` : ""}${zwei(std)}:${zwei(min)}:${zwei(sek)}`);
-    taktFuellung.style.transform = `scaleX(${klemme(1 - rest / (7 * TAG)).toFixed(4)})`;
+    const text = `Nächster Kauf · ${wochentagKurz(nk.montag)}, ${datumMonatKurz(nk.montag)} · ${uhrzeit(nk.ts)}`;
+    const zeitText = tage ? `in ${tage} T ${std} Std` : std ? `in ${std} Std ${min} Min` : `in ${min} Min`;
+    if (taktText.textContent !== text) taktText.textContent = text;
+    if (taktZeit.textContent !== zeitText) taktZeit.textContent = zeitText;
+    taktFuellung.style.transform = `scaleX(${klemme(1 - rest / (7 * TAG)).toFixed(3)})`;
   }
-  // Jede Sekunde – aber nur, solange man hinsieht
-  setInterval(() => { if (!document.hidden && !document.documentElement.classList.contains("hat-ebene")) zeigeTakt(); }, 1000);
+  // Ruhig: zweimal pro Minute, nur solange man hinsieht
+  setInterval(() => { if (!document.hidden) zeigeTakt(); }, 30_000);
 
   // ---- Fenster als Kacheln ----
   const koepfe = { markt: marktKopf(app), kaeufe: kaeufeKopf(app), baum: baumKopf(app), zahlen: zahlenKopf(app) };
@@ -169,7 +168,7 @@ export function erstelleHeute(app) {
     zeile.dataset.zeitraum = zeitraum;
     if (vorher && vorher !== zeitraum && !wenigBewegung()) {
       [...zeile.children].forEach((k, i) => k.animate(
-        [{ opacity: 0, transform: "translate3d(0, 10px, 0)", filter: "brightness(2)" }, { opacity: 1, transform: "none", filter: "none" }],
+        [{ opacity: 0, transform: "translate3d(0, 10px, 0)" }, { opacity: 1, transform: "none" }],
         { duration: 520, delay: i * 70, easing: "cubic-bezier(.2,.9,.25,1)", fill: "backwards" }));
     }
   }

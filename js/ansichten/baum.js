@@ -10,8 +10,8 @@
 //   * Der jüngste Ring glüht und atmet – das einzige, was sich in Ruhe bewegt.
 // =====================================================================
 
-import { h, fuelle, icon, wenigBewegung } from "../dom.js";
-import { Feder, imTakt, klemme, mische } from "../bewegung/feder.js";
+import { h, fuelle, icon } from "../dom.js";
+import { Feder, klemme, mische } from "../bewegung/feder.js";
 import { ziehe } from "../bewegung/geste.js";
 import { entfalte, fensterBreite } from "../teile/fenster.js";
 import { tick } from "../teile/haptik.js";
@@ -21,59 +21,48 @@ import { sats, anzahl, datumLang, datum, euro } from "../format.js";
 import { heuteBerlin } from "../zeit.js";
 import { kopfPlus } from "./gemeinsam.js";
 
-/** Leinwand mit lebendigem Baum: wächst/schrumpft federnd, der jüngste Ring atmet. */
+/**
+ * Lebendiger Baum: wächst/schrumpft federnd, der jüngste Ring atmet.
+ * Zwei Ebenen: der Stamm (nur neu gezeichnet, wenn sich etwas ändert) und
+ * der glühende jüngste Ring darüber. Das Atmen ist nur Deckkraft dieser
+ * zweiten Ebene – das macht die Grafikkarte allein, ohne neu zu zeichnen.
+ */
 function baumBild(groesse) {
-  const leinwand = h("canvas", { class: "baum-leinwand", "aria-hidden": "true" });
-  const ctx = leinwand.getContext("2d");
+  const leinwand = h("div", { class: "baum-leinwand", "aria-hidden": "true" });
+  const grund = h("canvas", { class: "baum-ebene" });
+  const glut = h("canvas", { class: "baum-ebene baum-glut" });
+  leinwand.append(grund, glut);
+  const ctx = grund.getContext("2d");
+  const gctx = glut.getContext("2d");
   const dpr = Math.min(2.5, devicePixelRatio || 1);
-  leinwand.width = Math.round(groesse * dpr); leinwand.height = Math.round(groesse * dpr);
+  for (const c of [grund, glut]) { c.width = Math.round(groesse * dpr); c.height = Math.round(groesse * dpr); }
   leinwand.style.width = `${groesse}px`; leinwand.style.height = `${groesse}px`;
-  const vorrat = document.createElement("canvas");
-  vorrat.width = leinwand.width; vorrat.height = leinwand.height;
-  const vctx = vorrat.getContext("2d");
-  let geo = null; let hervor = null; let vorratOk = false; let atem = 0.5;
+  let geo = null; let hervor = null;
   const R = groesse * 0.44; const c = groesse / 2;
 
-  const wuchs = new Feder(0, { art: "raum", genau: 0.002, beiWert: () => { vorratOk = false; male(); } });
+  const wuchs = new Feder(0, { art: "raum", genau: 0.002, beiWert: () => male() });
 
   function male() {
-    if (!geo || !geo.n) { ctx.clearRect(0, 0, leinwand.width, leinwand.height); return; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, grund.width, grund.height);
+    gctx.setTransform(1, 0, 0, 1, 0, 0); gctx.clearRect(0, 0, glut.width, glut.height);
+    if (!geo || !geo.n) return;
     const sichtbar = klemme(wuchs.wert, 0, geo.n);
-    if (!vorratOk) {
-      vctx.setTransform(1, 0, 0, 1, 0, 0); vctx.clearRect(0, 0, vorrat.width, vorrat.height);
-      vctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (sichtbar > 0.05) zeichneBaum(vctx, geo, { cx: c, cy: c, R, sichtbar: Math.max(1, sichtbar), hervor, ohneGlut: true });
-      vorratOk = true;
-    }
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, leinwand.width, leinwand.height);
-    ctx.drawImage(vorrat, 0, 0);
-    if (sichtbar > 0.05) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); zeichneBaum(ctx, geo, { cx: c, cy: c, R, sichtbar: Math.max(1, sichtbar), atem, nurGlut: true }); }
+    if (sichtbar <= 0.05) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    zeichneBaum(ctx, geo, { cx: c, cy: c, R, sichtbar: Math.max(1, sichtbar), hervor, ohneGlut: true });
+    if (hervor == null) { gctx.setTransform(dpr, 0, 0, dpr, 0, 0); zeichneBaum(gctx, geo, { cx: c, cy: c, R, sichtbar: Math.max(1, sichtbar), atem: 1, nurGlut: true }); }
   }
-
-  // Atmen: 15 Bilder pro Sekunde genügen, nur solange sichtbar
-  let sichtbarImBild = false; let abmelden = null; let letztes = 0;
-  const atmen = (an) => {
-    if (an && !abmelden && !wenigBewegung()) {
-      abmelden = imTakt((t) => {
-        if (t - letztes < 66) return;
-        letztes = t; atem = 0.5 + 0.5 * Math.sin(t / 1400); male();
-      });
-    } else if (!an && abmelden) { abmelden(); abmelden = null; }
-  };
-  new IntersectionObserver(([e]) => { sichtbarImBild = e.isIntersecting; atmen(sichtbarImBild && !document.hidden); }).observe(leinwand);
-  document.addEventListener("visibilitychange", () => atmen(sichtbarImBild && !document.hidden));
 
   return {
     leinwand,
     daten(kaeufe) {
       const n = geo?.n ?? 0;
       geo = baumGeometrie(kaeufe);
-      vorratOk = false;
       if (wuchs.ziel === n || wuchs.ziel > geo.n) wuchs.springe(geo.n); else male();
     },
     /** Wie viele Ringe zu sehen sind (Kommazahl erlaubt), federnd. */
     wachse(n, { sofort = false } = {}) { if (sofort) wuchs.springe(n); else wuchs.zu(n); },
-    hervorheben(i) { if (i === hervor) return; hervor = i; vorratOk = false; male(); },
+    hervorheben(i) { if (i === hervor) return; hervor = i; male(); },
     ringUnter(x, y) { return geo ? ringBei(geo, x, y, c, c, R) : null; },
     get anzahl() { return geo?.n ?? 0; },
   };

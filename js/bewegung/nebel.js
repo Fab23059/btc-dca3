@@ -1,14 +1,20 @@
 // =====================================================================
-// nebel.js – Der Morgennebel hinter der App.
+// nebel.js – Der Nebel hinter der App.
 //
-// Der Nebel ist kein Bild, sondern eine Rechnung: Auf der Grafikkarte
-// (WebGL) entsteht in jedem Bild ein Feld aus verwirbeltem Rauschen –
-// zwei Schichten, die verschieden schnell treiben, dazu warmes Licht,
-// das leise flackert wie hinter Milchglas. Weil das Feld unendlich ist,
-// gibt es keine Kanten: Scrollen und Zeitreise verschieben nur, wo man
-// hinschaut. Gerechnet wird in einem Viertel der Bildschirmauflösung
-// (Nebel ist weich) und höchstens 30-mal pro Sekunde; ist die App
-// verdeckt oder im Hintergrund, steht er still.
+// Der Nebel ist kein Bild, sondern eine Rechnung auf der Grafikkarte
+// (WebGL): zwei Schichten verwirbeltes Rauschen, die verschieden schnell
+// treiben, dazu warmes Licht, das leise flackert. Weil das Feld unendlich
+// ist, gibt es keine Kanten: Scrollen und Zeitreise verschieben nur den Blick.
+//
+// Zwei Durchgänge, damit es weich bleibt und wenig kostet:
+//   1. Der Nebel wird in einem Viertel der Auflösung gerechnet (er ist weich).
+//   2. Dieses kleine Bild wird von der Grafikkarte selbst bikubisch, also
+//      ganz weich, auf den Bildschirm hochgerechnet – nie vom Browser
+//      vergrößert (das ergäbe sichtbare Kästchen). Im selben Schritt kommt
+//      feines, laufendes Filmkorn dazu.
+// In Ruhe 15 Bilder pro Sekunde (der Nebel treibt langsam, das sieht man
+// nicht), beim Scrollen und bei der Zeitreise 30. Ist ein Fenster offen
+// oder die App im Hintergrund, steht er still.
 //
 // Ohne WebGL gibt es den Ersatz: zwei einmal gerechnete, weich
 // auslaufende Bilder, die nur verschoben werden.
@@ -36,8 +42,11 @@ const STIMMUNG = {
 };
 const GRUND = [9, 8, 7];
 
-const AUFLOESUNG = 3;          // ein Nebelpunkt je 3 × 3 Bildschirmpunkte
-const BILDABSTAND = 1000 / 30; // höchstens 30 Bilder pro Sekunde
+const AUFLOESUNG = 4;          // ein Nebelpunkt je 4 × 4 Bildschirmpunkte (danach weich hochgerechnet)
+const SCHAERFE = 1;            // Ausgabe in Bildschirmpunkten (weich hochgerechnet – Nebel und Korn brauchen nicht mehr)
+const RUHE_MS = 1000 / 15;     // in Ruhe 15 Bilder pro Sekunde …
+const BEWEGT_MS = 1000 / 30;   // … beim Scrollen und bei der Zeitreise 30
+const KORN = 0.055;            // Stärke des Filmkorns
 
 // ---------------------------------------------------------------------
 // WebGL
@@ -127,12 +136,49 @@ void main() {
   vec2 v = uv - vec2(0.5, 0.55);
   c *= clamp(1.0 - dot(v * vec2(1.1, 0.9), v * vec2(1.1, 0.9)) * 0.95, 0.0, 1.0);
 
-  // Feines Zittern gegen Farbstufen
-  c += (zufall(gl_FragCoord.xy + fract(t * 7.0)) - 0.5) * (2.0 / 255.0);
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-function baueProgramm(gl) {
+// Zweiter Durchgang: bikubisch hochrechnen (B-Spline aus vier weichen Abgriffen) und Korn dazu
+const HOCH = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vUv;
+uniform sampler2D uBild;
+uniform sampler2D uRausch;
+uniform vec2 uQuelle;
+uniform vec2 uKornVersatz;
+uniform float uKorn;
+
+vec3 bikubisch(vec2 uv) {
+  vec2 st = uv * uQuelle - 0.5;
+  vec2 i = floor(st); vec2 f = st - i;
+  vec2 f2 = f * f; vec2 f3 = f2 * f;
+  vec2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+  vec2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+  vec2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+  vec2 w3 = f3 / 6.0;
+  vec2 s0 = w0 + w1; vec2 s1 = w2 + w3;
+  vec2 h0 = (i - 0.5 + w1 / s0) / uQuelle;
+  vec2 h1 = (i + 1.5 + w3 / s1) / uQuelle;
+  vec3 a = texture2D(uBild, vec2(h0.x, h0.y)).rgb * s0.x + texture2D(uBild, vec2(h1.x, h0.y)).rgb * s1.x;
+  vec3 b = texture2D(uBild, vec2(h0.x, h1.y)).rgb * s0.x + texture2D(uBild, vec2(h1.x, h1.y)).rgb * s1.x;
+  return a * s0.y + b * s1.y;
+}
+
+void main() {
+  vec3 c = bikubisch(vUv);
+  // Filmkorn (zugleich gegen Farbstufen): im tiefen Dunkel etwas leiser
+  float n = texture2D(uRausch, gl_FragCoord.xy / 128.0 + uKornVersatz).r - 0.5;
+  float hell = dot(c, vec3(0.333));
+  c += n * uKorn * (0.45 + 0.55 * smoothstep(0.0, 0.2, hell));
+  gl_FragColor = vec4(c, 1.0);
+}`;
+
+function baueProgramm(gl, flaeche) {
   const shader = (art, text) => {
     const s = gl.createShader(art);
     gl.shaderSource(s, text);
@@ -142,7 +188,7 @@ function baueProgramm(gl) {
   };
   const p = gl.createProgram();
   gl.attachShader(p, shader(gl.VERTEX_SHADER, ECKEN));
-  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, FLAECHE));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, flaeche));
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) || "Programm");
   return p;
@@ -152,75 +198,141 @@ function webglNebel(behaelter, farben) {
   const leinwand = h("canvas", { class: "nebel-gl" });
   const gl = leinwand.getContext("webgl", { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: "low-power" });
   if (!gl) return null;
-  let prog;
-  try { prog = baueProgramm(gl); } catch (e) { console.warn("Nebel:", e); return null; }
-  gl.useProgram(prog);
+  let nebelProg; let hochProg;
+  try { nebelProg = baueProgramm(gl, FLAECHE); hochProg = baueProgramm(gl, HOCH); } catch (e) { console.warn("Nebel:", e); return null; }
+
+  // Eine Fläche über den ganzen Bildschirm, für beide Durchgänge
   const puffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, puffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-  const ort = gl.getAttribLocation(prog, "aOrt");
-  gl.enableVertexAttribArray(ort);
-  gl.vertexAttribPointer(ort, 2, gl.FLOAT, false, 0, 0);
-  const u = (n) => gl.getUniformLocation(prog, n);
+  const flaeche = (prog) => {
+    const ort = gl.getAttribLocation(prog, "aOrt");
+    gl.enableVertexAttribArray(ort);
+    gl.vertexAttribPointer(ort, 2, gl.FLOAT, false, 0, 0);
+  };
+
+  // Durchgang 1: Nebel in kleiner Auflösung → Textur
+  gl.useProgram(nebelProg);
+  const u = (n) => gl.getUniformLocation(nebelProg, n);
   const uAufl = u("uAufl"); const uZeit = u("uZeit"); const uVersatz = u("uVersatz"); const uEnergie = u("uEnergie");
   const farbe = (n, f) => gl.uniform3f(u(n), f[0] / 255, f[1] / 255, f[2] / 255);
   farbe("uWarm", farben.warm); farbe("uKuehl", farben.kuehl); farbe("uLicht", farben.licht); farbe("uGrund", GRUND);
   gl.uniform1f(u("uWaerme"), farben.waerme ?? 1);
+  const klein = gl.createTexture();
+  const rahmen = gl.createFramebuffer();
+
+  // Rauschen für das Korn: einmal ausgewürfelt, 128 × 128, kachelt sich nahtlos
+  const rausch = gl.createTexture();
+  const werte = new Uint8Array(128 * 128 * 4);
+  for (let i = 0; i < werte.length; i++) werte[i] = (Math.random() * 256) | 0;
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, rausch);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 128, 128, 0, gl.RGBA, gl.UNSIGNED_BYTE, werte);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+  // Durchgang 2: weich hochrechnen + Korn
+  gl.useProgram(hochProg);
+  const v = (n) => gl.getUniformLocation(hochProg, n);
+  const uQuelle = v("uQuelle"); const uKornVersatz = v("uKornVersatz");
+  gl.uniform1i(v("uBild"), 0);
+  gl.uniform1i(v("uRausch"), 1);
+  gl.uniform1f(v("uKorn"), wenigBewegung() ? KORN * 0.6 : KORN);
 
   behaelter.replaceChildren(leinwand);
 
-  let B = 0; let H = 0;
+  let B = 0; let H = 0; let ZB = 0; let ZH = 0;
   const mass = () => {
     const b = Math.max(16, Math.ceil(innerWidth / AUFLOESUNG));
     const hh = Math.max(16, Math.ceil(innerHeight / AUFLOESUNG));
-    if (b === B && hh === H) return;
-    B = b; H = hh;
-    leinwand.width = B; leinwand.height = H;
-    gl.viewport(0, 0, B, H);
-    gl.uniform2f(uAufl, B, H);
+    const skala = Math.min(devicePixelRatio || 1, SCHAERFE);
+    const zb = Math.round(innerWidth * skala); const zh = Math.round(innerHeight * skala);
+    if (b === B && hh === H && zb === ZB && zh === ZH) return;
+    B = b; H = hh; ZB = zb; ZH = zh;
+    leinwand.width = ZB; leinwand.height = ZH;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, klein);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, B, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rahmen);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, klein, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.useProgram(nebelProg); gl.uniform2f(uAufl, B, H);
+    gl.useProgram(hochProg); gl.uniform2f(uQuelle, B, H);
   };
   mass();
 
   const start = performance.now() - Math.random() * 400_000;   // jeder Start beginnt woanders im Nebel
-  let versatz = [0, 0]; let energie = 0; let energieZiel = 0;
-  let bild = 0; let zuletzt = 0; let verloren = false;
+  const versatz = [0, 0]; let energie = 0; let energieZiel = 0;
+  let zuletzt = 0; let verloren = false; let geplant = false; let uhr = 0; let bewegtBis = 0;
   const still = wenigBewegung();
 
   const male = (jetzt) => {
     if (verloren) return;
-    energie += (energieZiel - energie) * 0.08;
+    energie += (energieZiel - energie) * 0.12;
+    // 1. Nebel klein
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rahmen);
+    gl.viewport(0, 0, B, H);
+    gl.useProgram(nebelProg); flaeche(nebelProg);
     gl.uniform1f(uZeit, ((jetzt - start) / 1000) % 100_000);
     gl.uniform2f(uVersatz, versatz[0], versatz[1]);
     gl.uniform1f(uEnergie, energie);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // 2. weich groß, mit Korn
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, ZB, ZH);
+    gl.useProgram(hochProg); flaeche(hochProg);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, klein);
+    gl.uniform2f(uKornVersatz, still ? 0 : Math.random(), still ? 0 : Math.random());
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
   const laeuft = () => !document.hidden && !document.documentElement.classList.contains("hat-ebene");
-  const schleife = (jetzt) => {
-    bild = 0;
-    if (!laeuft()) return;
-    if (jetzt - zuletzt >= BILDABSTAND - 2) { zuletzt = jetzt; male(jetzt); }
-    bild = requestAnimationFrame(schleife);
+
+  // Getaktet über eine Uhr statt über jedes Bild: In Ruhe wacht die Seite nur 15-mal pro Sekunde auf
+  const plane = () => {
+    if (geplant || still || verloren || !laeuft()) return;
+    geplant = true;
+    const jetzt = performance.now();
+    const abstand = jetzt < bewegtBis ? BEWEGT_MS : RUHE_MS;
+    uhr = setTimeout(() => requestAnimationFrame((t) => {
+      geplant = false;
+      if (!laeuft()) return;
+      zuletzt = t; male(t); plane();
+    }), Math.max(0, zuletzt + abstand - jetzt - 3));
   };
-  const los = () => { if (!bild && !still && laeuft()) bild = requestAnimationFrame(schleife); };
+  const schneller = () => {
+    bewegtBis = performance.now() + 700;
+    if (geplant && performance.now() - zuletzt < BEWEGT_MS) return;
+    clearTimeout(uhr); geplant = false; plane();
+  };
 
   // Läuft wieder an, sobald die App sichtbar ist oder die letzte Ebene zugeht
-  document.addEventListener("visibilitychange", los);
-  new MutationObserver(los).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-  addEventListener("resize", () => { mass(); if (still) male(performance.now()); });
+  document.addEventListener("visibilitychange", plane);
+  new MutationObserver(plane).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  addEventListener("resize", () => { mass(); male(performance.now()); });
   // Grafikkarte weg (selten, z. B. nach langer Zeit im Hintergrund): Nebel bleibt einfach stehen
   leinwand.addEventListener("webglcontextlost", (e) => { e.preventDefault(); verloren = true; behaelter.classList.remove("ist-bereit"); });
 
   male(performance.now());
   requestAnimationFrame(() => behaelter.classList.add("ist-bereit"));
-  los();
+  plane();
 
   return {
     ziehe({ scrollAnteil, zeitAnteil } = {}) {
       if (scrollAnteil != null) versatz[1] = scrollAnteil;
       if (zeitAnteil != null) versatz[0] = zeitAnteil;
-      if (still) male(performance.now());
+      if (still) male(performance.now()); else schneller();
     },
-    licht(e) { energieZiel = Math.max(0, Math.min(1, e)); },
+    licht(e) {
+      const ziel = Math.max(0, Math.min(1, e));
+      if (Math.abs(ziel - energieZiel) > 0.05) schneller();
+      energieZiel = ziel;
+    },
   };
 }
 

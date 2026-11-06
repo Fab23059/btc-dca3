@@ -25,7 +25,6 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 | B7 | **Die Statuszeile spricht** | Meldungen erscheinen nicht als neue Kästchen. Die vorhandene Statuszeile oben verwandelt sich in die Nachricht und danach zurück. | Feder „Zeiger“ |
 | B8 | **Aufgang** | Beim Start rollt der Wert von null hoch, der Komet zieht die Linie, die Kacheln steigen federnd nacheinander auf. Über jede läuft dabei einmal eine Lichtkante. Balken wachsen aus dem Boden, Zeilen gleiten herein, Abzeichen-Ringe füllen sich. | federnd (Dämpfung 0,74), 95 ms versetzt |
 | B9 | **Feier** | Ein neuer Meilenstein oder ein frisch eingetragener Kauf: Funken und Konfetti sprühen aus der Stelle, an der es passiert ist. | eigene Leinwand, Schwerkraft und Luftwiderstand |
-| B10 | **Die Zeit läuft** | Der Countdown bis zum nächsten Kauf rollt jede Sekunde weiter, ein Lichtpuls wandert durch seinen Balken. | Zählwerk (B5) |
 
 **Regeln, die für alle Bewegungen gelten**
 
@@ -69,14 +68,31 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 * **Atmosphäre:** Der Nebel ist eine Rechnung auf der Grafikkarte (WebGL): zwei Schichten
   verwirbeltes Rauschen, die verschieden schnell treiben, dazu drei warme Lichtquellen, die
   unregelmäßig flackern. Weil das Feld unendlich ist, gibt es keine Kanten und keine
-  sichtbaren Ebenen. Scrollen und Zeitreise verschieben nur den Blick. Gerechnet wird in
-  einem Drittel der Auflösung, höchstens 30-mal pro Sekunde, und nur, wenn die Startseite
-  sichtbar ist. Die Farben folgen der Tageszeit (abends glühend orange, nachts kühl violett).
+  sichtbaren Ebenen. Scrollen und Zeitreise verschieben nur den Blick.
+  Gerechnet wird in zwei Durchgängen: erst klein (ein Viertel der Auflösung), dann
+  **bikubisch** auf Bildschirmgröße hochgerechnet, von der Grafikkarte selbst. Der Browser
+  vergrößert also nie ein kleines Bild, denn das ergab auf dem Handy sichtbare Kästchen.
+  Im zweiten Durchgang kommt das laufende Filmkorn dazu.
+  In Ruhe 15 Bilder pro Sekunde (der Nebel treibt so langsam, dass man den Unterschied nicht
+  sieht), beim Scrollen und bei der Zeitreise 30, bei offenem Fenster oder im Hintergrund keins.
+  Die Farben folgen der Tageszeit (abends glühend orange, nachts kühl violett).
   Ohne WebGL gibt es zwei vorgerechnete Bilder, die weich auslaufen.
-* **Filmkorn** liegt über allem, auch über Fenstern, und springt zwölfmal pro Sekunde
-  wie echter Film. Es bewegt sich nur per Verschiebung, gezeichnet wird nichts neu.
-* „Atmosphäre“ in den Einstellungen schaltet Nebel, Flimmern und laufendes Korn ab
-  (spart Akku). „Bewegung reduzieren“ am Handy hält alles an.
+* **Filmkorn** liegt zusätzlich hauchfein und ruhend über allem, auch über Fenstern.
+* „Atmosphäre“ in den Einstellungen schaltet den Nebel ab (spart Akku).
+  „Bewegung reduzieren“ am Handy hält alles an.
+
+### Leistung: was flüssig hält und Akku spart (1.1.1)
+
+* **Kein Weichzeichner auf Leinwänden.** Der Schein um die Linien entsteht aus zwei breiten,
+  durchscheinenden Strichen. Ein echter Weichzeichner kostete beim Kometen die Hälfte der Bilder.
+* **Nichts läuft dauernd, das neu zeichnen muss.** Was immer läuft (Herzschlag am Jetzt-Punkt,
+  Atmen des jüngsten Rings), ist reine Deckkraft oder Lage. Das macht die Grafikkarte allein.
+  Leinwände zeichnen nur, solange sich etwas bewegt.
+* **Keine Werte an der Wurzel der Seite pro Bild.** Ein Wert an `:root` lässt den Browser die
+  ganze Seite neu berechnen, deshalb hängt das Aufleuchten an einer eigenen Fläche (`#glut`).
+* **Ruhige Uhr.** Der Countdown zeigt Tage, Stunden und Minuten, ohne Lichtpuls und ohne Sekunden.
+* Gemessen mit viermal gedrosseltem Prozessor (ohne Nebel, der auf dem Handy die Grafikkarte
+  rechnet): in Ruhe 64 statt 498 ms Arbeit pro Sekunde, Scrollen und Komet mit 60 Bildern pro Sekunde.
 
 ## 4. Was wir aus der vorigen Fassung behalten haben – und was nicht
 
@@ -97,7 +113,7 @@ Nicht übernommen haben wir:
 | Kursiv-Überschriften | Die Kursivschrift wirkte wie eine beliebige Vorlage. |
 | Milchglas | Ruckelt in der Bewegung. |
 | Leuchten überall | Ohne Hierarchie verliert das Leuchten seine Bedeutung. |
-| Laufendes Filmkorn | *In 1.1 zurückgeholt:* Es springt jetzt per Verschiebung statt per Neuzeichnen und kostet kaum etwas. |
+| Laufendes Filmkorn | *In 1.1 zurückgeholt,* in 1.1.1 in den Nebel verlegt: Die Grafikkarte rechnet es im selben Durchgang mit. |
 | Schwebende Tableiste | Die vier Seiten werden durch Fenster ersetzt, die sich aus der Startseite entfalten. |
 | Ringdiagramme und Tachos | Kein Kartenraster. *In 1.1* gibt es zwei Ausnahmen mit Bedeutung: die Abzeichen-Ringe (sie füllen sich bis zum nächsten Ziel) und die Stimmungsuhr mit federndem Zeiger. |
 | Fremde Diagramm-Bibliothek | Die Linie ist jetzt selbst gebaut, nur so kann sie fließen. |

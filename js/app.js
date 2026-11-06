@@ -128,7 +128,6 @@ const app = {
 const glutEl = $("#glut");
 const glut = new Feder(0.22, { art: "ruhig", genau: 0.002, beiWert: (x) => {
   glutEl.style.opacity = x.toFixed(3);
-  document.documentElement.style.setProperty("--energie", ((x - 0.22) / 0.6).toFixed(3));
   nebel?.licht((x - 0.22) / 0.6);
 } });
 
@@ -152,9 +151,13 @@ function kopfText(art) {
 }
 let grussBis = Date.now() + 4200;
 
+const kopfEl = $("#kopf");
+let kopfDeckung = "";
 function beimScrollen() {
   const y = heuteEl.scrollTop;
-  document.documentElement.style.setProperty("--kopf-deckung", Math.min(1, y / 40).toFixed(3));
+  // Nur an der Kopfzeile setzen – an der Wurzel würde jedes Scrollbild die ganze Seite neu berechnen
+  const deckung = Math.min(1, y / 40).toFixed(2);
+  if (deckung !== kopfDeckung) { kopfDeckung = deckung; kopfEl.style.setProperty("--kopf-deckung", deckung); }
   nebel?.ziehe({ scrollAnteil: y / innerHeight });
   if (y > 190) kopfText("wert");
   else kopfText(Date.now() < grussBis ? "gruss" : "datum");

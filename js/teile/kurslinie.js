@@ -128,7 +128,10 @@ export function kurslinie(behaelter, { beimScrubben = () => {}, beiAnkunft = () 
 
     const pfad = (von, b2) => { ctx.beginPath(); ctx.moveTo(x(von), ys[von]); for (let i = von + 1; i <= b2; i++) ctx.lineTo(x(i), ys[i]); };
     ctx.lineJoin = "round"; ctx.lineCap = "round";
-    pfad(0, bis); ctx.strokeStyle = `rgba(${GLUT}, 0.22)`; ctx.lineWidth = 7; ctx.shadowColor = `rgba(${GLUT}, 0.9)`; ctx.shadowBlur = 20; ctx.stroke(); ctx.shadowBlur = 0;
+    // Schein ohne Unschärfe-Filter (zwei breite, durchscheinende Striche)
+    pfad(0, bis);
+    ctx.strokeStyle = `rgba(${GLUT}, 0.07)`; ctx.lineWidth = 13; ctx.stroke();
+    ctx.strokeStyle = `rgba(${GLUT}, 0.15)`; ctx.lineWidth = 6; ctx.stroke();
     const kern = ctx.createLinearGradient(0, 0, B, 0);
     kern.addColorStop(0, `rgba(${GLUT}, 0.8)`); kern.addColorStop(0.75, `rgb(${GLUT})`); kern.addColorStop(1, "#FFC98F");
     if (s == null) { pfad(0, bis); ctx.strokeStyle = kern; ctx.lineWidth = 2; ctx.stroke(); }
@@ -166,7 +169,10 @@ export function kurslinie(behaelter, { beimScrubben = () => {}, beiAnkunft = () 
       const kx = x(bis); const ky = ys[bis];
       const sg = ctx.createLinearGradient(x(bis - schweif), 0, kx, 0);
       sg.addColorStop(0, "rgba(255, 200, 140, 0)"); sg.addColorStop(1, "rgba(255, 236, 214, 0.95)");
-      pfad(bis - schweif, bis); ctx.strokeStyle = sg; ctx.lineWidth = 3.4; ctx.shadowColor = `rgba(${GLUT}, 1)`; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+      const sw = ctx.createLinearGradient(x(bis - schweif), 0, kx, 0);
+      sw.addColorStop(0, `rgba(${GLUT}, 0)`); sw.addColorStop(1, `rgba(${GLUT}, 0.35)`);
+      pfad(bis - schweif, bis); ctx.strokeStyle = sw; ctx.lineWidth = 10; ctx.stroke();
+      ctx.strokeStyle = sg; ctx.lineWidth = 3.4; ctx.stroke();
       punkt(kx, ky, 4.2, 1.1);
       if (letzterKopf >= 0 && bis > letzterKopf && !wenigBewegung()) {
         const n = Math.min(5, 1 + Math.round((bis - letzterKopf) / 5));
@@ -188,11 +194,10 @@ export function kurslinie(behaelter, { beimScrubben = () => {}, beiAnkunft = () 
       ctx.globalCompositeOperation = "source-over";
     }
 
-    // Endpunkt: atmet, bei Ankunft läuft eine Welle aus
+    // Endpunkt; bei Ankunft läuft eine Welle aus
     if (!faehrt && s == null) {
       const ex = x(N - 1); const ey = ys[N - 1];
-      const atem = 0.5 + 0.5 * Math.sin(jetzt / 420);
-      punkt(ex, ey, 3.4, 0.7 + 0.4 * atem);
+      punkt(ex, ey, 3.4, 0.95);
       if (blitzWert > 0 && blitzWert < 1) {
         ctx.strokeStyle = `rgba(255, 214, 170, ${(0.85 * (1 - blitzWert)).toFixed(3)})`; ctx.lineWidth = 2 * (1 - blitzWert) + 0.5;
         ctx.beginPath(); ctx.arc(ex, ey, 6 + 46 * blitzWert, 0, Math.PI * 2); ctx.stroke();
@@ -208,17 +213,10 @@ export function kurslinie(behaelter, { beimScrubben = () => {}, beiAnkunft = () 
       punkt(xs, ys[s], 5, 1);
     }
 
+    // Nur zeichnen, solange sich etwas bewegt – danach ruht die Leinwand
     const glueht = marken.some((m) => m.zuend >= 0 && jetzt - m.zuend < 650);
-    // Der Endpunkt atmet: ruhig weiterzeichnen, aber nur, solange die Linie sichtbar ist
     if (funken.length || glueht || (blitzWert > 0 && blitzWert < 1)) malen();
-    else { bildZeit = 0; atmen(); }
-  }
-
-  // Atmen des Endpunkts: ein paar Bilder pro Sekunde reichen
-  let atemUhr = 0;
-  function atmen() {
-    if (atemUhr || wenigBewegung()) return;
-    atemUhr = setTimeout(() => { atemUhr = 0; if (behaelter.isConnected && !document.hidden) malen(); }, 66);
+    else bildZeit = 0;
   }
 
   // ---- Finger ----

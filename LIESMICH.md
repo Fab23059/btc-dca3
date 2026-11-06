@@ -23,7 +23,7 @@ und dorthin zurückfalten.
   * **Zeitreise:** Fährst du mit dem Finger über die Linie, springt die ganze Seite in diesen
     Moment. Die Zahlen rollen zum damaligen Stand, auch der Bitcoin-Kurs von damals.
     Beim Loslassen gleitet alles zurück ins Jetzt.
-  * Darunter läuft der Countdown bis zum nächsten Kauf, sekundengenau, und es folgen vier Kacheln.
+  * Darunter steht ruhig, wie lange es noch bis zum nächsten Kauf dauert, und es folgen vier Kacheln.
   * Oben rechts steht immer der **aktuelle Bitcoin-Kurs**. Antippen holt sofort frische Kurse.
 * **Bitcoin:**
   * Der Kurs live (alle 30 Sekunden), die Veränderung in 24 Stunden, ein 24-h-Verlauf und der
@@ -98,9 +98,10 @@ sich alles bewegt; daraus folgen Formen, Farben und Schrift. Das ganze Konzept s
 * **Licht aus Bewegung:** In Ruhe ist die App matt. Was sich bewegt oder berührt wird, glüht.
   Ein Eingabefeld „zündet“ an der Stelle, an der du tippst.
 * **Atmosphäre:** Hinter allem treibt ein lebendiger Nebel nach Tageszeit, mit warmem,
-  flackerndem Licht. Er wird auf der Grafikkarte gerechnet, deckt den ganzen Bildschirm ohne
-  Kanten ab und steht still, sobald ein Fenster offen oder die App im Hintergrund ist.
-  Darüber liegt laufendes Filmkorn.
+  flackerndem Licht und feinem, laufendem Filmkorn. Er wird auf der Grafikkarte gerechnet und
+  weich auf Bildschirmgröße gebracht. So deckt er den ganzen Bildschirm ohne Kanten oder
+  Kästchen ab. In Ruhe rechnet er nur 15-mal pro Sekunde und steht still, sobald ein Fenster
+  offen oder die App im Hintergrund ist.
 * **Schrift:** Mona Sans. Die Zahlen stehen in der breiten Form, alle Ziffern sind gleich
   breit, damit sie wie ein Zählwerk rollen können.
 * Ist am Handy „Bewegung reduzieren“ eingeschaltet, steht alles still.

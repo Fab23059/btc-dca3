@@ -14,7 +14,7 @@
   display: block; margin-top: 4px;
   font-size: clamp(58px, 17.4vw, 76px); font-weight: 470; font-stretch: 125%;
   letter-spacing: -0.052em; color: var(--text);
-  text-shadow: 0 0 calc(24px + 46px * var(--energie, 0)) rgba(var(--glut-rgb), calc(0.16 + 0.55 * var(--energie, 0))), 0 2px 18px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 30px rgba(var(--glut-rgb), 0.22);
 }
 .held-zahl .ziffern-teil--rest { font-size: 0.4em; font-weight: 520; letter-spacing: -0.02em; color: var(--text-2); margin-left: 0.06em; }
 .held-zeile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 10px; min-height: 22px; font-size: 15px; font-weight: 520; }
@@ -66,12 +66,8 @@
 .takt-zeit { color: var(--text); white-space: nowrap; }
 .takt-balken { display: block; height: 2px; margin-top: 10px; border-radius: 1px; background: var(--flaeche-3); overflow: hidden; }
 .takt-balken { position: relative; overflow: visible; height: 3px; }
-.takt-fuellung { position: relative; display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, rgba(var(--glut-rgb), 0.2), var(--glut) 85%, #FFD2A0); box-shadow: 0 0 12px rgba(var(--glut-rgb), 0.6); transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(0.2, 0.9, 0.2, 1); overflow: hidden; }
-/* Ein Lichtpuls wandert die Füllung entlang – die Zeit läuft */
-.takt-fuellung::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255, 236, 214, 0.9), transparent); animation: puls-wandert 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
-@keyframes puls-wandert { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(340%, 0, 0); } }
+.takt-fuellung { position: relative; display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, rgba(var(--glut-rgb), 0.2), var(--glut) 85%, #FFD2A0); box-shadow: 0 0 10px rgba(var(--glut-rgb), 0.5); transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(0.2, 0.9, 0.2, 1); }
 .takt-zeit { font-size: 14px; font-weight: 600; font-stretch: 112%; }
-.takt-zeit .ziffern { line-height: 1.1; }
 
 /* ---- Stapel der Fenster ---- */
 .stapel { display: grid; gap: var(--abstand); margin: 28px var(--rand) 0; }
@@ -91,7 +87,7 @@
 
 /* Käufe */
 .kk-ernte { position: absolute; left: 20px; right: 20px; top: 92px; height: 64px; }
-.ernte { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.35)); }
+.ernte { display: block; width: 100%; height: 100%; overflow: visible; }
 .ernte-balken { fill: var(--glut); opacity: 0.95; transition: opacity 0.35s; transform-box: fill-box; transform-origin: 50% 100%; }
 .ernte.waechst .ernte-balken { animation: wachsen 0.9s cubic-bezier(0.2, 1.3, 0.35, 1) both; animation-delay: calc(var(--i, 0) * 28ms + 150ms); }
 @keyframes wachsen { from { transform: scaleY(0.02); opacity: 0; } 40% { opacity: 1; } to { transform: none; } }
@@ -106,6 +102,10 @@
 /* Baum */
 .fkopf--baum { padding: 0; }
 .fkopf--baum .baum-leinwand { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.baum-ebene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Der jüngste Ring atmet – nur Deckkraft, die Grafikkarte macht das allein */
+.baum-glut { animation: baum-atmen 4.4s ease-in-out infinite alternate; }
+@keyframes baum-atmen { from { opacity: 0.45; } to { opacity: 1; } }
 .bk-text { position: absolute; left: 0; top: 0; width: calc(100% - 210px); transform-origin: 0 0; }
 .fkopf--offen .bk-text { width: calc(100% - 44px); }
 .bk-ringe { margin-top: 30px; font-size: 40px; font-weight: 480; font-stretch: 125%; letter-spacing: -0.045em; line-height: 1; }
@@ -281,16 +281,15 @@
 .fkopf--markt .fkopf-titel { display: inline-flex; align-items: center; gap: 10px; }
 .live-punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); position: relative; }
 .live-punkt.ist-live { background: var(--plus); box-shadow: 0 0 10px 2px rgba(147, 198, 160, 0.7); }
-.live-punkt.ist-live::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid rgba(147, 198, 160, 0.8); animation: herzschlag 2s cubic-bezier(0.15, 0.7, 0.3, 1) infinite; }
 .mk-kurs { position: absolute; left: 20px; top: 74px; }
-.mk-zahl { font-size: 46px; font-weight: 480; font-stretch: 125%; letter-spacing: -0.05em; text-shadow: 0 0 calc(18px + 26px * var(--energie, 0)) rgba(var(--glut-rgb), calc(0.18 + 0.4 * var(--energie, 0))); }
+.mk-zahl { font-size: 46px; font-weight: 480; font-stretch: 125%; letter-spacing: -0.05em; text-shadow: 0 0 22px rgba(var(--glut-rgb), 0.2); }
 .mk-zahl .ziffern-teil--rest { font-size: 0.46em; color: var(--text-2); letter-spacing: 0; margin-left: 0.08em; }
 .mk-zeile { position: absolute; left: 20px; top: 134px; display: flex; gap: 8px; align-items: baseline; font-size: 14.5px; font-weight: 560; }
 .mk-zeile-zusatz { color: var(--text-3); font-weight: 500; }
 .mk-funke-halter { position: absolute; right: 20px; top: 70px; width: 40%; max-width: 210px; height: 66px; }
 .mk-funke { width: 100%; height: 100%; overflow: visible; }
 .mk-funke-linie { fill: none; stroke: var(--glut); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.mk-funke-schein { fill: none; stroke: rgba(var(--glut-rgb), 0.35); stroke-width: 7; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: blur(4px); }
+.mk-funke-schein { fill: none; stroke: rgba(var(--glut-rgb), 0.16); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .mk-funke-flaeche { fill: url(#mk-verlauf); }
 .mk-funke-ende { fill: #FFEBD6; filter: drop-shadow(0 0 5px rgba(var(--glut-rgb), 1)); }
 .mk-funke.zeichnet .mk-funke-linie { stroke-dasharray: 1; stroke-dashoffset: 1; animation: zeichnen 1.4s 0.2s cubic-bezier(0.3, 0.7, 0.2, 1) forwards; }
@@ -344,9 +343,7 @@
 .abz-spur { fill: none; stroke: var(--flaeche-3); stroke-width: 4; }
 .abz-bogen { fill: none; stroke: var(--glut); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .abz--da .abz-bogen { stroke: #FFB067; filter: drop-shadow(0 0 6px rgba(var(--glut-rgb), 0.9)); }
-.abz--da .abz-ring { animation: abz-glimmen 3.2s ease-in-out infinite; }
 .abz--naechstes .abz-bogen { stroke: rgba(var(--glut-rgb), 0.85); }
-@keyframes abz-glimmen { 0%, 100% { filter: drop-shadow(0 0 0 rgba(var(--glut-rgb), 0)); } 50% { filter: drop-shadow(0 0 10px rgba(var(--glut-rgb), 0.55)); } }
 .abz-wert { position: absolute; top: 18px; left: 0; right: 0; font-size: 15px; font-weight: 650; font-stretch: 112%; letter-spacing: -0.02em; line-height: 1; }
 .abz-einheit { position: absolute; top: 37px; left: 0; right: 0; font-size: 8.5px; font-weight: 650; color: var(--text-2); letter-spacing: 0.02em; text-transform: uppercase; }
 .abz-unter { margin-top: 6px; font-size: 11.5px; color: var(--text-3); white-space: nowrap; }

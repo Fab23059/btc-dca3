@@ -155,16 +155,16 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
     const pfad = (von, b2) => { ctx.beginPath(); ctx.moveTo(x(von), d.ys[von]); for (let i = von + 1; i <= b2; i++) ctx.lineTo(x(i), d.ys[i]); };
     const kern = ctx.createLinearGradient(0, 0, B, 0);
     kern.addColorStop(0, `rgba(${GLUT}, 0.75)`); kern.addColorStop(0.7, `rgb(${GLUT})`); kern.addColorStop(1, "#FFC98F");
+    // Schein ohne Unschärfe-Filter: zwei breite, durchscheinende Striche unter dem Kern
+    // (ein echter Weichzeichner kostet auf dem Handy ein Vielfaches)
     const strich = (von, b2, alpha, schein) => {
       if (b2 <= von) return;
       ctx.lineJoin = "round"; ctx.lineCap = "round";
-      if (schein) {
-        pfad(von, b2);
-        ctx.strokeStyle = `rgba(${GLUT}, ${0.2 * schein})`; ctx.lineWidth = 7;
-        ctx.shadowColor = `rgba(${GLUT}, ${0.9 * schein})`; ctx.shadowBlur = 22;
-        ctx.stroke(); ctx.shadowBlur = 0;
-      }
       pfad(von, b2);
+      if (schein) {
+        ctx.strokeStyle = `rgba(${GLUT}, ${(0.07 * schein).toFixed(3)})`; ctx.lineWidth = 13; ctx.stroke();
+        ctx.strokeStyle = `rgba(${GLUT}, ${(0.14 * schein).toFixed(3)})`; ctx.lineWidth = 6; ctx.stroke();
+      }
       ctx.globalAlpha = alpha; ctx.strokeStyle = kern; ctx.lineWidth = 2.2;
       ctx.stroke(); ctx.globalAlpha = 1;
     };
@@ -195,8 +195,11 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
       const kx = x(bis); const ky = d.ys[bis];
       const sg = ctx.createLinearGradient(x(bis - schweif), 0, kx, 0);
       sg.addColorStop(0, "rgba(255, 200, 140, 0)"); sg.addColorStop(1, "rgba(255, 236, 214, 0.95)");
+      const sw = ctx.createLinearGradient(x(bis - schweif), 0, kx, 0);
+      sw.addColorStop(0, `rgba(${GLUT}, 0)`); sw.addColorStop(1, `rgba(${GLUT}, 0.35)`);
       pfad(bis - schweif, bis);
-      ctx.strokeStyle = sg; ctx.lineWidth = 3.6; ctx.shadowColor = `rgba(${GLUT}, 1)`; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.strokeStyle = sw; ctx.lineWidth = 10; ctx.stroke();
+      ctx.strokeStyle = sg; ctx.lineWidth = 3.6; ctx.stroke();
       punkt(kx, ky, 4.5, 1.1);
       if (letzterKopf >= 0 && bis > letzterKopf && !wenigBewegung()) {
         const n = Math.min(5, 1 + Math.round((bis - letzterKopf) / 5));

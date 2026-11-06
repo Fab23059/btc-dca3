@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 5. November 2026 · App-Version 1.1.0 (Bitcoin-Fenster, Bilanz, Abzeichen, automatisch erfasste Käufe; vierte Prüfrunde)
+Stand: 6. November 2026 · App-Version 1.1.1 (weicher Nebel, ruhiger Countdown, Leistung; fünfte Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -144,6 +144,8 @@ Einzahlung. Richtig ist deshalb **−5,05 €**, wie angezeigt.
 | *1.1:* Status der Käufe ohne Eintrag (Testdaten wie bei dir: Juni nie eingetragen) | 8./15.6. und 17.8. „automatisch“, 2.11. „eintragen“ – alle zählen voll mit |
 | *1.1:* Ohne Netz neu geladen | **Fehler gefunden und behoben:** Die drei neuen Dateien fehlten in der Offline-Liste, die App startete ohne Netz nicht. Jetzt startet sie („₿ 65.254 € · 2.11., 21:00“), und `tests/offline.test.mjs` verhindert, dass das wieder passiert. |
 | *1.1:* Bildrate gemessen (Chromium, 390 × 844) | **Fehler gefunden und behoben:** Das Weiterzeichnen der Funken meldete sich im selben Bild immer wieder neu an, das blockierte die Seite. Danach: 60 Bilder pro Sekunde auf der Startseite, während der Komet fährt und im Bitcoin-Fenster. |
+| *1.1.1:* Leistung, Prozessor viermal gedrosselt | Arbeit in Ruhe 498 → **64 ms pro Sekunde** (ohne Nebel, den auf dem Handy die Grafikkarte rechnet); Scrollen **63 Bilder/s** (längstes Bild 18 ms); Komet 28 → **62 Bilder/s** (längstes Bild 101 → 23 ms); Bitcoin-Fenster in Ruhe 152 → **7 ms pro Sekunde** |
+| *1.1.1:* Nebel in Handy-Auflösung (412 × 915, 2,6-fach) | weich, keine Kästchen mehr (vorher vergrößerte der Browser ein kleines Bild grob) |
 | *1.1:* Bitcoin-Fenster mit nachgebauten Quellen | Kurs, 24-h-Hoch und -Tief, Allzeithoch, Geschürft, Stimmung (38, gestern 41, vor einer Woche 58), Halving-Countdown, Schlagzeilen – alle angezeigt, keine Verstöße gegen die Sicherheitsrichtlinie |
 | Gesten | Ziehen zum Aktualisieren, Zeitreise mit dem Finger (Datum und Wert springen in den Moment, danach zurück ins Jetzt), Fenster mit dem Finger zufalten, Tablett wegwischen, Android-Zurück-Taste schließt Fenster: alles funktioniert |
 | Eintragen aus einer Zeile | Wert landet nur in `dca3_eintraege`; die Zeile zeigt danach „eingetragen“ mit der neuen Menge; alte App unberührt |
