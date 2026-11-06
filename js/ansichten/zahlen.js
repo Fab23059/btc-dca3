@@ -13,9 +13,9 @@ import { Ziffern } from "../bewegung/ziffern.js";
 import { Feder } from "../bewegung/feder.js";
 import { entfalte } from "../teile/fenster.js";
 import { SPARRATE_EUR } from "../konfig.js";
-import { durchhalten, haltefrist, rueckgang, meilensteine, zielName, dcaBilanz, SATS_ZIELE, WOCHEN_ZIELE } from "../kennzahlen.js";
+import { durchhalten, haltefrist, rueckgang, meilensteine, zielName, SATS_ZIELE, WOCHEN_ZIELE } from "../kennzahlen.js";
 import { holeBlockZurZeit } from "../kurse.js";
-import { euro, sats, zahl, ganz, anzahl, datumLang, datumMonatKurz, datum, monatsname, MINUS } from "../format.js";
+import { euro, sats, zahl, ganz, anzahl, datumLang, datumMonatKurz, datum, monatsname } from "../format.js";
 import { datumBerlin, zerlege } from "../zeit.js";
 import { euroTeile, ganzTeile, kopfPlus } from "./gemeinsam.js";
 
@@ -110,22 +110,6 @@ export function oeffneZahlen(app, herkunft) {
       h("div", { class: "wochenpunkte", "aria-hidden": "true" }, punkte),
       satz(d.seit ? `Seit ${datumLang(d.seit, true)} keine Woche ausgelassen.` : "Beginnt mit dem ersten Kauf.",
         m.naechsteWoche ? ` Nächster Halt: ${m.naechsteWoche.ziel} Wochen, noch ${m.naechsteWoche.noch}.` : "")));
-
-    // ---- Verteilt gekauft (DCA-Bilanz) ----
-    const bil = dcaBilanz(z.kaeufe, z.aktuell?.kurs, z.jetzt);
-    if (bil && bil.anzahl >= 2) {
-      const besser = (bil.vorteil ?? bil.vorteilSats) >= 0;
-      teile.push(abschnitt("Verteilt gekauft",
-        bil.vorteil != null
-          ? gross(`${bil.vorteil >= 0 ? "+" : MINUS}${zahl(Math.abs(bil.vorteil), 2)}`, h("span", { class: "zahl-einheit" }, " € durch Verteilen"))
-          : gross(`${besser ? "+" : MINUS}${sats(Math.abs(bil.vorteilSats))}`, h("span", { class: "zahl-einheit" }, " sats durch Verteilen")),
-        satz(`Hättest du alle ${euro(bil.investiert, 0)} gleich am ${datumLang(bil.erster.montag)} auf einmal gekauft, hättest du ${sats(bil.einmalBtc * 1e8)} sats${bil.einmalWert != null ? ` – heute ${euro(bil.einmalWert)} wert` : ""}. Mit deinem Sparplan sind es ${sats(bil.btc * 1e8)} sats${bil.wert != null ? `, also ${euro(bil.wert)}` : ""}. ${besser ? "Verteilt zu kaufen hat sich bisher gelohnt." : "Bisher wäre die Einmalanlage vorn gewesen – das dreht sich oft, wenn der Kurs zwischendurch fällt."}`),
-        h("div", { class: "mk-raster" },
-          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Käufe"), h("span", { class: "mk-feld-wert zahl" }, ganz(bil.anzahl))),
-          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Tage dabei"), h("span", { class: "mk-feld-wert zahl" }, ganz(bil.tage))),
-          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Günstigster Kauf"), h("span", { class: "mk-feld-wert zahl" }, euro(bil.guenstigster.kurs, 0)), h("span", { class: "mk-feld-unter" }, `am ${datumMonatKurz(bil.guenstigster.montag)}`)),
-          h("div", { class: "mk-feld" }, h("span", { class: "zk-titel" }, "Teuerster Kauf"), h("span", { class: "mk-feld-wert zahl" }, euro(bil.teuerster.kurs, 0)), h("span", { class: "mk-feld-unter" }, `am ${datumMonatKurz(bil.teuerster.montag)}`)))));
-    }
 
     // ---- Fairer Anteil ----
     if (s.anzahl) {

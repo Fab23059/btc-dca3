@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { berlinZeitpunkt, heuteBerlin, jahrestag, plusTage, montagVon } from "../js/zeit.js";
 import { sparwochen, kaeufeBerechnen, zusammenfassung, zeitraumErgebnis, wochenZerlegung, wertverlauf, kursBei, naechsterKauf, kaufkurseZusammenfuehren } from "../js/rechnen.js";
-import { haltefrist, rueckgang, volatilitaet, meilensteine, durchhalten, dcaBilanz } from "../js/kennzahlen.js";
+import { haltefrist, rueckgang, volatilitaet, meilensteine, durchhalten } from "../js/kennzahlen.js";
 import { ZEITPLAN, SPARRATE_EUR } from "../js/konfig.js";
 import { nah } from "./hilfen.mjs";
 
@@ -242,21 +242,4 @@ test("Nächster Kauf", () => {
   assert.equal(n.montag, "2026-11-02");
   const n2 = naechsterKauf(ZEITPLAN, UTC("2026-11-02T20:00:00Z"));
   assert.equal(n2.montag, "2026-11-09");
-});
-
-test("DCA-Bilanz: Vergleich mit einer Einmalanlage am ersten Kauftag", () => {
-  const k = [
-    { gezaehlt: true, ts: 0, btc: (15 * 0.996) / 60_000, kurs: 60_000, brutto: 15, gebuehr: 0.004 },
-    { gezaehlt: true, ts: 7 * 86_400_000, btc: (15 * 0.996) / 50_000, kurs: 50_000, brutto: 15, gebuehr: 0.004 },
-    { gezaehlt: false, ts: 14 * 86_400_000, btc: null, kurs: null, brutto: 0, gebuehr: 0.004 },
-  ];
-  const b = dcaBilanz(k, 55_000, 10 * 86_400_000);
-  assert.equal(b.anzahl, 2);
-  assert.equal(b.tage, 10);
-  assert.ok(nah(b.einmalBtc, (30 * 0.996) / 60_000));
-  assert.ok(nah(b.vorteil, (b.btc - b.einmalBtc) * 55_000));
-  assert.ok(b.vorteil > 0);                       // im Tief nachgekauft → besser als Einmalanlage
-  assert.equal(b.guenstigster.kurs, 50_000);
-  assert.equal(b.teuerster.kurs, 60_000);
-  assert.equal(dcaBilanz([], 55_000, 0), null);
 });

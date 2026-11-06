@@ -7,8 +7,9 @@
 // Kurs von damals.
 //
 // Im Fenster: Kursverlauf (1 Stunde bis alles) mit deinen Käufen,
-// Marktdaten, Allzeithoch, wie viel geschürft ist, Marktstimmung,
-// Halving-Countdown und Schlagzeilen.
+// Marktstimmung (Fear & Greed), Marktdaten, Allzeithoch, wie viel
+// geschürft ist, Halving-Countdown und Schlagzeilen.
+// Die Marktstimmung steht auch klein auf der Kachel.
 // =====================================================================
 
 import { h, svg, fuelle, wenigBewegung } from "../dom.js";
@@ -88,10 +89,11 @@ export function marktKopf(app) {
   const fussL = h("span", { class: "mk-fuss-links" });
   const fussR = h("span", { class: "mk-fuss-rechts zahl" });
   const live = h("span", { class: "live-punkt", "aria-hidden": "true" });
+  const stimmung = miniStimmung();
   const el = h("div", { class: "fkopf fkopf--markt" },
     h("h2", { class: "fkopf-titel" }, "Bitcoin", live), unter, kopfPlus(),
     h("div", { class: "mk-kurs" }, zahlEl), zeile,
-    h("div", { class: "mk-funke-halter" }, f.el),
+    h("div", { class: "mk-funke-halter" }, f.el), stimmung.el,
     h("p", { class: "mk-fuss" }, fussL, fussR));
   let zeit = null; let kursDamals = null; let erstes = true;
 
@@ -101,6 +103,7 @@ export function marktKopf(app) {
     live.classList.toggle("ist-live", Boolean(z.aktuellFrisch && a));
     if (!a) { werk.setze(null); fuelle(unter, "Kurs wird geladen"); fuelle(zeile); return; }
     f.setze(z.reihen.tag?.punkte);
+    stimmung.setze(zeit == null ? z.markt?.stimmung : null);
     if (zeit != null && kursDamals != null) {
       werk.eilig = true;
       werk.setze(kursDamals);
@@ -127,6 +130,32 @@ export function marktKopf(app) {
     el,
     aktualisiere() { zeige(); },
     zeitreise(info) { zeit = info?.t ?? null; kursDamals = info?.kurs ?? null; zeige(); },
+  };
+}
+
+/** Fear & Greed, klein: ein Halbbogen mit leuchtendem Punkt, daneben Wert und Wort. */
+function miniStimmung() {
+  const punkt = svg("circle", { class: "mk-stimmung-punkt", r: 2.6, cx: 12, cy: 2 });
+  const bogen = svg("svg", { class: "mk-stimmung-bogen", viewBox: "0 0 24 14", "aria-hidden": "true" },
+    svg("defs", null, svg("linearGradient", { id: "mk-stimmung-verlauf", x1: 0, y1: 0, x2: 1, y2: 0 },
+      svg("stop", { offset: "0", "stop-color": "#E36F5B" }), svg("stop", { offset: "0.5", "stop-color": "#A0988E" }), svg("stop", { offset: "1", "stop-color": "#7FD39A" }))),
+    svg("path", { d: "M2,12 A10,10 0 0 1 22,12", class: "mk-stimmung-spur" }), punkt);
+  const wert = h("span", { class: "mk-stimmung-wert zahl" });
+  const wort = h("span", { class: "mk-stimmung-wort" });
+  const el = h("p", { class: "mk-stimmung", hidden: true }, bogen, wert, wort);
+  return {
+    el,
+    setze(st) {
+      if (!st) { el.hidden = true; return; }
+      el.hidden = false;
+      const a = Math.PI * (1 - klemme(st.wert, 0, 100) / 100);
+      punkt.setAttribute("cx", (12 + 10 * Math.cos(a)).toFixed(2));
+      punkt.setAttribute("cy", (12 - 10 * Math.sin(a)).toFixed(2));
+      el.dataset.art = st.wert < 45 ? "angst" : st.wert < 55 ? "neutral" : "gier";
+      wert.textContent = String(st.wert);
+      wort.textContent = stimmungWort(st.wert).replace(/^./, (c) => c.toUpperCase());
+      el.setAttribute("aria-label", `Marktstimmung ${st.wert} von 100, ${stimmungWort(st.wert)}`);
+    },
   };
 }
 
@@ -246,6 +275,20 @@ export function oeffneMarkt(app, herkunft) {
     const a = z.aktuell;
     const teile = [];
 
+    // Marktstimmung
+    const st = ladeMarkt().stimmung;
+    if (st) {
+      const uhr = stimmungsUhr(st.wert);
+      laeufer.push(uhr);
+      const werk = h("span", { class: "zahl" });
+      const ziff = new Ziffern(werk, { teile: ganzTeile("") });
+      ziff.setze(0, { sofort: true });
+      laeufer.push({ los: () => ziff.setze(st.wert) });
+      teile.push(abschnitt("Marktstimmung · Fear & Greed",
+        h("div", { class: "uhr-halter" }, uhr.el, h("p", { class: "uhr-wert" }, werk, h("span", { class: "uhr-wort" }, stimmungWort(st.wert)))),
+        satz(`Fear & Greed Index: 0 ist extreme Angst, 100 extreme Gier.${st.gestern != null ? ` Gestern ${st.gestern}` : ""}${st.woche != null ? `, vor einer Woche ${st.woche}` : ""}${st.gestern != null ? "." : ""} Die Stimmung schwankt – dein Plan bleibt derselbe.`)));
+    }
+
     // Marktdaten
     if (a?.kurs) {
       const ath = ladeAllzeithoch();
@@ -269,20 +312,6 @@ export function oeffneMarkt(app, herkunft) {
           b.el,
           satz(`${zahl(a.umlauf / 1e6, 3)} Mio. von 21 Mio. Bitcoin sind im Umlauf. Es werden nie mehr – die restlichen ${zahl((21_000_000 - a.umlauf) / 1e6, 2)} Mio. kommen bis etwa 2140 dazu, immer langsamer.`)));
       }
-    }
-
-    // Marktstimmung
-    const st = ladeMarkt().stimmung;
-    if (st) {
-      const uhr = stimmungsUhr(st.wert);
-      laeufer.push(uhr);
-      const werk = h("span", { class: "zahl" });
-      const ziff = new Ziffern(werk, { teile: ganzTeile("") });
-      ziff.setze(0, { sofort: true });
-      laeufer.push({ los: () => ziff.setze(st.wert) });
-      teile.push(abschnitt("Marktstimmung",
-        h("div", { class: "uhr-halter" }, uhr.el, h("p", { class: "uhr-wert" }, werk, h("span", { class: "uhr-wort" }, stimmungWort(st.wert)))),
-        satz(`Fear & Greed Index: 0 ist extreme Angst, 100 extreme Gier.${st.gestern != null ? ` Gestern ${st.gestern}` : ""}${st.woche != null ? `, vor einer Woche ${st.woche}` : ""}${st.gestern != null ? "." : ""} Die Stimmung schwankt – dein Plan bleibt derselbe.`)));
     }
 
     // Halving
@@ -330,6 +359,7 @@ export function oeffneMarkt(app, herkunft) {
     h("section", { class: "mk-verlauf" }, wahl, info, linieEl),
     koerper);
 
+  const kleinerVerlauf = kopf.el.querySelector(".mk-funke-halter");
   kopf.aktualisiere();
   baue();
   holeAllzeithoch().then(() => baue()).catch(() => {});
@@ -339,6 +369,9 @@ export function oeffneMarkt(app, herkunft) {
   return entfalte({
     herkunft, inhalt, titel: "Bitcoin", hintergrund: app.heuteEl,
     beiFortschritt: (p) => {
+      // Der kleine 24-h-Verlauf gehört zur Kachel – im Fenster löst ihn der große Kursverlauf ab
+      kleinerVerlauf.style.opacity = klemme(1 - p * 1.8).toFixed(3);
+      kleinerVerlauf.style.visibility = p > 0.6 ? "hidden" : "";
       if (p > 0.6 && !gelaufen) {
         gelaufen = true;
         markeFeder.springe(markeZiel());

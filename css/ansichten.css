@@ -286,7 +286,16 @@
 .mk-zahl .ziffern-teil--rest { font-size: 0.46em; color: var(--text-2); letter-spacing: 0; margin-left: 0.08em; }
 .mk-zeile { position: absolute; left: 20px; top: 134px; display: flex; gap: 8px; align-items: baseline; font-size: 14.5px; font-weight: 560; }
 .mk-zeile-zusatz { color: var(--text-3); font-weight: 500; }
-.mk-funke-halter { position: absolute; right: 20px; top: 70px; width: 40%; max-width: 210px; height: 66px; }
+.mk-funke-halter { position: absolute; right: 20px; top: 68px; width: 40%; max-width: 210px; height: 54px; }
+/* Fear & Greed, klein auf der Kachel: Halbbogen in den Farben der Stimmung, ein glühender Punkt */
+.mk-stimmung { position: absolute; right: 20px; top: 132px; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 560; color: var(--text-2); white-space: nowrap; }
+.mk-stimmung-bogen { width: 24px; height: 14px; overflow: visible; }
+.mk-stimmung-spur { fill: none; stroke: url(#mk-stimmung-verlauf); stroke-width: 2.4; stroke-linecap: round; opacity: 0.75; }
+.mk-stimmung-punkt { fill: #FFEBD6; }
+.mk-stimmung[data-art="angst"] .mk-stimmung-punkt { fill: #F08C78; filter: drop-shadow(0 0 3px rgba(240, 140, 120, 0.9)); }
+.mk-stimmung[data-art="neutral"] .mk-stimmung-punkt { fill: #E8E0D6; filter: drop-shadow(0 0 3px rgba(232, 224, 214, 0.7)); }
+.mk-stimmung[data-art="gier"] .mk-stimmung-punkt { fill: #8FDBA6; filter: drop-shadow(0 0 3px rgba(143, 219, 166, 0.9)); }
+.mk-stimmung-wert { color: var(--text); font-weight: 620; font-stretch: 112%; }
 .mk-funke { width: 100%; height: 100%; overflow: visible; }
 .mk-funke-linie { fill: none; stroke: var(--glut); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .mk-funke-schein { fill: none; stroke: rgba(var(--glut-rgb), 0.16); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }

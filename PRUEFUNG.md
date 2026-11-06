@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 6. November 2026 · App-Version 1.1.1 (weicher Nebel, ruhiger Countdown, Leistung; fünfte Prüfrunde)
+Stand: 6. November 2026 · App-Version 1.1.2 (Vergleich mit Einmalanlage entfernt, Marktstimmung auf der Kachel; fünfte Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -10,7 +10,7 @@ Unter „So entsteht diese Zahl“ steht dann die Rechnung mit den echten Werten
 
 | Prüfung | Womit | Ergebnis |
 |---|---|---|
-| Rechenkern (22 Einzeltests: Zeitzone, Kaufzeit, Einträge, automatisch erfasste Käufe, Kaufkurse der alten App, Zeiträume, Haltefrist, Rückgang, DCA-Bilanz …) | `tests/rechnen.test.mjs` | alle bestanden |
+| Rechenkern (21 Einzeltests: Zeitzone, Kaufzeit, Einträge, automatisch erfasste Käufe, Kaufkurse der alten App, Zeiträume, Haltefrist, Rückgang …) | `tests/rechnen.test.mjs` | alle bestanden |
 | Jede Datei der App ist für den Offline-Start zwischengespeichert | `tests/offline.test.mjs` | bestanden (hat einen echten Fehler gefunden, siehe Abschnitt 4) |
 | Schutz der alten Daten (statisch und im Lauf) | `tests/schreibschutz.test.mjs` | alle bestanden |
 | Push-Verschlüsselung gegen den offiziellen Testvektor aus RFC 8291 | `tests/webpush.test.mjs` | Byte für Byte identisch |

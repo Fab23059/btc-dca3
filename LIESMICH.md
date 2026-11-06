@@ -26,15 +26,16 @@ und dorthin zurückfalten.
   * Darunter steht ruhig, wie lange es noch bis zum nächsten Kauf dauert, und es folgen vier Kacheln.
   * Oben rechts steht immer der **aktuelle Bitcoin-Kurs**. Antippen holt sofort frische Kurse.
 * **Bitcoin:**
-  * Der Kurs live (alle 30 Sekunden), die Veränderung in 24 Stunden, ein 24-h-Verlauf und der
-    Abstand zu deinem Ø-Kaufpreis.
+  * Der Kurs live (alle 30 Sekunden), die Veränderung in 24 Stunden, ein 24-h-Verlauf, die
+    **Marktstimmung** (Fear & Greed, klein als Halbbogen) und der Abstand zu deinem Ø-Kaufpreis.
   * **Kursverlauf** über 1 Stunde, 1 Tag, 1 Woche, 1 Monat, 1 Jahr, 5 Jahre oder alles. Deine
     Käufe sitzen als Punkte darauf, dein Ø-Kaufpreis ist gestrichelt, Hoch und Tief stehen dran.
     Finger auf die Linie zeigt Kurs, Zeitpunkt und den Kauf darunter.
   * Markt heute: 24-h-Hoch und -Tief, **Allzeithoch** und Abstand dazu, sats für 1 € und für
     15 €, Marktwert, Umsatz.
-  * Wie viele aller Bitcoin schon geschürft sind, die **Marktstimmung** (Fear & Greed, mit
-    gestern und vor einer Woche), der **Halving-Countdown** und aktuelle **Schlagzeilen**.
+  * Direkt unter dem Verlauf die **Marktstimmung** als Uhr (Fear & Greed, mit gestern und vor
+    einer Woche). Dazu kommen der Anteil schon geschürfter Bitcoin, der **Halving-Countdown**
+    und aktuelle **Schlagzeilen**.
 * **Käufe:**
   * „Ernte“ zeigt jeden Kauf als Balken, so hoch wie die sats, die es dafür gab.
   * Die **Bilanz** wie in der alten App: Investiert, Wert jetzt, Gewinn/Verlust in € und %,
@@ -46,9 +47,7 @@ und dorthin zurückfalten.
 * **Dein Baum:** Jeder Kauf ist ein Jahresring (siehe unten). Er hat eine Zeitleiste und lässt
   sich als Hintergrundbild speichern.
 * **Zahlen:**
-  * Durchhalten, **verteilt gekauft** (was der Sparplan gegenüber einer Einmalanlage am
-    ersten Tag gebracht hat, dazu günstigster und teuerster Kauf und Tage dabei),
-    dein Anteil an allen Bitcoin, der nächste Meilenstein
+  * Durchhalten, dein Anteil an allen Bitcoin, der nächste Meilenstein
   * **Abzeichen** für sats- und Wochen-Meilensteine. Die Ringe füllen sich bis zum nächsten Ziel.
   * Haltefrist nach § 23 EStG (reine Datumsrechnung), Tiefpunkt und Erholung, Blöcke seit
     deinem ersten Kauf
