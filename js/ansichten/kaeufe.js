@@ -12,7 +12,7 @@
 import { h, svg, icon, fuelle } from "../dom.js";
 import { entfalte } from "../teile/fenster.js";
 import { btc as btcFmt, sats, euro, zahl, anzahl, datumMonatKurz, monatsname, wochentagKurz, uhrzeit, datumLang, euroMitVorzeichen, prozent, MINUS } from "../format.js";
-import { zerlege as zerlegeDatum } from "../zeit.js";
+import { zerlege as zerlegeDatum, heuteBerlin } from "../zeit.js";
 import { kopfPlus } from "./gemeinsam.js";
 
 /** Ernte als SVG: ein Balken je Kauf. */
@@ -87,9 +87,12 @@ export function markiereFrisch(montag) { frisch = { montag, bis: Date.now() + 25
  */
 export function kaufZeile(k, { beiTipp, kurs = null, rang = null } = {}) {
   const { tag } = zerlegeDatum(k.montag);
-  const st = STATUS[k.status];
-  const menge = k.btc != null ? h("span", { class: "kz-menge zahl" }, btcFmt(k.btc), h("span", { class: "kz-einheit" }, " BTC")) : h("span", { class: "kz-menge kz-menge--leer" }, k.status === "ausstehend" ? `${uhrzeit(k.ts)} Uhr` : "Kurs fehlt");
-  const unter = k.btc != null ? h("span", { class: "kz-unter zahl" }, `${sats(k.btc * 1e8)} sats · ${euro(k.kurs, 0)}`) : h("span", { class: "kz-unter" }, k.boerse ?? "");
+  // Heute ist Kauftag, aber noch vor der geplanten Zeit: trotzdem schon eintragbar
+  // (Bitvavo kauft manchmal früher)
+  const heuteOffen = k.status === "ausstehend" && k.montag === heuteBerlin();
+  const st = heuteOffen ? { text: "eintragen", symbol: "uhr" } : STATUS[k.status];
+  const menge = k.btc != null ? h("span", { class: "kz-menge zahl" }, btcFmt(k.btc), h("span", { class: "kz-einheit" }, " BTC")) : h("span", { class: "kz-menge kz-menge--leer" }, k.status === "ausstehend" ? `${heuteOffen ? "heute, " : ""}${uhrzeit(k.ts)} Uhr` : "Kurs fehlt");
+  const unter = k.btc != null ? h("span", { class: "kz-unter zahl" }, `${sats(k.btc * 1e8)} sats · ${euro(k.kurs, 0)}${k.frueh ? ` · zählt seit ${uhrzeit(k.ts)} Uhr` : ""}`) : h("span", { class: "kz-unter" }, heuteOffen && beiTipp ? `${k.boerse} · schon gekauft? Antippen` : k.boerse ?? "");
   const statusEl = h("span", { class: `kz-status kz-status--${k.status}` }, icon(st.symbol, { groesse: 14, strich: 2.2 }), h("span", null, st.text));
   let rechts = statusEl;
   if (kurs != null && k.gezaehlt && k.btc != null) {
@@ -107,7 +110,7 @@ export function kaufZeile(k, { beiTipp, kurs = null, rang = null } = {}) {
     h("span", { class: "kz-mitte" }, menge, unter, rang ? h("span", { class: `kz-rang kz-rang--${rang}` }, rang === "bester" ? "Günstigster Kauf" : "Teuerster Kauf") : null),
     rechts,
   ];
-  if (!beiTipp || k.status === "ausstehend") return h("div", { class: "kauf-zeile", "data-montag": k.montag }, kinder);
+  if (!beiTipp || (k.status === "ausstehend" && !heuteOffen)) return h("div", { class: "kauf-zeile", "data-montag": k.montag }, kinder);
   const istFrisch = frisch.montag === k.montag && Date.now() < frisch.bis;
   const el = h("button", { type: "button", class: ["kauf-zeile", "tippbar", istFrisch && "ist-frisch"], "data-montag": k.montag, "aria-label": `Kauf vom ${datumLang(k.montag)} – ${st.text}`, onclick: () => beiTipp(el) }, kinder);
   return el;

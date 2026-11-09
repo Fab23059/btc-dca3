@@ -246,7 +246,7 @@ async function kursTick() {
 let letzterBlick = Date.now();
 function pruefeNeuenKauf() {
   const jetzt = zustand.jetzt;
-  const neu = zustand.kaeufe.find((k) => k.ts > letzterBlick && k.ts <= jetzt);
+  const neu = zustand.kaeufe.find((k) => k.ts > letzterBlick && k.ts <= jetzt && k.status !== "eingetragen");
   letzterBlick = Math.max(letzterBlick, jetzt);
   if (!neu) return;
   app.licht(1);

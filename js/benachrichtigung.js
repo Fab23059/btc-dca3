@@ -12,7 +12,7 @@
 import { h, icon, fuelle } from "./dom.js";
 import { oeffneSheet } from "./teile/tablett.js";
 import { toast } from "./teile/meldung.js";
-import { SCHLUESSEL, lies, schreibe, entferne, ladeEinstellungen } from "./speicher.js";
+import { SCHLUESSEL, lies, schreibe, entferne, ladeEinstellungen, ladeEintraege } from "./speicher.js";
 import { ZEITPLAN } from "./konfig.js";
 import { naechsterKauf } from "./rechnen.js";
 import { datumMonatKurz, uhrzeit, zeitpunkt } from "./format.js";
@@ -44,11 +44,12 @@ export function planeErinnerung(beiKaufzeit) {
   if (!n) return;
   const warte = n.ts - Date.now();
   if (warte > 2_000_000_000) return; // setTimeout kann nur ~24 Tage
-  // Zur Kaufzeit: App neu rechnen lassen (aus "ausstehend" wird "geschätzt")
+  // Zur Kaufzeit: App neu rechnen lassen (aus "ausstehend" wird "noch eintragen" –
+  // außer du hast ihn schon vorher eingetragen, dann bleibt die Erinnerung aus)
   uhr = setTimeout(async () => {
     beiKaufzeit?.();
     setTimeout(() => {
-      if (ladeEinstellungen().erinnerung) {
+      if (ladeEinstellungen().erinnerung && !ladeEintraege()[n.montag]) {
         zeige("Dein Sparplan hat gekauft", `Montag ${datumMonatKurz(n.montag)}, ${uhrzeit(n.ts)} Uhr. Trag die Menge aus ${n.boerse} ein, sobald sie dort steht.`, n.montag).catch(() => {});
       }
       planeErinnerung(beiKaufzeit);

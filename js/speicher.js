@@ -8,7 +8,7 @@
 // =====================================================================
 
 import { SPEICHER_PRAEFIX, GRENZEN } from "./konfig.js";
-import { istDatum, wochentag, tageZwischen } from "./zeit.js";
+import { istDatum, wochentag, tageZwischen, berlinZeitpunkt } from "./zeit.js";
 
 export const SCHLUESSEL = Object.freeze({
   eintraege: "dca3_eintraege",          // deine eingetragenen Käufe – das Wertvollste
@@ -121,6 +121,13 @@ export function pruefeEintrag(montag, roh) {
     const abstand = tageZwischen(montag, roh.datum);
     if (abstand < 0 || abstand > 6) return { fehler: "Kauftag liegt nicht in dieser Sparwoche" };
     if (abstand > 0) e.datum = roh.datum;
+  }
+  if (roh.zeit != null) {
+    // Kaufzeitpunkt, wenn früher eingetragen als geplant (Bitvavo kauft manchmal schon vormittags):
+    // muss in dieselbe Sparwoche fallen
+    const wochenStart = berlinZeitpunkt(montag, 0, 0);
+    if (!istZahl(roh.zeit) || roh.zeit < wochenStart || roh.zeit >= wochenStart + 7 * 86_400_000) return { fehler: "Kaufzeit liegt nicht in dieser Sparwoche" };
+    e.zeit = Math.round(roh.zeit);
   }
   if (roh.herkunft === "alt" || roh.herkunft === "neu" || roh.herkunft === "import") e.herkunft = roh.herkunft;
   if (istZahl(roh.geaendert)) e.geaendert = roh.geaendert;

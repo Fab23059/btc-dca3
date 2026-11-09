@@ -102,7 +102,9 @@ export function erstelleHeute(app) {
     h("div", { class: "takt-zeile" }, taktText, taktZeit),
     h("div", { class: "takt-balken", "aria-hidden": "true" }, taktFuellung));
   function zeigeTakt() {
-    const nk = naechsterKauf(ZEITPLAN, Date.now());
+    let nk = naechsterKauf(ZEITPLAN, Date.now());
+    // Schon eingetragen (Bitvavo hat früher gekauft)? Dann zählt der Montag danach
+    if (nk && z.eintraege[nk.montag]) nk = naechsterKauf(ZEITPLAN, nk.ts + 1);
     if (!nk) { takt.hidden = true; return; }
     const rest = Math.max(0, nk.ts - Date.now());
     const tage = Math.floor(rest / TAG); const std = Math.floor((rest % TAG) / 3_600_000); const min = Math.floor((rest % 3_600_000) / 60_000);

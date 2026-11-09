@@ -62,7 +62,9 @@ export const ERINNERN_MS = 7 * 86_400_000;
  *                   Minute (so hat auch die alte App gerechnet). Ein vollwertiger Kauf.
  *   "geschaetzt"  – wie "automatisch", aber der Kauf ist jünger als eine Woche:
  *                   Die App erinnert ans Eintragen der echten Menge, zählt ihn aber schon.
- *   "ausstehend"  – Kaufzeit noch nicht erreicht → zählt NICHT mit
+ *   "ausstehend"  – Kaufzeit noch nicht erreicht und nichts eingetragen → zählt NICHT mit.
+ *                   Hast du ihn schon eingetragen (Bitvavo kauft manchmal früher), ist er
+ *                   "eingetragen" und zählt ab dem Moment des Eintragens.
  *   "ohneKurs"    – Kaufzeit vorbei, aber noch kein Kurs abrufbar → zählt (noch) nicht mit
  *
  * "eingetragen", "automatisch" und "geschaetzt" fließen in Summen und Gewinn/Verlust ein.
@@ -92,14 +94,26 @@ export function kaeufeBerechnen({ wochen, eintraege, kaufkurse, jetzt, sparrate 
       status = "ohneKurs";
     }
 
+    // Vor der geplanten Kaufzeit eingetragen (Bitvavo hat früher gekauft): Der Kauf zählt ab dem
+    // Moment des Eintragens – nie in der Zukunft, sonst liefe die Linie rückwärts.
+    let ts = w.ts;
+    let frueh = false;
+    if (status === "eingetragen" && (e.zeit != null ? e.zeit < w.ts : w.ts > jetzt)) {
+      ts = Math.min(e.zeit ?? jetzt, jetzt, w.ts);
+      frueh = true;
+    }
+
     const gezaehlt = status === "eingetragen" || status === "automatisch" || status === "geschaetzt";
     if (gezaehlt) { kumEur += sparrate; kumBtc += btc; nr += 1; }
     return {
       ...w,
+      ts, geplant: w.ts, frueh,
       status, gezaehlt,
       nr: gezaehlt ? nr : null,
       btc, kurs,
-      marktkurs: markt ?? kurs,                 // Marktkurs zur Kaufzeit (für den Wertverlauf)
+      // Marktkurs zur Kaufzeit (für den Wertverlauf). Bei frühen Käufen ist der 20:50-Kurs
+      // der falsche Moment – dann gilt dein eingetragener Kurs.
+      marktkurs: frueh ? kurs : markt ?? kurs,
       brutto: gezaehlt ? sparrate : 0,
       netto,
       kaufdatum: e?.datum ?? w.montag,          // tatsächlicher Kauftag (für die Haltefrist)

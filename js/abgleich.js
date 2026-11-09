@@ -28,6 +28,7 @@ function inhalt(e) {
   if (e.btc != null) o.btc = e.btc;
   if (e.kurs != null) o.kurs = e.kurs;
   if (e.datum != null) o.datum = e.datum;
+  if (e.zeit != null) o.zeit = e.zeit;
   return o;
 }
 

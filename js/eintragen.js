@@ -53,7 +53,7 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
   const heute = heuteBerlin();
   const eintraege = ladeEintraege();
   if (!montag) {
-    const offen = [...zustand.kaeufe].reverse().find((k) => k.status === "geschaetzt" || k.status === "ohneKurs");
+    const offen = [...zustand.kaeufe].reverse().find((k) => k.status === "geschaetzt" || k.status === "ohneKurs" || (k.status === "ausstehend" && k.montag === heute));
     montag = offen?.montag ?? zustand.kaeufe[zustand.kaeufe.length - 1]?.montag ?? ERSTER_MONTAG;
   }
   const urspruenglich = montag;
@@ -111,7 +111,13 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
     const p = phaseVon(ZEITPLAN, m);
     if (!p) { fuelle(vorschlag); return; }
     const ts = berlinZeitpunkt(m, p.stunde, p.minute);
-    if (ts > Date.now()) { fuelle(vorschlag, h("p", { class: "feld-hilfe" }, `Der Marktkurs steht ab ${uhrzeit(ts)} Uhr als Vorschlag bereit.`)); return; }
+    if (ts > Date.now()) {
+      // Noch vor der geplanten Kaufzeit: Bitvavo hat vielleicht schon gekauft – der Kurs von jetzt hilft beim Prüfen
+      const a = zustand.aktuell;
+      if (a?.kurs) zeigeVorschlag(a.kurs, a.zeit, a.quelle, "jetzt");
+      else fuelle(vorschlag, h("p", { class: "feld-hilfe" }, `Geplant ist der Kauf um ${uhrzeit(ts)} Uhr.`));
+      return;
+    }
     const bekannt = zustand.kaufkurse[m];
     if (bekannt) { zeigeVorschlag(bekannt.kurs, ts, bekannt.quelle); return; }
     fuelle(vorschlag, h("span", { class: "vorschlag vorschlag--laedt" }, h("span", { class: "skelett", style: { width: "11em", height: "1em" } })));
@@ -122,10 +128,12 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
       if (vorschlagFuer === m) fuelle(vorschlag, h("p", { class: "feld-hilfe" }, "Kein Vorschlag – keine Kursquelle erreichbar."));
     }
   }
-  function zeigeVorschlag(kurs, ts, quelle) {
+  let vorschlagJetzt = false;
+  function zeigeVorschlag(kurs, ts, quelle, art = "kaufzeit") {
     vorschlagKurs = kurs;
+    vorschlagJetzt = art === "jetzt";
     fuelle(vorschlag, h("button", { type: "button", class: "vorschlag tippbar", onclick: () => { kursFeld.value = zahl(kurs, 2); tick(); pruefen(); } },
-      h("span", { class: "vorschlag-text" }, h("span", { class: "vorschlag-titel" }, "Vorschlag"), ` ${euro(kurs)}`),
+      h("span", { class: "vorschlag-text" }, h("span", { class: "vorschlag-titel" }, art === "jetzt" ? `Kurs jetzt, ${uhrzeit(ts)} Uhr` : "Vorschlag"), ` ${euro(kurs)}`),
       h("span", { class: "vorschlag-quelle" }, `Marktkurs ${uhrzeit(ts)} Uhr${quelle ? ` · ${quelle}` : ""}`),
       h("span", { class: "vorschlag-los" }, "Übernehmen")));
     pruefen();
@@ -181,7 +189,7 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
       } else if (b > GRENZEN.btcMax || impliziert < 1000 || impliziert > 10_000_000) {
         setzeHilfe(btcHilfe, `Das ergäbe einen Kurs von ${euro(impliziert, 0)} – steht das Komma an der richtigen Stelle?`, "fehler"); ok = false;
       } else if (markt && k === null && Math.abs(impliziert / markt - 1) > 0.05) {
-        setzeHilfe(btcHilfe, `= ${sats(b * 1e8)} sats · ergibt ${euro(impliziert, 0)} je BTC, der Marktkurs lag bei ${euro(markt, 0)}. Stimmt die Menge?`, "warnung");
+        setzeHilfe(btcHilfe, `= ${sats(b * 1e8)} sats · ergibt ${euro(impliziert, 0)} je BTC, ${vorschlagJetzt ? "der Kurs liegt gerade bei" : "der Marktkurs lag bei"} ${euro(markt, 0)}. Stimmt die Menge?`, "warnung");
       } else setzeHilfe(btcHilfe, `= ${sats(b * 1e8)} sats`);
     }
 
@@ -239,6 +247,12 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
   function sichern() {
     if (!pruefen() || !ergebnis) return;
     const { montag: m, ...daten } = ergebnis;
+    // Vor der geplanten Kaufzeit eingetragen? Dann gilt dieser Moment als Kaufzeit
+    // (spätestens jetzt hat Bitvavo gekauft). Beim Bearbeiten bleibt der erste Zeitpunkt.
+    const plan = phaseVon(ZEITPLAN, m);
+    const geplant = plan ? berlinZeitpunkt(m, plan.stunde, plan.minute) : 0;
+    if (m === urspruenglich && vorhanden?.zeit != null) daten.zeit = vorhanden.zeit;
+    else if (geplant > Date.now()) daten.zeit = Date.now();
     try {
       // Wurde der Kauftag in eine andere Woche verschoben, den alten Eintrag entfernen
       if (vorhanden && m !== urspruenglich) {

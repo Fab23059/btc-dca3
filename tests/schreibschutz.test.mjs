@@ -92,6 +92,13 @@ test("Laufzeit: Migration, Abgleich, Eintragen, Löschen und Import fassen btcdc
   assert.equal(ladeEintraege()["2026-08-03"].btc, 0.00021);
   assert.equal({}.btc, undefined, "keine Prototyp-Verschmutzung");
 
+  // Früh eingetragener Kauf: Zeitpunkt wird gespeichert, aber nur innerhalb der Sparwoche
+  const { pruefeEintrag } = await import("../js/speicher.js");
+  const montag = Date.parse("2026-11-08T23:00:00Z");     // Mo 9.11., 0:00 deutscher Zeit
+  assert.equal(pruefeEintrag("2026-11-09", { btc: 0.0002, zeit: montag + 10 * 3_600_000 }).eintrag.zeit, montag + 10 * 3_600_000);
+  assert.ok(pruefeEintrag("2026-11-09", { btc: 0.0002, zeit: montag - 60_000 }).fehler);
+  assert.ok(pruefeEintrag("2026-11-09", { btc: 0.0002, zeit: "gestern" }).fehler);
+
   // Montagskurse der alten App: beim Start übernommen …
   const { lies, SCHLUESSEL } = await import("../js/speicher.js");
   assert.equal(lies(SCHLUESSEL.altkurse)["2026-06-08"], 61_000);

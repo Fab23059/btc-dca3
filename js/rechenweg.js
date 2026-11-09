@@ -58,7 +58,7 @@ export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
         fz("Veränderung ohne Einzahlungen", euroMitVorzeichen(r.veraenderung), "summe"),
         fz("÷ (Wert zu Beginn + Einzahlungen)", prozent(r.prozent))) : null,
       r ? absatz("Neue Einzahlungen zählen nie als Gewinn. Sonst sähe eine Woche, in der der Kurs fiel, nur wegen der 15\u00A0€ wie eine Gewinnwoche aus.") : null,
-      s.ausstehend.length ? absatz(`Nicht enthalten: ${anzahl(s.ausstehend.length, "ausstehender Kauf", "ausstehende Käufe")} – sie zählen erst nach der Kaufzeit.`) : null,
+      s.ausstehend.length ? absatz(`Nicht enthalten: ${anzahl(s.ausstehend.length, "ausstehender Kauf", "ausstehende Käufe")} – sie zählen nach der Kaufzeit oder sobald du sie einträgst.`) : null,
       gegenprobeBlock(),
     ];
   } else if (art === "investiert") {
@@ -67,7 +67,7 @@ export function oeffneRechenweg(art, quelle, z, zeitraum = "gesamt") {
       formel(fz("Käufe", ganzText(s.anzahl)), fz("× Sparrate", euro(15)), fz("= investiert", euro(s.investiert), "summe")),
       absatz("Gezählt wird brutto, also inklusive Gebühr: Pro Woche gehen 15\u00A0€ vom Konto ab. Die Gebühr steckt im Ø Kaufpreis."),
       absatz(`Davon ${anzahl(s.eingetragen, "Kauf", "Käufe")} mit deinen eingetragenen Werten${geschaetzt ? ` und ${geschaetzt} automatisch erfasst (Marktkurs zur Kaufminute, wie in der alten App)` : ""}.`),
-      s.ausstehend.length ? absatz("Ein ausstehender Kauf (Kaufzeit noch nicht erreicht) ist nicht enthalten.") : null,
+      s.ausstehend.length ? absatz("Ein ausstehender Kauf (Kaufzeit noch nicht erreicht, noch nichts eingetragen) ist nicht enthalten.") : null,
     ];
   } else if (art === "bestand") {
     titel = "Bestand";

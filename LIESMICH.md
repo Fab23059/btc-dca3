@@ -44,6 +44,10 @@ und dorthin zurückfalten.
     (Wert heute und Plus/Minus in %). Markiert sind dein günstigster und dein teuerster Kauf.
     Status: ✓ eingetragen · ✓ automatisch · ◌ noch eintragen · ◷ ausstehend.
   * Eine Zeile antippen → sie entfaltet sich zum Eintragen. Menge **oder** Kurs genügt.
+  * **Montags jederzeit eintragen:** Hat Bitvavo schon vor 20:50 Uhr gekauft, tipp die heutige
+    Zeile an („schon gekauft? Antippen“) und trag die Menge ein. Der Kauf zählt sofort, und zwar
+    ab dem Moment, in dem du ihn einträgst. Der Countdown springt dann auf den nächsten Montag,
+    und um 20:50 Uhr kommt keine Erinnerung mehr.
 * **Dein Baum:** Jeder Kauf ist ein Jahresring (siehe unten). Er hat eine Zeitleiste und lässt
   sich als Hintergrundbild speichern.
 * **Zahlen:**

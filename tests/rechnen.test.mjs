@@ -48,6 +48,40 @@ test("Der laufende Montag zählt erst NACH der Kaufzeit (Hauptfehler der Altapp)
   assert.equal(s2.investiert, w2.length * 15);
 });
 
+test("Montag vor 20:50 eingetragen (Bitvavo hat früher gekauft): zählt sofort, ab dem Moment des Eintragens", () => {
+  const jetzt = UTC("2026-11-09T09:15:00Z");          // Montag, 10:15 deutscher Zeit
+  const eingetragenUm = UTC("2026-11-09T09:10:00Z");
+  const w = sparwochen(ZEITPLAN, jetzt);
+  const kurse = testKurse(w);
+  delete kurse["2026-11-09"];                           // Marktkurs für 20:50 gibt es noch nicht
+  const ohne = kaeufeBerechnen({ wochen: w, eintraege: {}, kaufkurse: kurse, jetzt, sparrate: 15 });
+  assert.equal(ohne.at(-1).status, "ausstehend");
+  const e = { "2026-11-09": { btc: 0.00022, zeit: eingetragenUm } };
+  const k = kaeufeBerechnen({ wochen: w, eintraege: e, kaufkurse: kurse, jetzt, sparrate: 15 });
+  const heute = k.at(-1);
+  assert.equal(heute.status, "eingetragen");
+  assert.ok(heute.gezaehlt);
+  assert.equal(heute.ts, eingetragenUm);                 // nicht 20:50, sondern als du eingetragen hast
+  assert.equal(heute.geplant, berlinZeitpunkt("2026-11-09", 20, 50));
+  assert.ok(heute.frueh);
+  assert.ok(nah(heute.marktkurs, heute.kurs));           // der 20:50-Kurs wäre der falsche Moment
+  const s = zusammenfassung(k, 62_000);
+  assert.equal(s.anzahl, w.length);
+  assert.equal(s.ausstehend.length, 0);
+  // Alles bis jetzt enthält den Kauf schon, und die Linie läuft nie rückwärts
+  const v = wertverlauf({ kaeufe: k, kurse: [], aktuellerKurs: 62_000, jetzt });
+  assert.ok(v.every((p, i) => i === 0 || p.t >= v[i - 1].t));
+  assert.ok(nah(v.at(-1).btc, s.btc));
+  // Ohne gespeicherten Zeitpunkt (ältere Einträge): höchstens "jetzt", nie in der Zukunft
+  const k2 = kaeufeBerechnen({ wochen: w, eintraege: { "2026-11-09": { btc: 0.00022 } }, kaufkurse: kurse, jetzt, sparrate: 15 });
+  assert.equal(k2.at(-1).ts, jetzt);
+  // Nach 20:50 eingetragen: bleibt beim geplanten Zeitpunkt
+  const spaet = UTC("2026-11-09T21:00:00Z");
+  const k3 = kaeufeBerechnen({ wochen: sparwochen(ZEITPLAN, spaet), eintraege: { "2026-11-09": { btc: 0.00022 } }, kaufkurse: kurse, jetzt: spaet, sparrate: 15 });
+  assert.equal(k3.at(-1).ts, berlinZeitpunkt("2026-11-09", 20, 50));
+  assert.equal(k3.at(-1).frueh, false);
+});
+
 test("Anzahl Sparwochen bis 02.11.2026: 22 (4 Binance + 18 Bitvavo)", () => {
   const w = sparwochen(ZEITPLAN, UTC("2026-11-02T21:00:00Z"));
   assert.equal(w.length, 22);

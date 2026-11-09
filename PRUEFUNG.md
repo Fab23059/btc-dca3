@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 6. November 2026 · App-Version 1.1.2 (Vergleich mit Einmalanlage entfernt, Marktstimmung auf der Kachel; fünfte Prüfrunde)
+Stand: 9. November 2026 · App-Version 1.1.3 (Montags schon vor 20:50 Uhr eintragen; sechste Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -10,7 +10,7 @@ Unter „So entsteht diese Zahl“ steht dann die Rechnung mit den echten Werten
 
 | Prüfung | Womit | Ergebnis |
 |---|---|---|
-| Rechenkern (21 Einzeltests: Zeitzone, Kaufzeit, Einträge, automatisch erfasste Käufe, Kaufkurse der alten App, Zeiträume, Haltefrist, Rückgang …) | `tests/rechnen.test.mjs` | alle bestanden |
+| Rechenkern (22 Einzeltests: Zeitzone, Kaufzeit, Einträge, früh eingetragene Käufe, automatisch erfasste Käufe, Kaufkurse der alten App, Zeiträume, Haltefrist, Rückgang …) | `tests/rechnen.test.mjs` | alle bestanden |
 | Jede Datei der App ist für den Offline-Start zwischengespeichert | `tests/offline.test.mjs` | bestanden (hat einen echten Fehler gefunden, siehe Abschnitt 4) |
 | Schutz der alten Daten (statisch und im Lauf) | `tests/schreibschutz.test.mjs` | alle bestanden |
 | Push-Verschlüsselung gegen den offiziellen Testvektor aus RFC 8291 | `tests/webpush.test.mjs` | Byte für Byte identisch |
@@ -44,7 +44,9 @@ Platzhalter ein. Nachgestellt mit identischen Daten am Montag, 2.11., um 20:47 U
 
 Die neue App zeigt den Montag bis zur Kaufzeit als **„ausstehend“** an. Er erscheint
 sichtbar als Hinweis („Heute 20:50 Uhr kauft dein Sparplan“), fließt aber in keine
-Summe ein. Ab 20:50 Uhr zählt er voll mit. Eine Woche lang erinnert die App ans Eintragen
+Summe ein. Ab 20:50 Uhr zählt er voll mit – oder schon früher, sobald du ihn einträgst
+(Bitvavo kauft manchmal vormittags). Dann zählt er ab dem Moment des Eintragens, nie ab
+einem Zeitpunkt in der Zukunft. Eine Woche lang erinnert die App ans Eintragen
 der echten Menge („noch eintragen“), danach gilt er als „automatisch“ erfasster Kauf.
 
 ### Fehler 2 – neu gefunden: Der Platzhalterkurs wird dauerhaft gemerkt
@@ -144,6 +146,7 @@ Einzahlung. Richtig ist deshalb **−5,05 €**, wie angezeigt.
 | *1.1:* Status der Käufe ohne Eintrag (Testdaten wie bei dir: Juni nie eingetragen) | 8./15.6. und 17.8. „automatisch“, 2.11. „eintragen“ – alle zählen voll mit |
 | *1.1:* Ohne Netz neu geladen | **Fehler gefunden und behoben:** Die drei neuen Dateien fehlten in der Offline-Liste, die App startete ohne Netz nicht. Jetzt startet sie („₿ 65.254 € · 2.11., 21:00“), und `tests/offline.test.mjs` verhindert, dass das wieder passiert. |
 | *1.1:* Bildrate gemessen (Chromium, 390 × 844) | **Fehler gefunden und behoben:** Das Weiterzeichnen der Funken meldete sich im selben Bild immer wieder neu an, das blockierte die Seite. Danach: 60 Bilder pro Sekunde auf der Startseite, während der Komet fährt und im Bitcoin-Fenster. |
+| *1.1.3:* Montag 10:15 Uhr, Kauf eingetragen (Browser) | Zeile antippbar, Eintrag mit Zeitpunkt gespeichert, sofort 23 statt 22 Käufe, Countdown springt auf Mo, 16. Nov |
 | *1.1.1:* Leistung, Prozessor viermal gedrosselt | Arbeit in Ruhe 498 → **64 ms pro Sekunde** (ohne Nebel, den auf dem Handy die Grafikkarte rechnet); Scrollen **63 Bilder/s** (längstes Bild 18 ms); Komet 28 → **62 Bilder/s** (längstes Bild 101 → 23 ms); Bitcoin-Fenster in Ruhe 152 → **7 ms pro Sekunde** |
 | *1.1.1:* Nebel in Handy-Auflösung (412 × 915, 2,6-fach) | weich, keine Kästchen mehr (vorher vergrößerte der Browser ein kleines Bild grob) |
 | *1.1:* Bitcoin-Fenster mit nachgebauten Quellen | Kurs, 24-h-Hoch und -Tief, Allzeithoch, Geschürft, Stimmung (38, gestern 41, vor einer Woche 58), Halving-Countdown, Schlagzeilen – alle angezeigt, keine Verstöße gegen die Sicherheitsrichtlinie |
