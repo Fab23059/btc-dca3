@@ -44,6 +44,9 @@ und dorthin zurückfalten.
     (Wert heute und Plus/Minus in %). Markiert sind dein günstigster und dein teuerster Kauf.
     Status: ✓ eingetragen · ✓ automatisch · ◌ noch eintragen · ◷ ausstehend.
   * Eine Zeile antippen → sie entfaltet sich zum Eintragen. Menge **oder** Kurs genügt.
+    Du kannst die Menge einfach aus Bitvavo kopieren und einfügen, so wie sie dort steht
+    (z. B. „+ 0.00022552 BTC“). Die App macht daraus „0,00022552“. Auch „22.552 sats“ oder
+    ein Kurs wie „€ 66,878.18“ werden verstanden.
   * **Montags jederzeit eintragen:** Hat Bitvavo schon vor 20:50 Uhr gekauft, tipp die heutige
     Zeile an („schon gekauft? Antippen“) und trag die Menge ein. Der Kauf zählt sofort, und zwar
     ab dem Moment, in dem du ihn einträgst. Der Countdown springt dann auf den nächsten Montag,

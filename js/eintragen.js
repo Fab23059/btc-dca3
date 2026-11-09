@@ -21,30 +21,8 @@ import { holeKursZumZeitpunkt } from "./kurse.js";
 import { SPARRATE_EUR, ZEITPLAN, GRENZEN } from "./konfig.js";
 import { phaseVon } from "./rechnen.js";
 import { montagVon, istDatum, heuteBerlin, berlinZeitpunkt } from "./zeit.js";
-import { euro, btc as btcFmt, sats, zahl, prozent, datumLang, datumMonatKurz, uhrzeit } from "./format.js";
+import { euro, btc as btcFmt, sats, zahl, prozent, datumLang, datumMonatKurz, uhrzeit, leseZahl } from "./format.js";
 
-/**
- * Liest eine Zahl, wie Menschen sie tippen: "0,00024512", "0.00024512",
- * "61.234,56", "61234.56" oder "61.234" (beim Kurs als Tausenderpunkt gemeint).
- * Leer → null, Unsinn → NaN.
- */
-export function leseZahl(text, art) {
-  let s = String(text ?? "").trim().replace(/[\s €]/g, "").replace(/btc$/i, "");
-  if (!s) return null;
-  if (!/^[0-9.,]+$/.test(s)) return NaN;
-  const komma = s.includes(","); const punkt = s.includes(".");
-  if (komma && punkt) {
-    s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
-  } else if (komma) {
-    if ((s.match(/,/g) || []).length > 1) return NaN;
-    s = s.replace(",", ".");
-  } else if (punkt && art === "kurs" && /^\d{1,3}(\.\d{3})+$/.test(s)) {
-    s = s.replace(/\./g, "");
-  }
-  if ((s.match(/\./g) || []).length > 1) return NaN;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
-}
 
 const ERSTER_MONTAG = ZEITPLAN[0].erster;
 
@@ -229,6 +207,18 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
     return ok;
   }
 
+  // Eingefügt (z. B. "+ 0.00022552 BTC" aus Bitvavo) oder beim Verlassen des Felds:
+  // gleich in die saubere Schreibweise bringen, damit man sieht, was die App verstanden hat
+  const aufraeumen = (f, art) => {
+    const n = leseZahl(f.value, art);
+    if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return;
+    const sauber = art === "btc" ? zahl(n, 8) : zahl(n, 2);
+    if (f.value.trim() !== sauber && /[^0-9.,]/.test(f.value.trim())) { f.value = sauber; tick(); }
+  };
+  for (const [f, art] of [[btcFeld, "btc"], [kursFeld, "kurs"]]) {
+    f.addEventListener("input", (e) => { if (e.inputType === "insertFromPaste" || e.inputType === "insertReplacementText") aufraeumen(f, art); });
+    f.addEventListener("blur", () => { aufraeumen(f, art); pruefen(); });
+  }
   for (const f of [datumFeld, btcFeld, kursFeld]) f.addEventListener("input", pruefen);
   datumFeld.addEventListener("change", pruefen);
   btcFeld.addEventListener("blur", pruefen);

@@ -1,6 +1,6 @@
 # Prüfbericht – stimmen die Zahlen?
 
-Stand: 9. November 2026 · App-Version 1.1.3 (Montags schon vor 20:50 Uhr eintragen; sechste Prüfrunde)
+Stand: 9. November 2026 · App-Version 1.1.4 (Menge direkt aus Bitvavo einfügen; sechste Prüfrunde)
 
 Dieser Bericht hält fest, **woher jede Zahl kommt, wie sie geprüft wurde und was
 dabei herauskam**. Zusätzlich kann jede Kennzahl in der App selbst angetippt werden.
@@ -11,6 +11,7 @@ Unter „So entsteht diese Zahl“ steht dann die Rechnung mit den echten Werten
 | Prüfung | Womit | Ergebnis |
 |---|---|---|
 | Rechenkern (22 Einzeltests: Zeitzone, Kaufzeit, Einträge, früh eingetragene Käufe, automatisch erfasste Käufe, Kaufkurse der alten App, Zeiträume, Haltefrist, Rückgang …) | `tests/rechnen.test.mjs` | alle bestanden |
+| Zahlen einlesen, wie getippt oder aus Bitvavo kopiert („+ 0.00022552 BTC“, „22.552 sats“, „€ 66,878.18“ …) | `tests/eingabe.test.mjs` | alle bestanden; im Browser über die echte Zwischenablage eingefügt |
 | Jede Datei der App ist für den Offline-Start zwischengespeichert | `tests/offline.test.mjs` | bestanden (hat einen echten Fehler gefunden, siehe Abschnitt 4) |
 | Schutz der alten Daten (statisch und im Lauf) | `tests/schreibschutz.test.mjs` | alle bestanden |
 | Push-Verschlüsselung gegen den offiziellen Testvektor aus RFC 8291 | `tests/webpush.test.mjs` | Byte für Byte identisch |

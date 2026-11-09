@@ -165,3 +165,39 @@ export function gruss(ts = Date.now()) {
 }
 
 export { STRICH, MINUS, NBSP };
+
+/**
+ * Liest eine Zahl so, wie Menschen (und Börsen) sie schreiben.
+ * Erkennt deutsches und englisches Format und alles, was beim Kopieren mitkommt:
+ *   "0,00024512" · "0.00024512" · "+ 0.00022552 BTC" (so zeigt es Bitvavo)
+ *   "₿ 0,0002" · "22.552 sats" (→ in BTC umgerechnet) · "61.234,56 €" · "€ 61,234.56" · "66878.18 EUR"
+ * art: "btc" oder "kurs" (bei "kurs" ist "61.234" ein Tausenderpunkt, kein Komma).
+ * Rückgabe: Zahl, null (leer) oder NaN (keine Zahl).
+ */
+export function leseZahl(text, art) {
+  let s = String(text ?? "").trim().toLowerCase();
+  const inSats = art === "btc" && /sat/.test(s);
+  // Was beim Kopieren mitkommt: Vorzeichen "+", Einheiten, Währungen, Leerzeichen jeder Art
+  s = s.replace(/satoshis?|sats?|btc|xbt|₿|eur|€/g, "").replace(/[\s\u00A0\u202F'’]/g, "").replace(/^\+/, "");
+  if (!s) return null;
+  if (!/^[0-9.,]+$/.test(s)) return NaN;
+  if (inSats) {
+    // sats sind ganze Zahlen: Punkte und Kommas sind nur Tausendertrenner
+    const n = Number(s.replace(/[.,]/g, ""));
+    return Number.isFinite(n) ? n / 1e8 : NaN;
+  }
+  const komma = s.includes(","); const punkt = s.includes(".");
+  if (komma && punkt) {
+    s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  } else if (komma) {
+    const anzahlKomma = (s.match(/,/g) || []).length;
+    if (art === "kurs" && /^\d{1,3}(,\d{3})+$/.test(s)) s = s.replace(/,/g, "");   // "66,878" (englischer Tausender)
+    else if (anzahlKomma > 1) return NaN;
+    else s = s.replace(",", ".");
+  } else if (punkt && art === "kurs" && /^\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, "");
+  }
+  if ((s.match(/\./g) || []).length > 1) return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
