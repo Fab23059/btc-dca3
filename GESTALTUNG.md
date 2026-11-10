@@ -24,7 +24,14 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 | B6 | **Tablett** | Kleine Dinge (Rechenweg, Rückfragen) kommen als Tablett von unten. Ändert sich der Inhalt, wächst oder schrumpft das Tablett, statt neu aufzugehen. | Feder „Raum“ |
 | B7 | **Die Statuszeile spricht** | Meldungen erscheinen nicht als neue Kästchen. Die vorhandene Statuszeile oben verwandelt sich in die Nachricht und danach zurück. | Feder „Zeiger“ |
 | B8 | **Aufgang** | Beim Start rollt der Wert von null hoch, der Komet zieht die Linie, die Kacheln steigen federnd nacheinander auf. Über jede läuft dabei einmal eine Lichtkante. Balken wachsen aus dem Boden, Zeilen gleiten herein, Abzeichen-Ringe füllen sich. | federnd (Dämpfung 0,74), 95 ms versetzt |
-| B9 | **Feier** | Ein neuer Meilenstein oder ein frisch eingetragener Kauf: Funken und Konfetti sprühen aus der Stelle, an der es passiert ist. | eigene Leinwand, Schwerkraft und Luftwiderstand |
+| B9 | **Feier** | *Abgelöst in 1.2:* Statt Konfetti gibt es den Funkenflug (B10) für Käufe und die Prägung (B12) für Meilensteine. | – |
+| B10 | **Funkenflug** | Kommt ein Kauf dazu oder trägst du einen ein, springt ein Funke der Reihe nach zu jeder Stelle, die sich dadurch ändert: Wert, Ernte, Baum, Zahlen, Countdown. Erst wenn er ankommt, ändert sie sich. Er startet dort, wo es passiert ist (Countdown oder Käufe), und fliegt nur zu dem, was gerade zu sehen ist. | je Strecke eine Feder ohne Nachschwingen, Funken mit Schwerkraft |
+| B11 | **Ringschluss** | Ein neuer Jahresring wird sichtbar um den Stamm gezogen: Ein weißglühender Punkt fährt einmal herum, dahinter kühlt die Linie zu Holz ab. Wird ein Kauf genauer eingetragen, wird sein Ring nachgezogen. | Feder „Umlauf“ (2,6 s, ohne Nachschwingen) |
+| B12 | **Prägung** | Ein Meilenstein wird zur Münze. Halten baut Kraft auf, dann schlägt der Stempel zu. Die Münze kreiselt aus wie auf einem Tisch: immer flacher, immer schneller. Danach lässt sie sich wenden. Jedes erreichte Abzeichen holt seine Münze wieder hervor. | Kraft als Feder; Auskreiseln nach dem Gesetz der Eulerschen Scheibe |
+| B13 | **Streiflicht** | Im Fenster „Dein Baum“ hat das Holz eine Oberfläche. Kippst du das Handy, wandert das Licht über die Ringe. Dasselbe Licht läuft über die Münzen. | zwei Federn glätten den Lagesensor; Relief auf der Grafikkarte |
+| B14 | **Zeitraffer** | Ein Tipp auf das Startdatum unter der Linie fährt die Zeitreise von selbst, vom ersten Kauf bis heute. Die Zeit verweilt bei jedem Kauf und eilt durch die Tage dazwischen. Greift der Finger in die Linie, endet der Film. | Tempo als Feder „Raum“, Takt je Kauf |
+| B15 | **Anfachen** | Ziehen zum Aktualisieren ist ein Blasebalg: Je weiter du ziehst, desto heller glühen Nebel und Zahl. Beim Loslassen steigen Funken auf, mit den frischen Kursen flammt die Glut noch einmal auf. | Feder „Gummi“, Funken mit Auftrieb |
+| B16 | **Kernholz** | Ringe, die länger als ein Jahr gehalten sind, dunkeln zu Kernholz nach. Kommt einer dazu, wandert die Grenze langsam nach außen. Bei der Zeitreise wandert sie mit zurück. | Feder ohne Nachschwingen (2,2 s) |
 
 **Regeln, die für alle Bewegungen gelten**
 
@@ -41,6 +48,9 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 6. **Licht entsteht durch Bewegung.** Was sich bewegt oder berührt wird, leuchtet – stärker,
    je schneller und je wichtiger. Danach glimmt es aus. Die große Zahl, der Nebel und der
    Schein hinter ihr hängen an derselben „Energie“: Rollen die Ziffern, glüht alles auf.
+   Seit 1.2 zählt auch die Bewegung der Hand: Kippen lässt das Licht wandern (B13).
+7. **Eine Feier zeigt, was passiert ist.** Kein Konfetti. Seltene Momente dürfen groß sein
+   (Prägung), häufige bleiben klein (Funkenflug).
 
 ## 2. Was daraus folgt (danach)
 

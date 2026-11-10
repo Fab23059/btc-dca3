@@ -23,6 +23,9 @@ und dorthin zurückfalten.
   * **Zeitreise:** Fährst du mit dem Finger über die Linie, springt die ganze Seite in diesen
     Moment. Die Zahlen rollen zum damaligen Stand, auch der Bitcoin-Kurs von damals.
     Beim Loslassen gleitet alles zurück ins Jetzt.
+  * **Zeitraffer:** Tipp auf das Startdatum links unter der Linie, und die Reise fährt von
+    selbst, vom ersten Kauf bis heute, im Takt deiner Käufe. Ein Griff in die Linie hält sie an.
+  * **Ziehen zum Aktualisieren** facht die Glut an: Je weiter du ziehst, desto heller wird es.
   * Darunter steht ruhig, wie lange es noch bis zum nächsten Kauf dauert, und es folgen vier Kacheln.
   * Oben rechts steht immer der **aktuelle Bitcoin-Kurs**. Antippen holt sofort frische Kurse.
 * **Bitcoin:**
@@ -58,7 +61,14 @@ und dorthin zurückfalten.
   * **Abzeichen** für sats- und Wochen-Meilensteine. Die Ringe füllen sich bis zum nächsten Ziel.
   * Haltefrist nach § 23 EStG (reine Datumsrechnung), Tiefpunkt und Erholung, Blöcke seit
     deinem ersten Kauf
-* **Feier:** Fällt ein neuer Meilenstein oder trägst du einen Kauf ein, sprühen Funken und Konfetti.
+* **Funkenflug:** Kommt ein Kauf dazu (montags um 20:50 Uhr, beim nächsten Öffnen oder wenn du
+  ihn von Hand einträgst), springt ein Funke zu jeder Stelle, die sich dadurch ändert. Erst wenn
+  er ankommt, rollt die Zahl, wächst der Balken, schließt sich der Ring. Nach dem Eintragen fliegt
+  er zuerst im Fenster „Käufe“ zur Ernte und zur Bilanz, danach auf der Startseite weiter.
+* **Prägung:** Ein neuer Meilenstein wird zur Münze. Finger drauf halten prägt sie (nach kurzer
+  Zeit prägt sie sich von selbst). Mit dem Finger lässt sie sich wenden, hinten stehen Datum und
+  Kauf. Ein Tipp daneben legt sie zu den Abzeichen. Jedes erreichte Abzeichen im Fenster „Zahlen“
+  holt seine Münze wieder hervor.
 * **Jede Zahl lässt sich antippen** und zeigt ihre Rechnung („So entsteht diese Zahl“).
 * **Offline:** Ohne Netz startet die App mit dem letzten Stand. Oben steht dann die Uhrzeit des Stands.
 * **Erinnerung:** ein Hinweis in der App und auf Wunsch eine Push-Nachricht am Montagabend.
@@ -86,6 +96,11 @@ Baumstamms.
 * **Jeder Kauf ist ein Jahresring.** Die Fläche eines Rings entspricht den sats dieses Kaufs.
   In günstigen Wochen gab es für dieselben 15 € mehr, dann wird der Ring breiter.
 * Der jüngste Ring glüht und atmet leise.
+* Kommt ein Kauf dazu, wird sein Ring sichtbar um den Stamm gezogen und kühlt aus.
+* Im offenen Fenster hat das Holz eine Oberfläche: Kippst du das Handy, wandert das Licht
+  über die Ringe.
+* **Kernholz:** Ringe, die du länger als ein Jahr hältst, dunkeln nach. Unter dem Baum steht,
+  wann der nächste dazukommt (reine Datumsrechnung, keine Steuerberatung).
 * Auf der Zeitleiste fährst du zurück in die Zeit, und der Baum schrumpft Ring für Ring.
   Fährst du über den Stamm, siehst du jeden einzelnen Kauf.
 * Kein Baum gleicht einem anderen, denn er entsteht allein aus deinen echten Käufen.
@@ -124,14 +139,14 @@ Vibrieren an/aus.
 |---|---|
 | `index.html` | Das Grundgerüst der Seite |
 | `GESTALTUNG.md` | Das Gestaltungskonzept: erst die Bewegungen, dann alles andere |
-| `css/` | `grund.css` (Farben, Schrift, Atmosphäre), `teile.css` (Bausteine), `ansichten.css` (Startseite und Fenster) |
+| `css/` | `grund.css` (Farben, Schrift, Atmosphäre), `teile.css` (Bausteine), `ansichten.css` (Startseite und Fenster), `bewegung-neu.css` (Münze, Relief, Zeitraffer) |
 | `js/konfig.js` | **Die Eckdaten des Sparplans** (Sparrate, Kaufzeiten, Gebühren) |
 | `js/rechnen.js`, `js/kennzahlen.js`, `js/zeitraeume.js` | Alle Berechnungen. Hier entsteht jede Zahl |
 | `js/kurse.js` | Abfrage der Kurse mit Ausweichquellen und Zwischenspeicher |
 | `js/speicher.js` | Speichern im Browser (mit Schreibschutz) |
 | `js/altdaten.js`, `js/abgleich.js` | Übernahme aus der alten App (nur lesend) und aus Sicherungsdateien |
-| `js/bewegung/` | Der Bewegungskern: `feder.js` (Federphysik), `geste.js` (Finger mit Tempo), `ziffern.js` (Zählwerk), `nebel.js` (Atmosphäre) |
-| `js/teile/` | Bausteine: `fenster.js` (Entfalten/Falten), `tablett.js`, `linie.js` (die Linie mit Komet und Zeitreise), `kurslinie.js` (Kursverlauf), `funken.js` (Feier), `meldung.js` (Statuszeile), Zurück-Taste, Vibration |
+| `js/bewegung/` | Der Bewegungskern: `feder.js` (Federphysik), `geste.js` (Finger mit Tempo), `ziffern.js` (Zählwerk), `nebel.js` (Atmosphäre), `neigung.js` (Licht folgt der Hand) |
+| `js/teile/` | Bausteine: `fenster.js` (Entfalten/Falten), `tablett.js`, `linie.js` (die Linie mit Komet, Zeitreise und Zeitraffer), `kurslinie.js` (Kursverlauf), `funkenflug.js` (der Funke, der überspringt), `ringschluss.js` (ein Ring wird gezogen), `praegung.js` (Münzen), `streiflicht.js` (Relief des Baums), `zeitraffer.js`, `meldung.js` (Statuszeile), Zurück-Taste, Vibration |
 | `js/ansichten/` | Startseite (`heute.js`) und die Fenster Bitcoin (`markt.js`), Käufe, Baum, Zahlen |
 | `js/jahresringe.js` | Dein Baum: Geometrie, Zeichnen, Berühren, Hintergrundbild |
 | `js/eintragen.js`, `js/einstellungen.js`, `js/rechenweg.js`, `js/benachrichtigung.js` | Eintragen, Einstellungen, Rechenweg, Erinnerungen |
