@@ -224,5 +224,5 @@
 .hat-fehler .feld-rahmen::after { background: var(--minus); box-shadow: none; transform: scaleX(1); }
 .hilfe-knopf { color: var(--glut); font-weight: 620; padding: 4px 0; }
 
-/* ---- Feier: Funken und Konfetti über allem, ohne Klicks abzufangen ---- */
+/* ---- Funkenflug (B10): eine Leinwand über allem, ohne Klicks abzufangen ---- */
 .funken-buehne { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 97; pointer-events: none; }

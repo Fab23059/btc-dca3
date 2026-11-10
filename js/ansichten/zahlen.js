@@ -12,6 +12,7 @@ import { h, svg, fuelle, wenigBewegung } from "../dom.js";
 import { Ziffern } from "../bewegung/ziffern.js";
 import { Feder } from "../bewegung/feder.js";
 import { entfalte } from "../teile/fenster.js";
+import { praege } from "../teile/praegung.js";
 import { SPARRATE_EUR } from "../konfig.js";
 import { durchhalten, haltefrist, rueckgang, meilensteine, zielName, SATS_ZIELE, WOCHEN_ZIELE } from "../kennzahlen.js";
 import { holeBlockZurZeit } from "../kurse.js";
@@ -24,6 +25,27 @@ const FAIRER_ANTEIL = (21_000_000 * 1e8) / MENSCHEN;
 
 /** 231.599 → "232k", 1.234.000 → "1,23 Mio" */
 const kurzSats = (n) => (n >= 1e6 ? `${zahl(n / 1e6, 2)} Mio` : `${Math.ceil(n / 1000)}k`);
+
+/**
+ * B12: Was auf der Münze eines Meilensteins steht.
+ * art "s" = sats-Ziel, "w" = Wochen-Ziel; ziel = die Zahl (z. B. 500000 oder 26).
+ */
+export function muenzeFuer(z, art, ziel) {
+  if (art === "s") {
+    const e = meilensteine(z.kaeufe, z.aktuell?.kurs, SPARRATE_EUR).erreicht.find((x) => x.ziel === ziel);
+    return {
+      wert: zielName(ziel), einheit: "sats",
+      datum: e ? `${datumMonatKurz(e.am)} ${e.am.slice(0, 4)}` : "", unter: e ? `Kauf ${e.kaufNr}` : "",
+      satz: `${zielName(ziel)} sats${e ? `, erreicht mit dem ${e.kaufNr}. Kauf` : " erreicht"}.`,
+    };
+  }
+  const k = z.kaeufe.filter((x) => x.status !== "ausstehend")[ziel - 1];
+  return {
+    wert: String(ziel), einheit: "Wochen",
+    datum: k ? `${datumMonatKurz(k.montag)} ${k.montag.slice(0, 4)}` : "", unter: "ohne Pause",
+    satz: `${ziel} Wochen in Folge, keine ausgelassen.`,
+  };
+}
 
 /** Stand zu einem Zeitpunkt (für Kopf und Zeitreise). */
 function standBis(z, t) {
@@ -138,14 +160,19 @@ export function oeffneZahlen(app, herkunft) {
 
     // ---- Abzeichen ----
     if (s.anzahl) {
-      const ring = (titel, einheit, anteil, art, unter) => {
+      // Erreichte Abzeichen sind Knöpfe: Antippen holt die Münze wieder hervor (B12), ohne neu zu prägen
+      const ring = (titel, einheit, anteil, art, unter, muenze = null) => {
         const U = 2 * Math.PI * 23;
         const bogen = svg("circle", { cx: 30, cy: 30, r: 23, class: "abz-bogen", "stroke-dasharray": `${U}`, "stroke-dashoffset": `${U}` });
         laeufer.push({ los: () => { bogen.style.strokeDashoffset = `${(U * (1 - anteil)).toFixed(2)}`; } });
-        return h("div", { class: `abz abz--${art}` },
+        const kinder = [
           svg("svg", { class: "abz-ring", viewBox: "0 0 60 60", "aria-hidden": "true" }, svg("circle", { cx: 30, cy: 30, r: 23, class: "abz-spur" }), bogen),
           h("span", { class: "abz-wert zahl" }, titel), h("span", { class: "abz-einheit" }, einheit),
-          unter ? h("span", { class: "abz-unter" }, unter) : null);
+          unter ? h("span", { class: "abz-unter" }, unter) : null];
+        if (!muenze) return h("div", { class: `abz abz--${art}` }, kinder);
+        const el = h("button", { type: "button", class: `abz abz--${art} tippbar`, "aria-label": `${titel} ${einheit} – Münze ansehen`,
+          onclick: () => praege({ ...muenzeFuer(z, muenze[0], muenze[1]), sofort: true, herkunft: el, ablage: el }) }, kinder);
+        return el;
       };
       const erreichtAm = new Map(m.erreicht.map((e) => [e.ziel, e.am]));
       const satsZiele = SATS_ZIELE.filter((x, i) => x <= (m.naechstes?.ziel ?? Infinity) || i < 1);
@@ -155,17 +182,17 @@ export function oeffneZahlen(app, herkunft) {
       const ringe = [
         ...zuletztSats.map((x) => {
           const da = m.sats >= x;
-          return ring(zielName(x), "sats", da ? 1 : x === m.naechstes?.ziel ? m.naechstes.fortschritt : 0, da ? "da" : "naechstes", da && erreichtAm.get(x) ? datumMonatKurz(erreichtAm.get(x)) : da ? "" : `noch ${kurzSats(Math.max(0, x - m.sats))}`);
+          return ring(zielName(x), "sats", da ? 1 : x === m.naechstes?.ziel ? m.naechstes.fortschritt : 0, da ? "da" : "naechstes", da && erreichtAm.get(x) ? datumMonatKurz(erreichtAm.get(x)) : da ? "" : `noch ${kurzSats(Math.max(0, x - m.sats))}`, da ? ["s", x] : null);
         }),
         ...zuletztWochen.map((w) => {
           const da = m.wochen >= w;
           const vorher = WOCHEN_ZIELE[WOCHEN_ZIELE.indexOf(w) - 1] ?? 0;
-          return ring(`${w}`, "Wochen", da ? 1 : Math.max(0, (m.wochen - vorher) / (w - vorher)), da ? "da" : "naechstes", da ? "geschafft" : `noch ${w - m.wochen}`);
+          return ring(`${w}`, "Wochen", da ? 1 : Math.max(0, (m.wochen - vorher) / (w - vorher)), da ? "da" : "naechstes", da ? "geschafft" : `noch ${w - m.wochen}`, da ? ["w", w] : null);
         }),
       ];
       teile.push(abschnitt("Abzeichen",
         h("div", { class: "abzeichen" }, ...ringe),
-        satz(`${anzahl(m.erreicht.length + m.wochenErreicht.length, "Abzeichen", "Abzeichen")} gesammelt. Jedes neue wird gefeiert, sobald es fällt.`)));
+        satz(`${anzahl(m.erreicht.length + m.wochenErreicht.length, "Abzeichen", "Abzeichen")} gesammelt. Jedes neue wird als Münze geprägt, sobald es fällt. Tipp ein erreichtes an, um seine Münze anzusehen.`)));
     }
 
     // ---- Haltefrist ----

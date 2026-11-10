@@ -1,0 +1,92 @@
+/* =====================================================================
+   bewegung-neu.css – Stile für die Bewegungen B10 bis B14:
+   Funkenflug, Ringschluss, Prägung, Streiflicht, Zeitraffer.
+   Wie überall gilt: Bewegt werden nur Lage, Drehung und Deckkraft.
+   Farben, Radien und Schrift kommen aus grund.css.
+   ===================================================================== */
+
+/* ---- Streiflicht: die beleuchtete Ansicht liegt über dem gezeichneten Stamm ---- */
+/* Einblenden weich, Ausblenden sofort: Sobald sich der Baum bewegt, gilt wieder das flache Bild */
+.baum-relief { opacity: 0; pointer-events: none; }
+.baum-relief.ist-an { opacity: 1; transition: opacity 0.6s ease-out; }
+
+/* ---- Zeitraffer: Das Startdatum unter der Linie wird zum Knopf ---- */
+.linie-achse--links.ist-knopf { display: inline-flex; align-items: center; gap: 6px; padding: 15px 14px 15px 0; margin: -15px 0; font-size: 12px; font-weight: 520; color: var(--text-2); }
+.linie-achse--links.ist-knopf::before { content: ""; border-left: 7px solid var(--glut); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; }
+.linie.laeuft-zeitraffer .linie-achse--links.ist-knopf { color: var(--glut-hell); }
+
+/* ---------------------------------------------------------------------
+   Prägung
+   --------------------------------------------------------------------- */
+.praegung-ebene { position: fixed; inset: 0; z-index: 96; display: grid; place-items: center; }
+.praegung-ebene--buehne { position: absolute; z-index: 1; }
+.praegung-schleier { position: absolute; inset: 0; background: #000; opacity: 0; }
+.praegung-ebene--buehne .praegung-schleier { background: transparent; }
+.praegung-mitte { position: relative; display: grid; justify-items: center; gap: 18px; padding: 0 24px; }
+.praegung-halter {
+  --muenze: min(208px, 56vw);
+  position: relative; width: var(--muenze); height: var(--muenze);
+  display: grid; place-items: center; border-radius: 50%;
+  touch-action: pan-y; -webkit-user-select: none; user-select: none;
+}
+.praegung-lage { display: block; width: 100%; height: 100%; perspective: 760px; will-change: transform, opacity; }
+.praegung-hinweis { font-size: 14px; font-weight: 540; color: var(--text-2); height: 20px; }
+.praegung-satz { max-width: 30ch; min-height: 44px; text-align: center; font-size: 16px; line-height: 1.4; color: var(--text); opacity: 0; text-wrap: balance; }
+
+/* Kraftring: füllt sich, solange der Finger hält */
+.praegung-kraft { position: absolute; inset: -11%; width: 122%; height: 122%; transform: rotate(-90deg); opacity: 0; pointer-events: none; }
+.praegung-kraft-bogen { fill: none; stroke: var(--glut); stroke-width: 2.2; stroke-linecap: round; }
+/* Lichtwelle und Blitz beim Schlag */
+.praegung-welle, .praegung-blitz { position: absolute; inset: 0; border-radius: 50%; opacity: 0; pointer-events: none; }
+.praegung-welle { border: 1.5px solid rgba(255, 214, 170, 0.9); }
+.praegung-blitz { inset: -30%; background: radial-gradient(closest-side, rgba(255, 236, 214, 0.95), rgba(var(--glut-rgb), 0.5) 42%, rgba(var(--glut-rgb), 0)); }
+
+/* ---- Die Münze: zwei Seiten, Rücken an Rücken ---- */
+.muenze { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; }
+.muenze-seite {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  /* Glut-Bronze: gebürstetes Metall aus einem Kegelverlauf, darüber Licht von oben rechts */
+  background:
+    radial-gradient(circle at 70% 22%, rgba(255, 232, 200, 0.5), rgba(255, 232, 200, 0) 48%),
+    conic-gradient(from 35deg, #8A5226, #D8975A, #7A4520, #C5803F, #8A5226, #E0A468, #74401C, #B87638, #8A5226);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 190, 0.35), inset 0 0 0 5px rgba(60, 32, 12, 0.5), inset 0 0 0 6px rgba(255, 220, 180, 0.28), inset 0 -10px 24px rgba(40, 18, 4, 0.5), 0 18px 40px -14px rgba(0, 0, 0, 0.9), 0 0 46px -8px rgba(var(--glut-rgb), 0.5);
+}
+/* Riffelrand: 104 Kerben – zwei für jede Woche eines Jahres */
+.muenze-seite::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(40, 20, 6, 0.6) 0 1.73deg, rgba(255, 220, 180, 0.12) 1.73deg 3.46deg);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 93.5%, #000 94.5%); mask-image: radial-gradient(closest-side, transparent 93.5%, #000 94.5%);
+}
+.muenze-hinten { transform: rotateY(180deg); }
+.muenze-relief { position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; width: 100%; height: 100%; color: #40230C; will-change: transform, opacity; }
+/* Geprägte Schrift: unten eine Lichtkante, oben ein Schatten (ruhend, nie animiert) */
+.muenze-wert { font-size: calc(var(--muenze) * 0.27); font-weight: 680; font-stretch: 125%; letter-spacing: -0.045em; line-height: 1; text-shadow: 0 1.5px 0 rgba(255, 226, 190, 0.55), 0 -1px 0 rgba(30, 12, 0, 0.5); }
+.muenze-einheit { font-size: calc(var(--muenze) * 0.085); font-weight: 640; font-stretch: 118%; text-shadow: 0 1px 0 rgba(255, 226, 190, 0.5), 0 -1px 0 rgba(30, 12, 0, 0.4); }
+/* Drei Jahresringe als Relief hinter der Zahl */
+.muenze-kreise { position: absolute; inset: 13%; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(40, 20, 6, 0.3), inset 0 1.5px 0 0 rgba(255, 226, 190, 0.22); }
+.muenze-kreise::before, .muenze-kreise::after { content: ""; position: absolute; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(40, 20, 6, 0.22), inset 0 1.5px 0 0 rgba(255, 226, 190, 0.18); }
+.muenze-kreise::before { inset: 11%; }
+.muenze-kreise::after { inset: 23%; }
+.muenze-rueck-oben, .muenze-rueck-unten { font-size: calc(var(--muenze) * 0.075); font-weight: 620; font-stretch: 112%; text-shadow: 0 1px 0 rgba(255, 226, 190, 0.5); }
+.muenze-rueck-datum { font-size: calc(var(--muenze) * 0.125); font-weight: 680; font-stretch: 125%; letter-spacing: -0.03em; text-shadow: 0 1.5px 0 rgba(255, 226, 190, 0.55), 0 -1px 0 rgba(30, 12, 0, 0.5); }
+/* Der Rohling: dieselbe Scheibe, noch matt und leer. Beim Schlag wird er durchsichtig. */
+.muenze-roh { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 70% 22%, rgba(120, 82, 48, 0.9), rgba(74, 46, 24, 0.96) 60%); will-change: opacity; }
+/* Der Glanz: ein Lichtstreifen, der nur verschoben wird */
+.muenze-glanz {
+  position: absolute; left: -50%; top: -50%; width: 200%; height: 200%; pointer-events: none;
+  background: linear-gradient(118deg, rgba(255, 244, 225, 0) 41%, rgba(255, 244, 225, 0.5) 49%, rgba(255, 244, 225, 0.12) 54%, rgba(255, 244, 225, 0) 61%);
+  mix-blend-mode: screen; will-change: transform;
+}
+.praegung-ebene.ist-gepraegt .praegung-halter { cursor: grab; }
+
+@media (prefers-reduced-motion: reduce) {
+  .baum-relief.ist-an { transition: none; }
+}
+
+/* ---- Kernholz (B16): Hinweis unter dem Baum ---- */
+.baum-kern { margin-top: 10px; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+
+/* ---- Abzeichen, die man antippen kann: Die Münze kommt wieder hervor (B12) ---- */
+button.abz { border-radius: 16px; }

@@ -10,6 +10,8 @@
 //   * Mit dem Finger über den Stamm fahren zeigt jeden einzelnen Kauf.
 //   * Der Wechsel zu Bitvavo und jeder Jahreswechsel sind als feine
 //     Doppellinie eingeschrieben.
+//   * Kernholz (B16): Ringe, die länger als ein Jahr gehalten sind, dunkeln
+//     nach – wie bei einem echten Stamm, dessen Inneres zu Kernholz wird.
 //   * Als Hintergrundbild exportierbar (1080 × 2400 Pixel).
 // Alles wird selbst gezeichnet – kein Foto, kein Zufall: Derselbe
 // Sparplan ergibt immer denselben Baum.
@@ -88,8 +90,10 @@ function ringPfad(ctx, ring, cx, cy, R, skala = 1) {
 /**
  * Zeichnet den Baum. sichtbar = wie viele Ringe (für das Wachsen, auch Bruchteile).
  * hervor = Index eines hervorgehobenen Rings (Finger).
+ * kern = so viele innere Ringe sind Kernholz (Kommazahl: die Grenze wandert gerade nach außen),
+ * kernGlut = 0 … 1, so stark glimmt die Kernholzgrenze, während sie wandert.
  */
-export function zeichneBaum(ctx, geo, { cx, cy, R, sichtbar = geo.n, hervor = null, atem = 0.5, mitRinde = true, nurGlut = false, ohneGlut = false }) {
+export function zeichneBaum(ctx, geo, { cx, cy, R, sichtbar = geo.n, hervor = null, atem = 0.5, mitRinde = true, nurGlut = false, ohneGlut = false, kern = 0, kernGlut = 0 }) {
   const { ringe } = geo;
   const anzahl = Math.min(ringe.length, Math.ceil(sichtbar));
   if (!anzahl) return;
@@ -198,6 +202,24 @@ export function zeichneBaum(ctx, geo, { cx, cy, R, sichtbar = geo.n, hervor = nu
     }
   }
 
+  // Kernholz: Der innere Teil des Stamms dunkelt nach. Die Grenze liegt an der Außenkante
+  // des letzten Rings, der länger als ein Jahr gehalten ist.
+  const kernRinge = Math.min(kern, anzahl);
+  if (kernRinge > 0.001) {
+    const voll = Math.floor(kernRinge); const rest = kernRinge - voll;
+    const i = Math.min(letzter, rest > 0 ? voll : voll - 1);
+    // Unterwegs zum nächsten Ring: derselbe Umriss, anteilig zwischen beiden Kanten
+    const innen = i > 0 ? ringe[i - 1].anteil / ringe[i].anteil : 0;
+    const skala = wachsSkala(i) * (rest > 0 ? innen + (1 - innen) * rest : 1);
+    ringPfad(ctx, ringe[i], cx, cy, R, skala);
+    ctx.fillStyle = "rgba(34, 10, 3, 0.44)";
+    ctx.fill();
+    if (kernGlut > 0.01) { ctx.lineWidth = Math.max(4, R * 0.04); ctx.strokeStyle = `rgba(255, 138, 42, ${(0.16 * kernGlut).toFixed(3)})`; ctx.stroke(); }
+    ctx.lineWidth = Math.max(0.8, R * 0.007);
+    ctx.strokeStyle = `rgba(255, 214, 170, ${(hervor != null ? 0.14 : 0.3 + 0.6 * kernGlut).toFixed(3)})`;
+    ctx.stroke();
+  }
+
   // Der jüngste Ring glüht und atmet
   const jung = ringe[letzter];
   if (hervor == null && !ohneGlut) glutRing(ctx, jung, cx, cy, R, wachsSkala(letzter), atem);
@@ -240,7 +262,7 @@ export function ringBei(geo, x, y, cx, cy, R) {
  * Hintergrundbild 1080 × 2400: Baum, Nebelglut, ruhige Typografie.
  * Gibt einen Blob (PNG) zurück.
  */
-export async function hintergrundbild(kaeufe, { zeilen = [] } = {}) {
+export async function hintergrundbild(kaeufe, { zeilen = [], kern = 0 } = {}) {
   const B = 1080; const H = 2400;
   const c = document.createElement("canvas");
   c.width = B; c.height = H;
@@ -255,7 +277,7 @@ export async function hintergrundbild(kaeufe, { zeilen = [] } = {}) {
   ctx.fillStyle = dunst; ctx.fillRect(0, 0, B, H);
   // Baum
   const geo = baumGeometrie(kaeufe);
-  zeichneBaum(ctx, geo, { cx: B / 2, cy: H * 0.42, R: B * 0.36, atem: 0.8 });
+  zeichneBaum(ctx, geo, { cx: B / 2, cy: H * 0.42, R: B * 0.36, atem: 0.8, kern });
   // Korn
   const korn = ctx.getImageData(0, 0, B, H);
   const z = zufallsquelle(7);

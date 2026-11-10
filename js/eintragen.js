@@ -14,8 +14,8 @@ import { h, svg, fuelle } from "./dom.js";
 import { entfalte } from "./teile/fenster.js";
 import { toast } from "./teile/meldung.js";
 import { tick } from "./teile/haptik.js";
-import { kaufZeile, markiereFrisch } from "./ansichten/kaeufe.js";
-import { feiern } from "./teile/funken.js";
+import { kaufZeile, markiereFrisch, funkeImFenster } from "./ansichten/kaeufe.js";
+import { stieben } from "./teile/funkenflug.js";
 import { setzeEintrag, loescheEintrag, ladeEintraege, speichereEintraege } from "./speicher.js";
 import { holeKursZumZeitpunkt } from "./kurse.js";
 import { SPARRATE_EUR, ZEITPLAN, GRENZEN } from "./konfig.js";
@@ -256,15 +256,16 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
       return;
     }
     tick(10);
-    // Der Knopf verwandelt sich in einen leuchtenden Haken, Funken sprühen, dann schließt sich das Sheet
+    // Der Knopf verwandelt sich in einen leuchtenden Haken, Funken stieben, dann schließt sich das Fenster.
+    // Von dort springt der Funke weiter (B10): erst im Fenster "Käufe", danach auf der Startseite.
     const r = speichern.getBoundingClientRect();
-    feiern({ x: r.left + r.width / 2, y: r.top + r.height / 2, staerke: 0.35 });
+    stieben({ x: r.left + r.width / 2, y: r.top + r.height / 2, menge: 22, kraft: 0.9 });
     speichern.classList.add("ist-fertig");
     speichern.append(h("span", { class: "knopf-haken", "aria-hidden": "true" }, svg("svg", { viewBox: "0 0 24 24" }, svg("path", { d: "M5 12.5l4.5 4.5L19 7.5", pathLength: 1 }))));
     speichern.disabled = false; speichern.style.setProperty("pointer-events", "none");
     setTimeout(() => {
       markiereFrisch(m);
-      beiAenderung?.();       // Liste zeigt schon den neuen Stand …
+      beiAenderung?.(m);      // Liste zeigt schon den neuen Stand …
       // … und der Kopf des Fensters auch – so landet es auf der neuen Zeile
       const neu = zustand.kaeufe.find((k) => k.montag === m);
       if (neu && kopf) {
@@ -276,6 +277,8 @@ export function oeffneEintragen({ zustand, montag = null, beiAenderung, herkunft
       }
       sheet.schliessen();     // … und das Fenster faltet sich in die neue Zeile
       toast(`Kauf vom ${datumMonatKurz(m)} gespeichert`, { art: "erfolg" });
+      // Ist es dort angekommen, springt der Funke aus der Zeile weiter zu Ernte und Bilanz
+      setTimeout(() => funkeImFenster(m, zustand), 540);
     }, 560);
   }
 
