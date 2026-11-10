@@ -15,6 +15,7 @@ und dorthin zurückfalten.
 
 * **Startseite:**
   * Oben steht dein Depotwert als Zählwerk, darunter Gewinn/Verlust für Woche, Monat, Jahr oder alles.
+    Beim Öffnen ist der Monat gewählt.
   * Mit **€ / ₿** oben rechts wechselst du zwischen Depotwert in Euro und deinem Bestand in sats
     (dann zeigt die Linie die Treppe deiner Käufe).
   * Darunter liegt die Linie: Wert über der Treppe deiner Einzahlungen, jeder Kauf als Punkt.

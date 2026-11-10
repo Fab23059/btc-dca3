@@ -8,7 +8,7 @@
 // Bei jeder Änderung an den App-Dateien: VERSION um eins erhöhen.
 // =====================================================================
 
-const VERSION = 9;
+const VERSION = 10;
 const PRAEFIX = "dca3-app-";
 const CACHE = `${PRAEFIX}${VERSION}`;
 
