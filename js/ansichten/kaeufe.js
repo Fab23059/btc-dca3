@@ -9,8 +9,9 @@
 // zum Eintragen (Bewegung B1, aus genau dieser Zeile).
 // =====================================================================
 
-import { h, svg, icon, fuelle } from "../dom.js";
+import { h, svg, icon, fuelle, wenigBewegung } from "../dom.js";
 import { entfalte } from "../teile/fenster.js";
+import { funkenflug } from "../teile/funkenflug.js";
 import { btc as btcFmt, sats, euro, zahl, anzahl, datumMonatKurz, monatsname, wochentagKurz, uhrzeit, datumLang, euroMitVorzeichen, prozent, MINUS } from "../format.js";
 import { zerlege as zerlegeDatum, heuteBerlin } from "../zeit.js";
 import { kopfPlus } from "./gemeinsam.js";
@@ -79,7 +80,35 @@ const STATUS = {
 
 // Zuletzt gespeicherter Kauf: Seine Zeile glüht beim Neuaufbau kurz auf
 let frisch = { montag: null, bis: 0 };
-export function markiereFrisch(montag) { frisch = { montag, bis: Date.now() + 2500 }; }
+// B10: Das offene Fenster "Käufe" und ob Ernte und Bilanz gerade auf den Funken warten
+let offenesFenster = null;
+let wartetAufFunke = false;
+export function markiereFrisch(montag) {
+  frisch = { montag, bis: Date.now() + 2500 };
+  wartetAufFunke = Boolean(offenesFenster) && !wenigBewegung() && !document.documentElement.classList.contains("ruhig");
+  // Sicherheitsnetz: Kommt kein Funke, zeigen Ernte und Bilanz den neuen Stand trotzdem
+  if (wartetAufFunke) setTimeout(() => { if (wartetAufFunke) { wartetAufFunke = false; offenesFenster?.zeigeStand(); } }, 4000);
+}
+
+/**
+ * B10 im Fenster "Käufe": Der Funke springt von der frisch gespeicherten Zeile zur Ernte
+ * und weiter zur Bilanz. Erst wenn er ankommt, zeigen sie den neuen Stand.
+ * (Ist das Fenster nicht offen, passiert hier nichts – dann fliegt er nur auf der Startseite.)
+ */
+export async function funkeImFenster(montag, zustand) {
+  const f = offenesFenster;
+  if (!f || !wartetAufFunke) { wartetAufFunke = false; return; }
+  const gez = zustand.kaeufe.filter((k) => k.gezaehlt);
+  const i = Math.max(0, gez.findIndex((k) => k.montag === montag));
+  await funkenflug({
+    von: () => f.liste.querySelector(`.kauf-zeile[data-montag="${montag}"] .kz-status`),
+    stationen: [
+      { ziel: () => f.kopf.el.querySelector(".kk-ernte"), anker: [(i + 0.5) / Math.max(gez.length, 12), 0.7], zuenden: () => f.kopf.aktualisiere(), halt: 200 },
+      { ziel: () => f.bilanz, anker: [0.25, 0.62], zuenden: () => f.baueBilanz() },
+    ],
+  });
+  wartetAufFunke = false;
+}
 
 /**
  * Eine Zeile – gleich aufgebaut wie der Kopf des Eintragen-Fensters.
@@ -142,8 +171,8 @@ export function oeffneKaeufe(app, herkunft) {
   }
 
   function baueListe() {
-    kopf.aktualisiere();
-    baueBilanz();
+    // Nach dem Speichern eines Kaufs warten Ernte und Bilanz auf den Funken (B10)
+    if (!wartetAufFunke) { kopf.aktualisiere(); baueBilanz(); }
     const s = z.summe;
     const kurs = z.aktuell?.kurs ?? null;
     const gez = z.kaeufe.filter((k) => k.gezaehlt && k.kurs != null);
@@ -177,9 +206,14 @@ export function oeffneKaeufe(app, herkunft) {
   app.koepfe.add(kopf);
   const beobachter = () => baueListe();
   app.beiAenderung.add(beobachter);
+  const dieses = { kopf, liste, bilanz, baueBilanz, zeigeStand: () => { kopf.aktualisiere(); baueBilanz(); } };
+  offenesFenster = dieses;
 
   return entfalte({
     herkunft, inhalt, titel: "Käufe", hintergrund: app.heuteEl,
-    beimSchliessen: () => { app.koepfe.delete(kopf); app.beiAenderung.delete(beobachter); },
+    beimSchliessen: () => {
+      app.koepfe.delete(kopf); app.beiAenderung.delete(beobachter);
+      if (offenesFenster === dieses) { offenesFenster = null; wartetAufFunke = false; }
+    },
   });
 }

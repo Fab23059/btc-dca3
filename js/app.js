@@ -31,13 +31,13 @@ import { statusAnbinden, setzeStatus, toast } from "./teile/meldung.js";
 import { erstelleHeute } from "./ansichten/heute.js";
 import { oeffneKaeufe } from "./ansichten/kaeufe.js";
 import { oeffneBaum } from "./ansichten/baum.js";
-import { oeffneZahlen } from "./ansichten/zahlen.js";
+import { oeffneZahlen, muenzeFuer } from "./ansichten/zahlen.js";
 import { oeffneMarkt } from "./ansichten/markt.js";
 import { oeffneEintragen } from "./eintragen.js";
 import { oeffneRechenweg } from "./rechenweg.js";
 import { oeffneEinstellungen } from "./einstellungen.js";
 import { planeErinnerung } from "./benachrichtigung.js";
-import { feiern } from "./teile/funken.js";
+import { praege } from "./teile/praegung.js";
 
 // Nie in einem fremden Rahmen laufen (Schutz vor untergeschobenen Klicks).
 if (window.top !== window.self) {
@@ -192,9 +192,11 @@ function rendern({ ersteMal = false } = {}) {
   });
 }
 
-function nachAenderung() {
+/** montag: der gerade von Hand eingetragene Kauf (dann fliegt der Funke, B10) – sonst leer. */
+function nachAenderung(montag) {
   zustand.eintraege = ladeEintraege();
   neuBerechnen();
+  if (typeof montag === "string") heute.merkeEintrag(montag);
   heute.aktualisiere();
   for (const f of app.beiAenderung) { try { f(); } catch (e) { console.error(e); } }
 }
@@ -241,7 +243,8 @@ async function kursTick() {
 
 // ---------------------------------------------------------------------
 // Montagabend, 20:50: Ist die App gerade offen, wenn der Sparplan kauft,
-// meldet die Statuszeile es und die Glut leuchtet auf.
+// meldet die Statuszeile es. Den Funkenflug (B10) startet die Startseite selbst,
+// sobald sie den neuen Kauf sieht.
 // ---------------------------------------------------------------------
 let letzterBlick = Date.now();
 function pruefeNeuenKauf() {
@@ -249,8 +252,6 @@ function pruefeNeuenKauf() {
   const neu = zustand.kaeufe.find((k) => k.ts > letzterBlick && k.ts <= jetzt && k.status !== "eingetragen");
   letzterBlick = Math.max(letzterBlick, jetzt);
   if (!neu) return;
-  app.licht(1);
-  feiern({ staerke: 0.6 });
   toast("Dein Sparplan hat gekauft", { art: "erfolg", dauer: 7000, aktion: { text: "Eintragen", los: () => app.eintragen(neu.montag) } });
 }
 
@@ -274,7 +275,12 @@ function pruefeMeilensteine() {
   schreibe(SCHLUESSEL.gefeiert, [...new Set([...gefeiert, ...erreicht])]);
   const top = neu[neu.length - 1];
   app.licht(1);
-  setTimeout(() => feiern({ staerke: 1 }), 300);
+  // B12: Der Meilenstein wird als Münze geprägt – nach dem Funkenflug, falls gerade einer unterwegs ist.
+  // Sie fliegt aus der Statuszeile herein und landet am Ende in der Kachel "Zahlen".
+  heute.wennRuhig(() => praege({
+    ...muenzeFuer(zustand, top[0], Number(top.slice(1))),
+    herkunft: $("#status"), ablage: () => heute.kachelZahlen,
+  }));
   toast(top[0] === "s" ? `${zielName(Number(top.slice(1)))} sats erreicht` : `${top.slice(1)} Wochen ohne Pause`, { art: "erfolg", dauer: 6000 });
 }
 

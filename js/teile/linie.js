@@ -44,12 +44,15 @@ export function naechsterPunkt(punkte, t) {
   return Math.abs(punkte[hi].t - t) < Math.abs(t - punkte[lo].t) ? hi : lo;
 }
 
-export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {} } = {}) {
+export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {}, beiStartdatum = null } = {}) {
   const leinwand = h("canvas", { class: "linie-leinwand", role: "img", "aria-label": "Verlauf: Wert deines Depots über deinen Einzahlungen" });
   const kopf = h("span", { class: "linie-kopf", "aria-hidden": "true" });
-  const achseL = h("span", { class: "linie-achse linie-achse--links" });
-  const achseR = h("span", { class: "linie-achse linie-achse--rechts" });
-  behaelter.append(leinwand, kopf, h("div", { class: "linie-achsen", "aria-hidden": "true" }, achseL, achseR));
+  // B14: Mit beiStartdatum wird das Datum links unter der Linie zum Knopf "Reise ansehen"
+  const achseL = beiStartdatum
+    ? h("button", { type: "button", class: "linie-achse linie-achse--links ist-knopf", onclick: () => beiStartdatum() })
+    : h("span", { class: "linie-achse linie-achse--links" });
+  const achseR = h("span", { class: "linie-achse linie-achse--rechts", "aria-hidden": "true" });
+  behaelter.append(leinwand, kopf, h("div", { class: "linie-achsen", "aria-hidden": beiStartdatum ? null : "true" }, achseL, achseR));
   const ctx = leinwand.getContext("2d");
 
   let B = 0; let H = 0; let dpr = 1; let N = 0;
@@ -331,7 +334,39 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
         });
       } else malen();
     },
-    achsen(links, rechts) { achseL.textContent = links; achseR.textContent = rechts; },
+    achsen(links, rechts) {
+      achseL.textContent = links; achseR.textContent = rechts;
+      if (beiStartdatum) achseL.setAttribute("aria-label", `Die Reise ab dem ${links} ansehen`);
+    },
+    /**
+     * Zeitraffer (B14): die Zeitreise von außen fahren. anteil 0 … 1 = Stelle auf der Linie,
+     * null = zurück ins Jetzt. Käufe, über die die Fahrt hinwegzieht, zünden wie beim Kometen.
+     */
+    fahre(anteil) {
+      if (leer || N < 3) return;
+      zeiger.halte();
+      if (anteil == null) {
+        behaelter.classList.remove("wird-gescrubbt");
+        scrub = null; licht.springe(glanz); licht.zu(0);
+        beimScrubben(null); malen();
+        return;
+      }
+      const vorher = scrub ?? -1;
+      scrub = klemme(anteil) * (N - 1);
+      const jetzt = performance.now();
+      for (const m of marken) if (m.spalte > vorher && m.spalte <= scrub) m.zuend = jetzt;
+      behaelter.classList.add("wird-gescrubbt");
+      glanz = 0.55;
+      melde(); malen();
+    },
+    /** Von der gefahrenen Stelle zurück ins Jetzt gleiten – wie nach dem Loslassen des Fingers. */
+    fahreHeim() {
+      if (scrub == null) return;
+      behaelter.classList.remove("wird-gescrubbt");
+      licht.springe(glanz); licht.zu(0);
+      zeiger.springe(scrub);
+      zeiger.zu(N - 1).then(() => { if (zeiger.wert >= N - 1.5) { scrub = null; beimScrubben(null); malen(); } });
+    },
     get scrubbt() { return scrub != null; },
   };
 }

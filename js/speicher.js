@@ -22,6 +22,8 @@ export const SCHLUESSEL = Object.freeze({
   abgleich: "dca3_abgleich",            // Stand des Abgleichs mit der alten App
   status: "dca3_status",                // Migration, letzte Sicherung …
   gefeiert: "dca3_gefeiert",            // schon gefeierte Meilensteine
+  ringeGesehen: "dca3_ringe_gesehen",   // so viele Ringe hatte der Baum beim letzten Besuch (für den Funkenflug)
+  kernGesehen: "dca3_kern_gesehen",     // so viele davon waren schon Kernholz
   zitat: "dca3_zitat",
   push: "dca3_push",                    // öffentlicher Teil der Push-Einrichtung
 });
