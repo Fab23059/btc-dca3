@@ -38,7 +38,7 @@ const TAG = 86_400_000;
 
 export function erstelleHeute(app) {
   const z = app.zustand;
-  let zeitraum = "gesamt";
+  let zeitraum = "monat";         // womit die Startseite beginnt: die letzten 30 Tage
   let einheit = "eur";            // "eur": Depotwert in Euro · "btc": Bestand in sats
   let reist = false;
   let ersteDaten = true;
