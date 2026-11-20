@@ -11,6 +11,8 @@
 //   B8  Bei jedem Zeitraumwechsel fährt ein Komet die Linie von links
 //       nach rechts ab: Schweif, Funken, die Käufe zünden im Vorbeiflug,
 //       im Jetzt läuft eine Lichtwelle aus.
+//   B20 Jeder Kauf, den der Komet (oder der Zeitraffer) erreicht, knallt
+//       ganz leise: eine kleine Druckwelle, ein paar Funken, ein Tick.
 //   B17 Dabei meldet er in jedem Bild den Wert an seiner Stelle, damit die
 //       große Zahl mitzählen kann (beiFahrt).
 //   R6  Licht aus Bewegung: Der Zeiger leuchtet stärker, je schneller
@@ -69,6 +71,28 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
   const funken = [];                                // Funken, die der Komet verliert
   let bildZeit = 0; let letzterKopf = -1;
   let blitzWert = 0;                                // Aufblitzen bei der Ankunft im Jetzt
+  let letzterTick = 0;                              // Vibration beim Knall: höchstens alle 110 ms
+
+  /** B20: Ein Kauf zündet. Der Knall selbst entsteht beim nächsten Zeichnen (dort ist bekannt, wo er liegt). */
+  function zuende(m, jetzt) {
+    m.zuend = jetzt;
+    if (wenigBewegung()) return;
+    m.knall = true;
+    if (jetzt - letzterTick > 110) { tick(4); letzterTick = jetzt; }
+  }
+  /** Abstand der Käufe auf der Linie: Stehen sie dicht, knallt jeder leiser und kleiner. */
+  const dichte = () => klemme(((B - RECHTS) / Math.max(1, marken.length)) / 30, 0.35, 1);
+  /** Ein paar Funken in alle Richtungen – weniger, wenn die Käufe dicht stehen. */
+  function knall(px, py) {
+    const d = dichte();
+    const n = d > 0.85 ? 7 : d > 0.45 ? 4 : 3;
+    const dreh = Math.random() * Math.PI * 2;
+    for (let i = 0; i < n; i++) {
+      const w = dreh + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+      const v = (50 + Math.random() * 65) * (0.55 + 0.45 * d);
+      funken.push({ x: px, y: py, vx: Math.cos(w) * v, vy: Math.sin(w) * v - 18, leben: 0.32 + Math.random() * 0.24, alt: 0, r: 0.6 + Math.random() * 0.7, schwer: 60, zaeh: 4.5 });
+    }
+  }
 
   const morph = new Feder(1, { art: "raum", genau: 0.001, beiWert: () => malen() });
   // B17: Wert unter dem Kometen. Zeitpunkt und Wert kommen aus derselben Feder wie der Komet selbst,
@@ -188,7 +212,7 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
     // Käufe als Punkte auf der Linie – sie zünden, wenn der Komet vorbeizieht
     for (const m of marken) {
       if (m.spalte > bis || m.spalte < 0 || m.spalte >= N) continue;
-      if (m.zuend < 0) m.zuend = faehrt ? jetzt : jetzt - 2000;
+      if (m.zuend < 0) { if (faehrt) zuende(m, jetzt); else m.zuend = jetzt - 2000; }
       const alter = (jetzt - m.zuend) / 1000;
       const pop = alter < 0.6 ? 1 + 1.6 * Math.exp(-alter * 7) * Math.sin(Math.min(Math.PI, alter * 9)) : 1;
       const zukunft = s != null && m.spalte > s;
@@ -197,6 +221,14 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
         const halo = ctx.createRadialGradient(x(m.spalte), py, 0, x(m.spalte), py, 14);
         halo.addColorStop(0, `rgba(${GLUT}, ${0.6 * (1 - alter / 0.6)})`); halo.addColorStop(1, `rgba(${GLUT}, 0)`);
         ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x(m.spalte), py, 14, 0, Math.PI * 2); ctx.fill();
+      }
+      // B20: Druckwelle – ein dünner Ring, der schnell aufgeht und verlischt
+      if (m.knall) { m.knall = false; knall(x(m.spalte), py); }
+      if (alter < 0.5 && !wenigBewegung()) {
+        const q = alter / 0.5; const auf = 1 - (1 - q) ** 3; const dd = dichte();
+        ctx.strokeStyle = `rgba(255, 222, 188, ${((0.4 + 0.3 * dd) * (1 - q) ** 1.5).toFixed(3)})`;
+        ctx.lineWidth = 0.4 + 1.2 * (1 - q);
+        ctx.beginPath(); ctx.arc(x(m.spalte), py, 2.5 + 12 * dd * auf, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.fillStyle = zukunft ? "rgba(255, 227, 196, 0.25)" : "rgba(255, 233, 210, 0.92)";
       ctx.beginPath(); ctx.arc(x(m.spalte), py, 1.9 * pop, 0, Math.PI * 2); ctx.fill();
@@ -228,7 +260,9 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
       ctx.globalCompositeOperation = "lighter";
       for (let i = funken.length - 1; i >= 0; i--) {
         const f = funken[i];
-        f.alt += dt; f.vy += 140 * dt; f.vx *= 0.97; f.x += f.vx * dt; f.y += f.vy * dt;
+        f.alt += dt;
+        if (f.zaeh) { const z = Math.exp(-f.zaeh * dt); f.vx *= z; f.vy *= z; } else f.vx *= 0.97;
+        f.vy += (f.schwer ?? 140) * dt; f.x += f.vx * dt; f.y += f.vy * dt;
         const rest = 1 - f.alt / f.leben;
         if (rest <= 0) { funken.splice(i, 1); continue; }
         ctx.fillStyle = `rgba(255, ${Math.round(150 + 80 * rest)}, ${Math.round(70 + 90 * rest)}, ${(0.9 * rest).toFixed(3)})`;
@@ -370,7 +404,7 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
       const vorher = scrub ?? -1;
       scrub = klemme(anteil) * (N - 1);
       const jetzt = performance.now();
-      for (const m of marken) if (m.spalte > vorher && m.spalte <= scrub) m.zuend = jetzt;
+      for (const m of marken) if (m.spalte > vorher && m.spalte <= scrub) zuende(m, jetzt);
       behaelter.classList.add("wird-gescrubbt");
       glanz = 0.55;
       melde(); malen();

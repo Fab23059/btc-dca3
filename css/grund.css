@@ -92,6 +92,17 @@ button:disabled { cursor: default; }
 .nebel-ebene { position: absolute; left: 0; top: 0; will-change: transform; }
 .nebel-ebene--vorn { opacity: 0.8; will-change: transform, opacity; }
 .nebel-trieb { will-change: transform; }
+/* Wo Licht ist: Die feste Maske lässt den angestrahlten Nebel nur hinter der Zahl, rechts
+   unten und am Horizont durch. Die Maske steht, der Nebel darin treibt. */
+.nebel-schein {
+  position: absolute; inset: 0; opacity: 0.5; will-change: opacity;
+  --licht-maske:
+    radial-gradient(70% 40% at 30% 16%, #000 0%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0) 78%),
+    radial-gradient(52% 28% at 88% 62%, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 72%),
+    radial-gradient(95% 26% at 50% 106%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 80%);
+  -webkit-mask-image: var(--licht-maske);
+  mask-image: var(--licht-maske);
+}
 .nebel-bild { display: block; }
 
 /* Zweites Licht tiefer rechts und ein schwacher Abendhorizont – sie atmen langsam und unregelmäßig */
@@ -145,6 +156,11 @@ button:disabled { cursor: default; }
    sich jedes Mal woanders. Die Wochen, in denen du gekauft hast, glimmen
    (von app.js gesetzt). Alles hier ist Lage und Deckkraft: Die Grafikkarte
    spielt es allein ab, auch wenn die App nebenher noch rechnet.
+
+   Es beginnt mit dem App-Symbol, genau so groß und an derselben Stelle wie
+   auf dem Startbild, das Android vor jede installierte App setzt. Das lässt
+   sich nicht abschalten – also geht es nahtlos über: Das Symbol bleibt kurz
+   stehen, dann weitet sich sein Ring zum Ladebild und erwacht.
    --------------------------------------------------------------------- */
 .vorhang {
   --ra: 2.4s;        /* eine Runde warmer Komet */
@@ -166,9 +182,28 @@ button:disabled { cursor: default; }
   from { opacity: 0.55; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1.04); }
 }
+/* Erwachen: Symbol und Ring wachsen im selben Takt (64 → 86 px Halbmesser), das Symbol
+   verblasst, der lebende Ring blendet auf. Gleiche Kurve, damit beide deckungsgleich bleiben. */
+.vorhang-marke {
+  position: absolute; left: 50%; top: 50%; width: 240px; height: 240px; margin: -120px 0 0 -120px;
+  animation: marke-erwacht 0.95s cubic-bezier(.32, .6, .2, 1) 0.22s both;
+  will-change: transform, opacity;
+}
+@keyframes marke-erwacht {
+  from { opacity: 1; transform: scale(1); }
+  55% { opacity: 0; }
+  to { opacity: 0; transform: scale(1.344); }
+}
+.vorhang-buehne { transition: transform 0.72s cubic-bezier(.2, .8, .2, 1), opacity 0.46s ease; }
 .vorhang-ring {
   position: relative; width: 208px; height: 208px;
-  transition: transform 0.72s cubic-bezier(.2, .8, .2, 1), opacity 0.46s ease;
+  animation: ring-erwacht 0.95s cubic-bezier(.32, .6, .2, 1) 0.22s both;
+  will-change: transform, opacity;
+}
+@keyframes ring-erwacht {
+  from { opacity: 0; transform: scale(0.744); }
+  45% { opacity: 1; }
+  to { opacity: 1; transform: scale(1); }
 }
 .strich {
   position: absolute; left: 50%; top: 50%;
@@ -180,8 +215,9 @@ button:disabled { cursor: default; }
   content: ""; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
 }
 /* Wochen mit Kauf: glimmen nacheinander auf, die älteste zuerst */
-.strich-voll { background: rgba(var(--glut-rgb), 0.38); transition: opacity 0.5s ease calc(var(--k, 0) * 16ms); }
-.strich.voll .strich-voll { opacity: 1; }
+.strich-voll { background: rgba(var(--glut-rgb), 0.38); }
+.strich.voll .strich-voll { animation: voll-glimmt 0.5s ease calc(0.45s + var(--k, 0) * 16ms) both; }
+@keyframes voll-glimmt { from { opacity: 0; } to { opacity: 1; } }
 .strich.jetzt .strich-voll { opacity: 1; background: rgba(255, 214, 172, 0.42); animation: jetzt-atmen 1.5s ease-in-out infinite alternate; will-change: opacity; }
 .strich.jetzt.voll .strich-voll { background: rgba(255, 214, 172, 0.8); }
 @keyframes jetzt-atmen { from { opacity: 0.35; } to { opacity: 1; } }
@@ -233,22 +269,26 @@ button:disabled { cursor: default; }
 
 .vorhang-mitte {
   position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 3px;
-  opacity: 0; transform: translate3d(0, 5px, 0);
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.2, .8, .2, 1);
+  opacity: 0;
 }
-.vorhang.hat-zahl .vorhang-mitte { opacity: 1; transform: none; }
+/* Die Zahl kommt erst, wenn das ₿ des Symbols verblasst ist */
+.vorhang.hat-zahl .vorhang-mitte { animation: zahl-kommt 0.7s cubic-bezier(.2, .8, .2, 1) 0.6s both; }
+@keyframes zahl-kommt { from { opacity: 0; transform: translate3d(0, 5px, 0); } to { opacity: 1; transform: none; } }
 .vorhang-zahl { font-size: 40px; line-height: 1; font-weight: 480; font-stretch: 125%; letter-spacing: -0.045em; color: var(--text); font-variant-numeric: tabular-nums; }
 .vorhang-wort { font-size: 13px; font-weight: 520; color: var(--text-2); }
 
 /* Aufgehen: Der Ring weitet sich und verlischt, dahinter liegt die App schon bereit */
 .vorhang.geht { opacity: 0; pointer-events: none; }
-.vorhang.geht .vorhang-ring { transform: scale(1.16); opacity: 0; }
+.vorhang.geht .vorhang-buehne { transform: scale(1.16); opacity: 0; }
+.vorhang.geht .vorhang-marke { visibility: hidden; }
 
 /* Wer "Bewegung reduzieren" eingestellt hat: alles steht still */
 @media (prefers-reduced-motion: reduce) {
   .atmosphaere::before { animation: none; }
   .vorhang .strich::before, .vorhang .strich::after, .vorhang-kopf, .vorhang::before { animation: none !important; opacity: 0; }
   .vorhang::before { opacity: 0.8; }
+  .vorhang-marke { display: none; }
+  .vorhang-ring, .strich.voll .strich-voll, .vorhang.hat-zahl .vorhang-mitte { animation-delay: 0s !important; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 html.ruhig .nebel { display: none; }

@@ -22,7 +22,7 @@ import {
   holeReihe, holeTagesreihe, holeStimmung, holeBlockhoehe, holeAllzeithoch, ladeMarkt, speichereMarkt,
 } from "./kurse.js";
 import { zeitpunkt, anzahl, datumMonatKurz, euro, gruss } from "./format.js";
-import { heuteBerlin, montagVon, tageZwischen } from "./zeit.js";
+import { heuteBerlin, montagVon, tageZwischen, plusTage, berlinZeitpunkt } from "./zeit.js";
 import { datumLang } from "./format.js";
 import { Feder } from "./bewegung/feder.js";
 import { druckAktivieren } from "./bewegung/geste.js";
@@ -190,6 +190,7 @@ function rendern({ ersteMal = false } = {}) {
     geplant = false;
     neuBerechnen();
     zeigeStatus();
+    merkeRing();
     try { heute.aktualisiere({ ersteMal }); } catch (e) { console.error("Ansicht heute:", e); }
     for (const f of app.beiAenderung) { try { f(); } catch (e) { console.error(e); } }
     if (kopfArt === "wert") kopfText("wert");
@@ -302,16 +303,16 @@ function effekte(an) {
 // Ladebild (Vorhang)
 // ---------------------------------------------------------------------
 const vorhangEl = $("#vorhang");
-const VORHANG_MIN_MS = 1150;   // ab Seitenaufruf: so lange darf man den Kometen mindestens zusehen
+const VORHANG_MIN_MS = 1250;   // ab dem ersten Bild des Vorhangs: Erwachen (1,2 s) und ein Blick auf die Kometen
 const VORHANG_MAX_MS = 2600;   // ab Start der App: länger wartet niemand, auch nicht auf den Nebel
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const naechstesBild = () => new Promise((ok) => requestAnimationFrame(() => ok()));
 
-/** Die echten Wochen in den Ring: oben die aktuelle Woche, im Uhrzeigersinn davor die 51 davor. */
-function fuelleVorhang() {
-  if (!vorhangEl) return;
-  const striche = [...vorhangEl.querySelectorAll(".strich")];
-  if (striche.length !== 52) return;
+/**
+ * Der Ring des Ladebilds: Strich 0 steht oben (diese Woche), Strich i zeigt die Woche vor
+ * (52 − i) Wochen. voll = Striche mit Kauf, die älteste zuerst. bis = solange stimmt das.
+ */
+function ringStand() {
   // Jede Woche, deren Kauf schon stattgefunden hat – auch wenn ihr Kurs noch geladen wird
   const gez = (zustand.kaeufe ?? []).filter((k) => k.gezaehlt || k.status === "ohneKurs");
   const diese = montagVon(heuteBerlin());
@@ -320,28 +321,51 @@ function fuelleVorhang() {
     const vor = Math.round(tageZwischen(montagVon(k.montag), diese) / 7);
     if (vor >= 0 && vor < 52) gekauft.add(vor);
   }
-  // Strich 0 steht oben (diese Woche), Strich i zeigt die Woche vor (52 − i) Wochen
-  let reihe = 0;
+  const voll = [];
   for (let i = 1; i <= 52; i++) {
     const nr = i % 52;
-    const vor = nr === 0 ? 0 : 52 - nr;
-    if (!gekauft.has(vor)) continue;
-    striche[nr].style.setProperty("--k", String(reihe++));
-    striche[nr].classList.add("voll");
+    if (gekauft.has(nr === 0 ? 0 : 52 - nr)) voll.push(nr);
   }
+  return { bis: berlinZeitpunkt(plusTage(diese, 7), 0, 0), voll, zahl: gez.length };
+}
+
+/** Für den nächsten Start merken (nur wenn sich etwas geändert hat). */
+let ringGemerkt = "";
+function merkeRing(stand = ringStand()) {
+  const text = JSON.stringify(stand);
+  if (text === ringGemerkt) return;
+  ringGemerkt = text;
+  try { schreibe(SCHLUESSEL.vorhang, stand); } catch { /* voll – egal, dann füllt sich der Ring beim Start */ }
+}
+
+/** Die echten Wochen in den Ring (vorhang.js hat ihn vielleicht schon aus dem letzten Besuch gefüllt). */
+function fuelleVorhang() {
+  if (!vorhangEl) return;
+  const striche = [...vorhangEl.querySelectorAll(".strich")];
+  if (striche.length !== 52) return;
+  const stand = ringStand();
+  const soll = new Set(stand.voll);
+  stand.voll.forEach((nr, k) => {
+    if (striche[nr].classList.contains("voll")) return;          // schon da: nichts neu anstoßen
+    striche[nr].style.setProperty("--k", String(k));
+    striche[nr].classList.add("voll");
+  });
+  striche.forEach((s, nr) => { if (!soll.has(nr)) s.classList.remove("voll"); });
   striche[0].classList.add("jetzt");          // diese Woche atmet – gekauft oder noch nicht
-  if (gez.length) {
-    $("#vorhang-zahl").textContent = String(gez.length);
-    $("#vorhang-wort").textContent = gez.length === 1 ? "Woche" : "Wochen";
+  if (stand.zahl) {
+    $("#vorhang-zahl").textContent = String(stand.zahl);
+    $("#vorhang-wort").textContent = stand.zahl === 1 ? "Woche" : "Wochen";
     vorhangEl.classList.add("hat-zahl");
   }
+  merkeRing(stand);
 }
 
 /** Hebt den Vorhang, sobald Nebel, Schrift und erste Ansicht fertig sind (und er kurz zu sehen war). */
 async function hebeVorhang(warten) {
   if (!vorhangEl) { vorhangAuf(); return; }
   const still = wenigBewegung();
-  const frist = still ? 0 : Math.max(0, VORHANG_MIN_MS - performance.now());
+  const start = Number(vorhangEl.dataset.start) || 0;
+  const frist = still ? 0 : Math.max(0, start + VORHANG_MIN_MS - performance.now());
   await Promise.race([Promise.all([...warten, pause(frist)]), pause(VORHANG_MAX_MS)]);
   // Zwei Bilder Luft: Die erste Ansicht ist gezeichnet, bevor der Vorhang sich bewegt
   await naechstesBild(); await naechstesBild();

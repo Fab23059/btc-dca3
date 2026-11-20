@@ -69,6 +69,9 @@ const ART = {
   hinten: { wirbel: 2.6, wolke: [0.3, 0.74], kante: [0.54, 0.86], deckend: true, staerke: 0.62, waerme: 0.5 },
   // Vorn: durchscheinend, feiner, mehr Licht an den Kanten
   vorn: { wirbel: 2.1, wolke: [0.4, 0.8], kante: [0.58, 0.88], deckend: false, staerke: 0.55, waerme: 0.72 },
+  // Dieselben Schwaden wie vorn, aber angestrahlt: warm, mit hellen Kanten. Liegt nur dort,
+  // wo Licht ist (eine feste Maske über dem Bildschirm) – so verfängt sich das Licht im Nebel.
+  licht: { wirbel: 2.1, wolke: [0.4, 0.8], kante: [0.52, 0.86], deckend: false, staerke: 0.5, waerme: 0.9, angestrahlt: true },
 };
 
 /**
@@ -76,7 +79,7 @@ const ART = {
  * @param {object} p
  * @param {number} p.zellenX, p.zellenY  so viele Grundzellen breit/hoch (ganze Zahlen)
  * @param {number} p.punkteJeZelle       Bildpunkte je Zelle
- * @param {"hinten"|"vorn"} p.art
+ * @param {"hinten"|"vorn"|"licht"} p.art
  * @param {number} p.saat
  * @param {{warm:number[], kuehl:number[], licht:number[], waerme:number}} p.farben
  * @param {number[]} p.grund
@@ -117,6 +120,14 @@ export function rechneKachel({ zellenX, zellenY, punkteJeZelle, art, saat, farbe
           daten[o + c] = grund[c] + (mitLicht - grund[c]) * anteil + d1 * 0.75;
         }
         daten[o + 3] = 255;
+      } else if (a.angestrahlt) {
+        const alpha = klemme(wolke * a.staerke + kante * 0.42, 0, 0.78);
+        const hell = klemme(0.35 + kante * 0.75);
+        for (let c = 0; c < 3; c++) {
+          const farbe = kuehl[c] + (warm[c] - kuehl[c]) * Math.max(w, 0.6);
+          daten[o + c] = farbe + (licht[c] - farbe) * hell;
+        }
+        daten[o + 3] = alpha * 255 + d1 * 0.75;
       } else {
         const alpha = klemme(wolke * a.staerke, 0, 0.5);
         for (let c = 0; c < 3; c++) {
