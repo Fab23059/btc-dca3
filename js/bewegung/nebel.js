@@ -7,14 +7,16 @@
 // ist, gibt es keine Kanten: Scrollen und Zeitreise verschieben nur den Blick.
 //
 // Zwei Durchgänge, damit es weich bleibt und wenig kostet:
-//   1. Der Nebel wird in einem Viertel der Auflösung gerechnet (er ist weich).
+//   1. Der Nebel wird in einem Drittel der Auflösung gerechnet (er ist weich).
 //   2. Dieses kleine Bild wird von der Grafikkarte selbst bikubisch, also
-//      ganz weich, auf den Bildschirm hochgerechnet – nie vom Browser
-//      vergrößert (das ergäbe sichtbare Kästchen). Im selben Schritt kommt
-//      feines, laufendes Filmkorn dazu.
-// In Ruhe 15 Bilder pro Sekunde (der Nebel treibt langsam, das sieht man
-// nicht), beim Scrollen und bei der Zeitreise 30. Ist ein Fenster offen
-// oder die App im Hintergrund, steht er still.
+//      ganz weich, auf die echten Pixel des Bildschirms hochgerechnet – nie
+//      vom Browser gestreckt (das ergäbe sichtbare Kästchen, vor allem im
+//      Korn). Im selben Schritt kommt feines, laufendes Filmkorn dazu, ein
+//      Korn je Pixel.
+// In Ruhe 30 Bilder pro Sekunde. Beim Scrollen, bei der Zeitreise und wenn
+// das Licht aufglüht, in jedem Bild des Bildschirms – so zieht der Nebel
+// genau mit der Seite mit. Ist ein Fenster offen oder die App im
+// Hintergrund, steht er still.
 //
 // Ohne WebGL gibt es den Ersatz: zwei einmal gerechnete, weich
 // auslaufende Bilder, die nur verschoben werden.
@@ -42,11 +44,11 @@ const STIMMUNG = {
 };
 const GRUND = [9, 8, 7];
 
-const AUFLOESUNG = 4;          // ein Nebelpunkt je 4 × 4 Bildschirmpunkte (danach weich hochgerechnet)
-const SCHAERFE = 1;            // Ausgabe in Bildschirmpunkten (weich hochgerechnet – Nebel und Korn brauchen nicht mehr)
-const RUHE_MS = 1000 / 15;     // in Ruhe 15 Bilder pro Sekunde …
-const BEWEGT_MS = 1000 / 30;   // … beim Scrollen und bei der Zeitreise 30
-const KORN = 0.055;            // Stärke des Filmkorns
+const AUFLOESUNG = 3;          // ein Nebelpunkt je 3 × 3 Bildschirmpunkte (danach weich hochgerechnet)
+const SCHAERFE = 2;            // Ausgabe in echten Pixeln, höchstens zwei je Bildschirmpunkt
+const RUHE_MS = 1000 / 30;     // in Ruhe 30 Bilder pro Sekunde, in Bewegung jedes Bild
+const NACHLAUF_MS = 700;       // so lange nach der letzten Bewegung bleibt er im vollen Takt
+const KORN = 0.05;            // Stärke des Filmkorns
 
 // ---------------------------------------------------------------------
 // WebGL
@@ -104,7 +106,7 @@ void main() {
   float n2 = fbm(q2 + 2.1 * w2);
 
   // Flackern: langsames, unregelmäßiges Atmen des Lichts
-  float flackern = 0.88 + 0.12 * rausch(vec2(t * 1.7, 3.1)) + 0.05 * rausch(vec2(t * 6.3, 7.7));
+  float flackern = 0.88 + 0.12 * rausch(vec2(t * 1.7, 3.1)) + 0.05 * rausch(vec2(t * 2.9, 7.7));
 
   // Glut 1: hinter der großen Zahl (oben links), wandert beim Scrollen mit nach oben
   vec2 g1 = vec2(0.24 * seite + 0.05 * sin(t * 0.07), 0.86 + uVersatz.y * 0.42);
@@ -269,12 +271,16 @@ function webglNebel(behaelter, farben) {
 
   const start = performance.now() - Math.random() * 400_000;   // jeder Start beginnt woanders im Nebel
   const versatz = [0, 0]; let energie = 0; let energieZiel = 0;
-  let zuletzt = 0; let verloren = false; let geplant = false; let uhr = 0; let bewegtBis = 0;
+  let zuletzt = 0; let verloren = false; let geplant = false; let wartet = false; let uhr = 0; let bewegtBis = 0;
+  let letztesBild = 0;
   const still = wenigBewegung();
 
   const male = (jetzt) => {
     if (verloren) return;
-    energie += (energieZiel - energie) * 0.12;
+    // Das Licht folgt der Energie nach der Zeit, nicht nach der Zahl der Bilder (gleich bei 30 und 120 Hz)
+    const dt = letztesBild ? Math.min(0.1, (jetzt - letztesBild) / 1000) : 0;
+    letztesBild = jetzt;
+    energie += (energieZiel - energie) * (1 - Math.exp(-dt * 7));
     // 1. Nebel klein
     gl.bindFramebuffer(gl.FRAMEBUFFER, rahmen);
     gl.viewport(0, 0, B, H);
@@ -293,22 +299,25 @@ function webglNebel(behaelter, farben) {
   };
   const laeuft = () => !document.hidden && !document.documentElement.classList.contains("hat-ebene");
 
-  // Getaktet über eine Uhr statt über jedes Bild: In Ruhe wacht die Seite nur 15-mal pro Sekunde auf
+  // In Bewegung: jedes Bild des Bildschirms, im selben Takt wie die Seite.
+  // In Ruhe über eine Uhr: Die Seite wacht nur 30-mal pro Sekunde auf.
+  const bild = (t) => {
+    geplant = false; wartet = false;
+    if (!laeuft()) return;
+    zuletzt = t; male(t); plane();
+  };
   const plane = () => {
     if (geplant || still || verloren || !laeuft()) return;
     geplant = true;
     const jetzt = performance.now();
-    const abstand = jetzt < bewegtBis ? BEWEGT_MS : RUHE_MS;
-    uhr = setTimeout(() => requestAnimationFrame((t) => {
-      geplant = false;
-      if (!laeuft()) return;
-      zuletzt = t; male(t); plane();
-    }), Math.max(0, zuletzt + abstand - jetzt - 3));
+    if (jetzt < bewegtBis) { requestAnimationFrame(bild); return; }
+    wartet = true;
+    uhr = setTimeout(() => { wartet = false; requestAnimationFrame(bild); }, Math.max(0, zuletzt + RUHE_MS - jetzt - 4));
   };
   const schneller = () => {
-    bewegtBis = performance.now() + 700;
-    if (geplant && performance.now() - zuletzt < BEWEGT_MS) return;
-    clearTimeout(uhr); geplant = false; plane();
+    bewegtBis = performance.now() + NACHLAUF_MS;
+    if (!wartet) return;                       // schon im vollen Takt (oder gleich dran)
+    clearTimeout(uhr); wartet = false; geplant = false; plane();
   };
 
   // Läuft wieder an, sobald die App sichtbar ist oder die letzte Ebene zugeht

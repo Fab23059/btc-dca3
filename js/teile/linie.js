@@ -79,7 +79,7 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
     const t = t0 + (t1 - t0) * a;
     beiFahrt({ wert: wertBei(punkte, t, "wert"), t, anteil: a });
   };
-  const aufzug = new Feder(1, { antwort: 1.25, daempfung: 1, genau: 0.001, vorrang: true, beiWert: (x) => { meldeFahrt(x); malen(); } });
+  const aufzug = new Feder(1, { antwort: 1.4, daempfung: 1, genau: 0.001, vorrang: true, beiWert: (x) => { meldeFahrt(x); malen(); } });
   const blitz = new Feder(0, { antwort: 1.1, daempfung: 1, genau: 0.002, beiWert: (x) => { blitzWert = x; malen(); } });
   const zeiger = new Feder(0, { art: "zeiger", genau: 0.05, beiWert: (x) => { scrub = x; melde(); malen(); } });
   const licht = new Feder(0, { art: "ruhig", genau: 0.002, beiWert: (x) => { glanz = x; malen(); } });

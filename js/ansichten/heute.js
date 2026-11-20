@@ -198,7 +198,7 @@ export function erstelleHeute(app) {
     if (reist || faehrt) return;
     const blende = () => {
       if (!einblenden || wenigBewegung()) return;
-      zeile.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 950, delay: 140, easing: "cubic-bezier(.33, 0, .2, 1)", fill: "backwards" });
+      zeile.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1050, delay: 160, easing: "cubic-bezier(.33, 0, .2, 1)", fill: "backwards" });
     };
     const s = z.summe;
     label.textContent = einheit === "btc" ? "Bestand" : "Depotwert";
