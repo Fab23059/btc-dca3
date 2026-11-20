@@ -11,6 +11,8 @@
 //   B8  Bei jedem Zeitraumwechsel fährt ein Komet die Linie von links
 //       nach rechts ab: Schweif, Funken, die Käufe zünden im Vorbeiflug,
 //       im Jetzt läuft eine Lichtwelle aus.
+//   B17 Dabei meldet er in jedem Bild den Wert an seiner Stelle, damit die
+//       große Zahl mitzählen kann (beiFahrt).
 //   R6  Licht aus Bewegung: Der Zeiger leuchtet stärker, je schneller
 //       der Finger ist.
 //
@@ -44,7 +46,7 @@ export function naechsterPunkt(punkte, t) {
   return Math.abs(punkte[hi].t - t) < Math.abs(t - punkte[lo].t) ? hi : lo;
 }
 
-export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {}, beiStartdatum = null } = {}) {
+export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {}, beiStartdatum = null, beiFahrt = null } = {}) {
   const leinwand = h("canvas", { class: "linie-leinwand", role: "img", "aria-label": "Verlauf: Wert deines Depots über deinen Einzahlungen" });
   const kopf = h("span", { class: "linie-kopf", "aria-hidden": "true" });
   // B14: Mit beiStartdatum wird das Datum links unter der Linie zum Knopf "Reise ansehen"
@@ -69,7 +71,15 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
   let blitzWert = 0;                                // Aufblitzen bei der Ankunft im Jetzt
 
   const morph = new Feder(1, { art: "raum", genau: 0.001, beiWert: () => malen() });
-  const aufzug = new Feder(1, { antwort: 1.25, daempfung: 1, genau: 0.001, beiWert: () => malen() });
+  // B17: Wert unter dem Kometen. Zeitpunkt und Wert kommen aus derselben Feder wie der Komet selbst,
+  // im selben Bild – deshalb kann die Zahl ihm nicht hinterherlaufen.
+  const meldeFahrt = (anteil) => {
+    if (!beiFahrt || leer || scrub != null || !punkte.length) return;
+    const a = klemme(anteil);
+    const t = t0 + (t1 - t0) * a;
+    beiFahrt({ wert: wertBei(punkte, t, "wert"), t, anteil: a });
+  };
+  const aufzug = new Feder(1, { antwort: 1.25, daempfung: 1, genau: 0.001, vorrang: true, beiWert: (x) => { meldeFahrt(x); malen(); } });
   const blitz = new Feder(0, { antwort: 1.1, daempfung: 1, genau: 0.002, beiWert: (x) => { blitzWert = x; malen(); } });
   const zeiger = new Feder(0, { art: "zeiger", genau: 0.05, beiWert: (x) => { scrub = x; melde(); malen(); } });
   const licht = new Feder(0, { art: "ruhig", genau: 0.002, beiWert: (x) => { glanz = x; malen(); } });
@@ -308,13 +318,16 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
   new ResizeObserver(() => { if (mass() && punkte.length) { neu = rechne(punkte); alt = null; malen(); } }).observe(behaelter);
 
   return {
-    /** Neue Daten zeigen. fliessen: Linie fließt von der alten Form; aufziehen: von links einzeichnen. */
+    /**
+     * Neue Daten zeigen. fliessen: Linie fließt von der alten Form; aufziehen: von links einzeichnen.
+     * Gibt true zurück, wenn ein Komet losfährt (dann folgen beiFahrt und am Ende beiAnkunft).
+     */
     zeige(daten, { fliessen = true, aufziehen = false, mitTreppe = true } = {}) {
       if (!B) mass();
       treppe = mitTreppe;
       leer = !daten || daten.length < 2;
       behaelter.classList.toggle("ist-leer", leer);
-      if (leer) { ctx.clearRect(0, 0, leinwand.width, leinwand.height); kopf.classList.remove("ist-sichtbar"); return; }
+      if (leer) { ctx.clearRect(0, 0, leinwand.width, leinwand.height); kopf.classList.remove("ist-sichtbar"); return false; }
       const vorher = neu ? aktuell() : null;
       punkte = daten; t0 = daten[0].t; t1 = daten[daten.length - 1].t;
       neu = rechne(daten);
@@ -332,7 +345,10 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
           blitz.springe(0); blitz.zu(1).then(() => { blitzWert = 0; malen(); });
           beiAnkunft();
         });
-      } else malen();
+        return true;
+      }
+      malen();
+      return false;
     },
     achsen(links, rechts) {
       achseL.textContent = links; achseR.textContent = rechts;

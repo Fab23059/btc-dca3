@@ -13,6 +13,9 @@ import { h } from "../dom.js";
 import { Feder } from "./feder.js";
 
 const BAND = "0123456789012345678".split("").join("\n");
+/** Federhärten der Walzen: beim Scrubben flott, beim Mitzählen (B17) so straff, dass nichts nachhinkt. */
+const EILIG = { antwort: 0.16, daempfung: 0.9 };
+const FOLGSAM = { antwort: 0.05, daempfung: 1 };
 /** Zeilenhöhe der Walzen in em – muss zu .ziffern { line-height } passen. */
 const ZEILE = 1.1;
 
@@ -32,12 +35,26 @@ export class Ziffern {
     this.form = "";
     this.wert = undefined;
     this._eilig = false;
+    this._folgsam = false;
     el.classList.add("ziffern");
   }
 
+  /** Welche Federhärte eine Walze gerade braucht. */
+  artFuer(w) { return this._folgsam ? FOLGSAM : this._eilig ? EILIG : w.normal; }
+
+  /** Flott, z. B. unter dem Finger bei der Zeitreise. */
   set eilig(an) {
     this._eilig = an;
-    for (const w of this.walzen) w.feder.art(an ? { antwort: 0.16, daempfung: 0.9 } : w.normal);
+    for (const w of this.walzen) w.feder.art(this.artFuer(w));
+  }
+
+  /**
+   * B17 Mitzählen: Die Zahl hängt an einem Punkt, der sich bewegt, und darf ihm nicht
+   * hinterherlaufen. Die Walzen federn dann ohne Überschwingen und praktisch ohne Verzug.
+   */
+  set folgsam(an) {
+    this._folgsam = an;
+    for (const w of this.walzen) w.feder.art(this.artFuer(w));
   }
 
   /** Neuen Wert zeigen. sofort = ohne Rollen; einrollen = beim ersten Mal von 0 hochrollen. */
@@ -107,7 +124,7 @@ export class Ziffern {
             this.melde();
           },
         });
-        if (this._eilig) eintrag.feder.art({ antwort: 0.16, daempfung: 0.9 });
+        if (this._eilig || this._folgsam) eintrag.feder.art(this.artFuer(eintrag));
         this.walzen.push(eintrag);
       }
       kinder.push(gruppe);
