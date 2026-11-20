@@ -116,6 +116,9 @@ button:disabled { cursor: default; }
   background: url("../icons/koernung.png") repeat; background-size: 128px;
   opacity: 0.04;
 }
+/* Ein Korn je echtem Pixel – sonst streckt der Browser das Bild, und das Korn wird zu Kästchen */
+@media (min-resolution: 1.5dppx) { .korn { background-size: 64px; } }
+@media (min-resolution: 2.5dppx) { .korn { background-size: 43px; } }
 
 /* Wer "Bewegung reduzieren" eingestellt hat: alles steht still */
 @media (prefers-reduced-motion: reduce) {
