@@ -121,11 +121,13 @@ sich alles bewegt; daraus folgen Formen, Farben und Schrift. Das ganze Konzept s
   Tiefe entsteht durch Tonwerte.
 * **Licht aus Bewegung:** In Ruhe ist die App matt. Was sich bewegt oder berührt wird, glüht.
   Ein Eingabefeld „zündet“ an der Stelle, an der du tippst.
-* **Atmosphäre:** Hinter allem treibt ein lebendiger Nebel nach Tageszeit, mit warmem,
-  flackerndem Licht und feinem, laufendem Filmkorn. Er wird auf der Grafikkarte gerechnet und
-  weich auf Bildschirmgröße gebracht. So deckt er den ganzen Bildschirm ohne Kanten oder
-  Kästchen ab. In Ruhe rechnet er nur 15-mal pro Sekunde und steht still, sobald ein Fenster
-  offen oder die App im Hintergrund ist.
+* **Atmosphäre:** Hinter allem treiben zwei Schichten Nebel nach Tageszeit, mit warmem,
+  atmendem Licht. Der Nebel wird beim Start einmal im Hintergrund gerechnet und danach nur
+  noch verschoben. So bleibt er glatt (keine Kästchen) und kostet beim Scrollen nichts.
+  Hinter einem offenen Fenster oder im Hintergrund steht er still.
+* **Vorhang:** Beim Start ein kurzes Ladebild. Dein Sparjahr steht als Ring aus 52 Strichen
+  da, zwei Kometen kreisen darüber. Währenddessen wird alles vorbereitet, danach startet die
+  App ohne Ruckeln.
 * **Schrift:** Mona Sans. Die Zahlen stehen in der breiten Form, alle Ziffern sind gleich
   breit, damit sie wie ein Zählwerk rollen können.
 * Ist am Handy „Bewegung reduzieren“ eingeschaltet, steht alles still.
@@ -142,13 +144,14 @@ Vibrieren an/aus.
 |---|---|
 | `index.html` | Das Grundgerüst der Seite |
 | `GESTALTUNG.md` | Das Gestaltungskonzept: erst die Bewegungen, dann alles andere |
-| `css/` | `grund.css` (Farben, Schrift, Atmosphäre), `teile.css` (Bausteine), `ansichten.css` (Startseite und Fenster), `bewegung-neu.css` (Münze, Relief, Zeitraffer) |
+| `js/vorhang.js` | Baut das Ladebild, noch bevor die App geladen ist |
+| `css/` | `grund.css` (Farben, Schrift, Atmosphäre, Ladebild), `teile.css` (Bausteine), `ansichten.css` (Startseite und Fenster), `bewegung-neu.css` (Münze, Relief, Zeitraffer) |
 | `js/konfig.js` | **Die Eckdaten des Sparplans** (Sparrate, Kaufzeiten, Gebühren) |
 | `js/rechnen.js`, `js/kennzahlen.js`, `js/zeitraeume.js` | Alle Berechnungen. Hier entsteht jede Zahl |
 | `js/kurse.js` | Abfrage der Kurse mit Ausweichquellen und Zwischenspeicher |
 | `js/speicher.js` | Speichern im Browser (mit Schreibschutz) |
 | `js/altdaten.js`, `js/abgleich.js` | Übernahme aus der alten App (nur lesend) und aus Sicherungsdateien |
-| `js/bewegung/` | Der Bewegungskern: `feder.js` (Federphysik), `geste.js` (Finger mit Tempo), `ziffern.js` (Zählwerk), `nebel.js` (Atmosphäre), `neigung.js` (Licht folgt der Hand) |
+| `js/bewegung/` | Der Bewegungskern: `feder.js` (Federphysik), `geste.js` (Finger mit Tempo), `ziffern.js` (Zählwerk), `nebel.js` (Atmosphäre), `nebel-rechnung.js` und `nebel-werk.js` (rechnen den Nebel einmal im Hintergrund), `neigung.js` (Licht folgt der Hand) |
 | `js/teile/` | Bausteine: `fenster.js` (Entfalten/Falten), `tablett.js`, `linie.js` (die Linie mit Komet, Zeitreise und Zeitraffer), `kurslinie.js` (Kursverlauf), `funkenflug.js` (der Funke, der überspringt), `ringschluss.js` (ein Ring wird gezogen), `praegung.js` (Münzen), `streiflicht.js` (Relief des Baums), `zeitraffer.js`, `meldung.js` (Statuszeile), Zurück-Taste, Vibration |
 | `js/ansichten/` | Startseite (`heute.js`) und die Fenster Bitcoin (`markt.js`), Käufe, Baum, Zahlen |
 | `js/jahresringe.js` | Dein Baum: Geometrie, Zeichnen, Berühren, Hintergrundbild |

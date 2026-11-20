@@ -34,6 +34,7 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 | B16 | **Kernholz** | Ringe, die länger als ein Jahr gehalten sind, dunkeln zu Kernholz nach. Kommt einer dazu, wandert die Grenze langsam nach außen. Bei der Zeitreise wandert sie mit zurück. | Feder ohne Nachschwingen (2,2 s) |
 | B17 | **Mitzählen** | Wechselst du Zeitraum oder Einheit, zählt die große Zahl mit dem Kometen mit: Sie zeigt in jedem Bild den Wert an seiner Stelle. Erst wenn er im Jetzt ankommt und aufblitzt, steht der heutige Wert da. Die Zeile mit der Veränderung tritt solange zurück und blendet danach langsam ein. Greift der Finger zu, übernimmt die Zeitreise. | dieselbe Feder wie der Komet (1,4 s, ohne Nachschwingen); Walzen straff (0,05 s, ohne Nachschwingen); der Komet rechnet in jedem Bild zuerst; Einblenden 1050 ms, nur Deckkraft |
 | B18 | **Kachellicht** | Die Kacheln der Startseite spiegeln eine Lichtquelle oben rechts: ein weicher Schein auf der Fläche und eine Lichtkante an der Oberkante. Kippst du das Handy, wandert das Licht. Rollst du die Seite, ziehen die Kacheln darunter durch. | zwei Federn aus neigung.js; je Bild höchstens eine Rechnung |
+| B19 | **Vorhang** | Beim Start ein kurzes Ladebild: ein Jahr Sparplan in 52 Strichen, oben die aktuelle Woche. Die Wochen, in denen gekauft wurde, glimmen nacheinander auf, in der Mitte steht, wie viele es sind. Zwei Kometen kreisen gegeneinander, ein warmer und ein kühler, leiserer. Wo sie sich treffen, blitzt ein Strich weiß auf. Weil ihre Takte nicht aufgehen, ist das jedes Mal woanders. Dann weitet sich der Ring, verlischt, und die Kacheln steigen auf. | reines CSS, nur Lage und Deckkraft (läuft auch, wenn die App nebenher rechnet); Runden 2,4 s und 3,9 s; mindestens 1,15 s ab Aufruf, höchstens 2,6 s Warten auf den Nebel |
 
 **Regeln, die für alle Bewegungen gelten**
 
@@ -77,19 +78,21 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
   `#A0988E`, `#6A635B`; Glut `#FF8A2A`; Plus `#93C6A0`, Minus `#E39A87` (nur in Zahlen).
 * **Schrift:** Mona Sans (SIL Open Font License). Zahlen und Titel in der breiten Form (125 %),
   Text in der normalen Breite. Keine Großbuchstaben-Etiketten, keine Kursivschrift.
-* **Atmosphäre:** Der Nebel ist eine Rechnung auf der Grafikkarte (WebGL): zwei Schichten
-  verwirbeltes Rauschen, die verschieden schnell treiben, dazu drei warme Lichtquellen, die
-  unregelmäßig flackern. Weil das Feld unendlich ist, gibt es keine Kanten und keine
-  sichtbaren Ebenen. Scrollen und Zeitreise verschieben nur den Blick.
-  Gerechnet wird in zwei Durchgängen: erst klein (ein Viertel der Auflösung), dann
-  **bikubisch** auf Bildschirmgröße hochgerechnet, von der Grafikkarte selbst. Der Browser
-  vergrößert also nie ein kleines Bild, denn das ergab auf dem Handy sichtbare Kästchen.
-  Im zweiten Durchgang kommt das laufende Filmkorn dazu.
-  In Ruhe 15 Bilder pro Sekunde (der Nebel treibt so langsam, dass man den Unterschied nicht
-  sieht), beim Scrollen und bei der Zeitreise 30, bei offenem Fenster oder im Hintergrund keins.
+* **Atmosphäre:** Zwei Schichten Nebel treiben gegeneinander, hinten große ruhige Schwaden,
+  vorn feinerer, hellerer Dunst. Darüber liegen die Glut hinter der Zahl, ein zweites Licht
+  tiefer rechts, ein schwacher Horizont (beide atmen unregelmäßig) und eine Vignette.
+  **Seit 1.2.5 wird der Nebel nicht mehr in jedem Bild gerechnet.** Jede Schicht ist eine
+  nahtlose Kachel aus periodischem Rauschen. Ein Hintergrund-Thread rechnet sie einmal beim
+  Start, in voller 64-Bit-Genauigkeit, während der Vorhang (B19) läuft. Danach werden nur noch
+  fertige Bilder verschoben: Treiben, Scrollen und Zeitreise sind reine Lage, das Licht reine
+  Deckkraft. Weil die Kachel nahtlos ist, springt sie nach einer Kachelbreite unsichtbar zurück
+  und kann so unendlich weit wandern.
+  Warum: Auf manchen Handys rechnet die Grafikkarte im Shader mit zu wenigen Nachkommastellen.
+  Das Rauschen zerfiel dort in Kästchen, und die Arbeit pro Bild bremste die ganze App. Im
+  Emulator am Rechner war beides nicht zu sehen, weil der dort genauer rechnet.
   Die Farben folgen der Tageszeit (abends glühend orange, nachts kühl violett).
-  Ohne WebGL gibt es zwei vorgerechnete Bilder, die weich auslaufen.
-* **Filmkorn** liegt zusätzlich hauchfein und ruhend über allem, auch über Fenstern.
+* **Filmkorn** liegt hauchfein und ruhend über allem, auch über Fenstern, ein Korn je echtem
+  Pixel. Es nimmt dem dunklen Nebel die letzten Farbstufen.
 * „Atmosphäre“ in den Einstellungen schaltet den Nebel ab (spart Akku).
   „Bewegung reduzieren“ am Handy hält alles an.
 
@@ -105,6 +108,22 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 * **Ruhige Uhr.** Der Countdown zeigt Tage, Stunden und Minuten, ohne Lichtpuls und ohne Sekunden.
 * Gemessen mit viermal gedrosseltem Prozessor (ohne Nebel, der auf dem Handy die Grafikkarte
   rechnet): in Ruhe 64 statt 498 ms Arbeit pro Sekunde, Scrollen und Komet mit 60 Bildern pro Sekunde.
+
+### Leistung (1.2.5)
+
+* **Der Nebel kostet nach dem Start nichts mehr.** Kein Shader, kein Malen: Die Grafikkarte
+  verschiebt zwei fertige Bilder. Gemessen am Rechner mit Software-Grafik (wie ein schwaches
+  Handy): vorher 28 Bilder pro Sekunde in Ruhe und 15 beim Scrollen, jetzt durchgehend 60.
+  In Ruhe malt und layoutet die Seite nichts.
+* **Kein Mischmodus über bewegten Flächen.** Der Schein auf den Kacheln (B18) war mit „screen“
+  gemischt. Dann muss der Browser die Kachel bei jeder Bewegung neu zusammensetzen. Jetzt
+  normal gemischt, etwas leiser.
+* **Erst lesen, dann schreiben.** Das Kachellicht liest alle Lagen und schreibt danach alle
+  Werte, so wird das Layout pro Bild nur einmal berechnet.
+* **Zittern der Hand zählt nicht.** Die Totzone des Lagesensors ist doppelt so groß. Kleine
+  Bewegungen wecken die Lichtfedern nicht mehr.
+* **Erst fertig, dann zeigen.** Hinter dem Vorhang wird die Startseite gebaut und gezeichnet.
+  Der Aufgang der Kacheln beginnt erst, wenn nichts anderes mehr zu tun ist.
 
 ## 4. Was wir aus der vorigen Fassung behalten haben – und was nicht
 
@@ -125,7 +144,7 @@ Nicht übernommen haben wir:
 | Kursiv-Überschriften | Die Kursivschrift wirkte wie eine beliebige Vorlage. |
 | Milchglas | Ruckelt in der Bewegung. |
 | Leuchten überall | Ohne Hierarchie verliert das Leuchten seine Bedeutung. |
-| Laufendes Filmkorn | *In 1.1 zurückgeholt,* in 1.1.1 in den Nebel verlegt: Die Grafikkarte rechnet es im selben Durchgang mit. |
+| Laufendes Filmkorn | *In 1.1 zurückgeholt,* in 1.1.1 in den Nebel verlegt. Seit 1.2.5 wieder ruhend: Der Nebel wird nicht mehr pro Bild gerechnet, und ein laufendes Korn müsste das. |
 | Schwebende Tableiste | Die vier Seiten werden durch Fenster ersetzt, die sich aus der Startseite entfalten. |
 | Ringdiagramme und Tachos | Kein Kartenraster. *In 1.1* gibt es zwei Ausnahmen mit Bedeutung: die Abzeichen-Ringe (sie füllen sich bis zum nächsten Ziel) und die Stimmungsuhr mit federndem Zeiger. |
 | Fremde Diagramm-Bibliothek | Die Linie ist jetzt selbst gebaut, nur so kann sie fließen. |

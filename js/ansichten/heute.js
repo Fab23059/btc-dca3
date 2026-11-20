@@ -276,13 +276,20 @@ export function erstelleHeute(app) {
     fuss.textContent = a ? `Bitcoin ${euro(a.kurs, 0)} · ${a.quelle}, ${uhrzeit(a.zeit)} Uhr · Keine Anlageberatung` : "Keine Anlageberatung";
   }
 
-  /** Bewegung B8: Beim ersten Mal steigen die Kacheln nacheinander auf. */
+  /**
+   * Bewegung B8: Beim ersten Mal steigen die Kacheln nacheinander auf – sobald der Vorhang
+   * (das Ladebild) aufgeht. Bis dahin warten sie unsichtbar und fertig gezeichnet dahinter.
+   */
   function aufgang() {
     if (wenigBewegung()) return;
-    aufgangBis = performance.now() + 2400;
     const teile = [linieEl, zeitraumEl, takt, ...Object.values(kacheln).map((k) => k.el)];
+    for (const t of teile) t.style.opacity = "0";
+    aufgangBis = performance.now() + 60_000;
+    Promise.resolve(app.vorhang).then(() => steigen(teile));
+  }
+  function steigen(teile) {
+    aufgangBis = performance.now() + 2400;
     teile.forEach((t, i) => {
-      t.style.opacity = "0";
       const weg = 90 + i * 12;
       const f = new Feder(weg, { antwort: 0.62, daempfung: 0.74, genau: 0.05, beiWert: (y) => {
         const a = klemme(1 - y / weg);
@@ -388,7 +395,7 @@ export function erstelleHeute(app) {
     if (!feier || feier.laeuft) return;
     if (!istFrei() || reist) { plane(700); return; }                     // Fenster offen oder Zeitreise: warten
     const rest = aufgangBis - performance.now();
-    if (rest > 0) { plane(rest + 200); return; }
+    if (rest > 0) { plane(Math.min(rest, 600) + 200); return; }
     feier.laeuft = true;
     const gez = gezaehlte();
     const ringNr = gez.findIndex((k) => k.montag === feier.montag);

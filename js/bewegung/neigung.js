@@ -24,7 +24,7 @@ import { Feder, imTakt, klemme } from "./feder.js";
 /** Ruhelage: Licht von oben rechts – wie in den Kacheln und Fenstern. */
 const RUHE = Object.freeze({ x: 0.5, y: -0.55 });
 const GRAD = 20;            // so viel Kippen ergibt den vollen Ausschlag
-const TOTZONE = 0.012;      // kleinere Änderungen sind Zittern
+const TOTZONE = 0.025;      // kleinere Änderungen sind Zittern (der Hand – sie sollen nichts neu zeichnen)
 const MITWANDERN = 0.004;   // so schnell wird die aktuelle Haltung zu "gerade"
 
 const hoerer = new Set();

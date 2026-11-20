@@ -11,7 +11,7 @@
 // (Käufe, Baum, Zahlen, Einstellungen, Eintragen). Siehe GESTALTUNG.md.
 // =====================================================================
 
-import { $, icon, fuelle } from "./dom.js";
+import { $, icon, fuelle, wenigBewegung } from "./dom.js";
 import { SPARRATE_EUR, ZEITPLAN } from "./konfig.js";
 import { ladeEintraege, ladeEinstellungen, lies, schreibe, SCHLUESSEL } from "./speicher.js";
 import { abgleichMitAlterApp } from "./abgleich.js";
@@ -22,7 +22,7 @@ import {
   holeReihe, holeTagesreihe, holeStimmung, holeBlockhoehe, holeAllzeithoch, ladeMarkt, speichereMarkt,
 } from "./kurse.js";
 import { zeitpunkt, anzahl, datumMonatKurz, euro, gruss } from "./format.js";
-import { heuteBerlin } from "./zeit.js";
+import { heuteBerlin, montagVon, tageZwischen } from "./zeit.js";
 import { datumLang } from "./format.js";
 import { Feder } from "./bewegung/feder.js";
 import { druckAktivieren } from "./bewegung/geste.js";
@@ -89,9 +89,15 @@ const heuteEl = $("#heute");
 let heute = null;
 let nebel = null;
 
+// Der Vorhang (das Ladebild) geht auf, sobald alles bereit ist – wer erst danach loslegen will
+// (der Aufgang der Kacheln, Hinweise), wartet auf dieses Versprechen.
+let vorhangAuf;
+const vorhangOffen = new Promise((ok) => { vorhangAuf = ok; });
+
 const app = {
   zustand,
   heuteEl,
+  vorhang: vorhangOffen,
   /** Alle sichtbaren Fenster-Köpfe (Kacheln und offene Fenster) – sie reisen mit durch die Zeit. */
   koepfe: new Set(),
   /** Wer neu zeichnen will, wenn sich Einträge ändern. */
@@ -293,6 +299,58 @@ function effekte(an) {
 }
 
 // ---------------------------------------------------------------------
+// Ladebild (Vorhang)
+// ---------------------------------------------------------------------
+const vorhangEl = $("#vorhang");
+const VORHANG_MIN_MS = 1150;   // ab Seitenaufruf: so lange darf man den Kometen mindestens zusehen
+const VORHANG_MAX_MS = 2600;   // ab Start der App: länger wartet niemand, auch nicht auf den Nebel
+const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const naechstesBild = () => new Promise((ok) => requestAnimationFrame(() => ok()));
+
+/** Die echten Wochen in den Ring: oben die aktuelle Woche, im Uhrzeigersinn davor die 51 davor. */
+function fuelleVorhang() {
+  if (!vorhangEl) return;
+  const striche = [...vorhangEl.querySelectorAll(".strich")];
+  if (striche.length !== 52) return;
+  // Jede Woche, deren Kauf schon stattgefunden hat – auch wenn ihr Kurs noch geladen wird
+  const gez = (zustand.kaeufe ?? []).filter((k) => k.gezaehlt || k.status === "ohneKurs");
+  const diese = montagVon(heuteBerlin());
+  const gekauft = new Set();
+  for (const k of gez) {
+    const vor = Math.round(tageZwischen(montagVon(k.montag), diese) / 7);
+    if (vor >= 0 && vor < 52) gekauft.add(vor);
+  }
+  // Strich 0 steht oben (diese Woche), Strich i zeigt die Woche vor (52 − i) Wochen
+  let reihe = 0;
+  for (let i = 1; i <= 52; i++) {
+    const nr = i % 52;
+    const vor = nr === 0 ? 0 : 52 - nr;
+    if (!gekauft.has(vor)) continue;
+    striche[nr].style.setProperty("--k", String(reihe++));
+    striche[nr].classList.add("voll");
+  }
+  striche[0].classList.add("jetzt");          // diese Woche atmet – gekauft oder noch nicht
+  if (gez.length) {
+    $("#vorhang-zahl").textContent = String(gez.length);
+    $("#vorhang-wort").textContent = gez.length === 1 ? "Woche" : "Wochen";
+    vorhangEl.classList.add("hat-zahl");
+  }
+}
+
+/** Hebt den Vorhang, sobald Nebel, Schrift und erste Ansicht fertig sind (und er kurz zu sehen war). */
+async function hebeVorhang(warten) {
+  if (!vorhangEl) { vorhangAuf(); return; }
+  const still = wenigBewegung();
+  const frist = still ? 0 : Math.max(0, VORHANG_MIN_MS - performance.now());
+  await Promise.race([Promise.all([...warten, pause(frist)]), pause(VORHANG_MAX_MS)]);
+  // Zwei Bilder Luft: Die erste Ansicht ist gezeichnet, bevor der Vorhang sich bewegt
+  await naechstesBild(); await naechstesBild();
+  vorhangEl.classList.add("geht");
+  vorhangAuf();
+  setTimeout(() => vorhangEl.remove(), still ? 50 : 900);
+}
+
+// ---------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------
 function start() {
@@ -314,6 +372,7 @@ function start() {
   }
   ladeLokal();
   neuBerechnen();
+  fuelleVorhang();
 
   heute = erstelleHeute(app);
   fuelle($("#heute-inhalt"), heute.el);
@@ -324,14 +383,15 @@ function start() {
 
   rendern({ ersteMal: true });
   document.documentElement.dataset.bereit = "1";
+  hebeVorhang([nebel?.bereit, document.fonts?.ready].filter(Boolean)).catch(() => vorhangAuf());
 
   const b = zustand.abgleich;
   const erstmalig = Boolean(b?.erstmalig);   // wird beim Prüfen der Meilensteine zurückgesetzt – vorher merken
   if (b?.uebernommen?.length) {
     const n = b.uebernommen.length;
-    setTimeout(() => toast(erstmalig
+    vorhangOffen.then(() => setTimeout(() => toast(erstmalig
       ? `${anzahl(n, "Kauf", "Käufe")} übernommen`
-      : `${anzahl(n, "neuer Kauf", "neue Käufe")} übernommen${n <= 2 ? ` (${b.uebernommen.map(datumMonatKurz).join(", ")})` : ""}`, { art: "erfolg", dauer: 6000 }), 1400);
+      : `${anzahl(n, "neuer Kauf", "neue Käufe")} übernommen${n <= 2 ? ` (${b.uebernommen.map(datumMonatKurz).join(", ")})` : ""}`, { art: "erfolg", dauer: 6000 }), 1400));
   }
 
   aktualisieren();

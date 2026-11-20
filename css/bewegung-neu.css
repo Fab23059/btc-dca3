@@ -95,8 +95,8 @@ button.abz { border-radius: 16px; }
 .kachel-schein, .kachel-kante { position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform, opacity; }
 .kachel-schein {
   z-index: 1; width: 110%; aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 228, 200, 0.15), rgba(var(--glut-rgb), 0.075) 38%, rgba(var(--glut-rgb), 0.02) 66%, rgba(var(--glut-rgb), 0) 100%);
-  mix-blend-mode: screen;
+  /* Normal gemischt (kein Mischmodus): sonst müsste der Browser die Kachel bei jeder Bewegung neu zusammensetzen */
+  background: radial-gradient(closest-side, rgba(255, 228, 200, 0.12), rgba(var(--glut-rgb), 0.06) 38%, rgba(var(--glut-rgb), 0.016) 66%, rgba(var(--glut-rgb), 0) 100%);
 }
 .kachel-kante {
   z-index: 2; width: 64%; height: 1px;
