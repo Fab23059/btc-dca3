@@ -33,6 +33,7 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 | B15 | **Anfachen** | Ziehen zum Aktualisieren ist ein Blasebalg: Je weiter du ziehst, desto heller glühen Nebel und Zahl. Beim Loslassen steigen Funken auf, mit den frischen Kursen flammt die Glut noch einmal auf. | Feder „Gummi“, Funken mit Auftrieb |
 | B16 | **Kernholz** | Ringe, die länger als ein Jahr gehalten sind, dunkeln zu Kernholz nach. Kommt einer dazu, wandert die Grenze langsam nach außen. Bei der Zeitreise wandert sie mit zurück. | Feder ohne Nachschwingen (2,2 s) |
 | B17 | **Mitzählen** | Wechselst du Zeitraum oder Einheit, zählt die große Zahl mit dem Kometen mit: Sie zeigt in jedem Bild den Wert an seiner Stelle. Erst wenn er im Jetzt ankommt und aufblitzt, steht der heutige Wert da. Die Zeile mit der Veränderung tritt solange zurück und blendet danach langsam ein. Greift der Finger zu, übernimmt die Zeitreise. | dieselbe Feder wie der Komet (1,25 s, ohne Nachschwingen); Walzen straff (0,05 s, ohne Nachschwingen); der Komet rechnet in jedem Bild zuerst; Einblenden 950 ms, nur Deckkraft |
+| B18 | **Kachellicht** | Die Kacheln der Startseite spiegeln eine Lichtquelle oben rechts: ein weicher Schein auf der Fläche und eine Lichtkante an der Oberkante. Kippst du das Handy, wandert das Licht. Rollst du die Seite, ziehen die Kacheln darunter durch. | zwei Federn aus neigung.js; je Bild höchstens eine Rechnung |
 
 **Regeln, die für alle Bewegungen gelten**
 

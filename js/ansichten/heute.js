@@ -24,6 +24,7 @@ import { kachel } from "../teile/fenster.js";
 import { tick } from "../teile/haptik.js";
 import { funkenflug, stieben } from "../teile/funkenflug.js";
 import { zeitraffer } from "../teile/zeitraffer.js";
+import { kachellicht } from "../teile/kachellicht.js";
 import { beiFrei, istFrei } from "../teile/ebenen.js";
 import { SCHLUESSEL, lies, schreibe } from "../speicher.js";
 import { ZEITRAEUME, zeitraumDaten } from "../zeitraeume.js";
@@ -176,6 +177,8 @@ export function erstelleHeute(app) {
     baum: kachel({ kopf: koepfe.baum.el, label: "Deinen Baum öffnen", beiTipp: (el) => { stoppeRaffer(); app.oeffneBaum(el); } }),
     zahlen: kachel({ kopf: koepfe.zahlen.el, label: "Zahlen öffnen", beiTipp: (el) => { stoppeRaffer(); app.oeffneZahlen(el); } }),
   };
+  kachellicht(Object.values(kacheln).map((k) => k.el), app.heuteEl);   // B18
+
   for (const k of Object.values(koepfe)) app.koepfe.add(k);
   const stapel = h("div", { class: "stapel" }, ...Object.values(kacheln).map((k) => k.el));
 
