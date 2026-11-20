@@ -44,9 +44,11 @@ export function kachellicht(kacheln, rolle) {
     // Wo die Lichtquelle über dem Bildschirm steht (Ruhelage: oben rechts, knapp über dem Rand)
     const sx = W * (0.5 + 0.5 * lx);
     const sy = H * (0.05 + 0.32 * ly);
-    for (const t of teile) {
-      const r = t.el.getBoundingClientRect();
-      if (!r.width || r.bottom < -40 || r.top > H + 40) continue;
+    // Erst alle Lagen lesen, dann alles schreiben – so rechnet der Browser das Layout nur einmal
+    const lagen = teile.map((t) => t.el.getBoundingClientRect());
+    teile.forEach((t, i) => {
+      const r = lagen[i];
+      if (!r.width || r.bottom < -40 || r.top > H + 40) return;
       // Schein: Spiegelbild der Lichtquelle auf der Kachel. Waagerecht folgt er der Quelle.
       // Senkrecht hängt er davon ab, wo die Kachel steht: Liegt sie weit unter dem Licht,
       // spiegelt es sich an ihrem oberen Rand, steht sie auf seiner Höhe, in ihrer Mitte.
@@ -63,7 +65,7 @@ export function kachellicht(kacheln, rolle) {
       const kx = klemme(sx - r.left, 0, r.width);
       t.kante.style.transform = `translate3d(${(kx - r.width * 0.32).toFixed(1)}px, 0, 0)`;
       t.kante.style.opacity = (0.25 + 0.75 * kraft * klemme(1.2 - Math.abs(kx / r.width - 0.5))).toFixed(3);
-    }
+    });
   }
 
   const plane = () => {

@@ -8,7 +8,7 @@
   aus diesem Repository. Netzwerkzugriffe sind nur zu den Kursquellen erlaubt.
   Trusted Types verhindern, dass jemals Text als HTML ins Dokument gelangt.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self' https://min-api.cryptocompare.com https://api.exchange.coinbase.com https://api.coingecko.com https://api.alternative.me https://mempool.space; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types dca3-sw">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self' https://min-api.cryptocompare.com https://api.exchange.coinbase.com https://api.coingecko.com https://api.alternative.me https://mempool.space; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types dca3-sw dca3-nebel">
 <meta name="referrer" content="no-referrer">
 <title>BTC-Sparplan</title>
 <meta name="description" content="Dein wöchentlicher Bitcoin-Sparplan – ruhig, ehrlich, schön.">
@@ -31,12 +31,23 @@
 <script type="module" src="js/app.js"></script>
 </head>
 <body>
-<!-- Atmosphäre: Nebel (WebGL, mit laufendem Korn), Glut – und ruhendes Filmkorn über allem -->
+<!-- Atmosphäre: Nebel (zwei vorgerechnete Schichten), Glut, Vignette – und ruhendes Filmkorn über allem -->
 <div class="atmosphaere" aria-hidden="true">
   <div class="nebel" id="nebel"></div>
   <div class="glut" id="glut"></div>
 </div>
 <div class="korn" aria-hidden="true"></div>
+
+<!-- Ladebild: ein Jahr in 52 Strichen, zwei Kometen. Bleibt, bis Nebel und erste Ansicht fertig sind. -->
+<div class="vorhang" id="vorhang" aria-hidden="true">
+  <div class="vorhang-ring" id="vorhang-ring">
+    <div class="vorhang-mitte">
+      <span class="vorhang-zahl" id="vorhang-zahl"></span>
+      <span class="vorhang-wort" id="vorhang-wort"></span>
+    </div>
+  </div>
+</div>
+<script src="js/vorhang.js"></script>
 
 <header class="kopf" id="kopf">
   <p class="kopf-links" id="kopf-links"></p>

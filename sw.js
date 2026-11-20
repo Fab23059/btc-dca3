@@ -8,7 +8,7 @@
 // Bei jeder Änderung an den App-Dateien: VERSION um eins erhöhen.
 // =====================================================================
 
-const VERSION = 13;
+const VERSION = 14;
 const PRAEFIX = "dca3-app-";
 const CACHE = `${PRAEFIX}${VERSION}`;
 
@@ -17,8 +17,8 @@ const DATEIEN = [
   "css/grund.css", "css/teile.css", "css/ansichten.css", "css/bewegung-neu.css",
   "js/app.js", "js/konfig.js", "js/zeit.js", "js/format.js", "js/speicher.js", "js/altdaten.js",
   "js/abgleich.js", "js/rechnen.js", "js/kennzahlen.js", "js/kurse.js", "js/dom.js", "js/jahresringe.js",
-  "js/zeitraeume.js", "js/eintragen.js", "js/rechenweg.js", "js/einstellungen.js", "js/benachrichtigung.js", "js/notfall.js",
-  "js/bewegung/feder.js", "js/bewegung/geste.js", "js/bewegung/ziffern.js", "js/bewegung/nebel.js", "js/bewegung/neigung.js",
+  "js/zeitraeume.js", "js/eintragen.js", "js/rechenweg.js", "js/einstellungen.js", "js/benachrichtigung.js", "js/notfall.js", "js/vorhang.js",
+  "js/bewegung/feder.js", "js/bewegung/geste.js", "js/bewegung/ziffern.js", "js/bewegung/nebel.js", "js/bewegung/nebel-rechnung.js", "js/bewegung/nebel-werk.js", "js/bewegung/neigung.js",
   "js/teile/fenster.js", "js/teile/tablett.js", "js/teile/meldung.js", "js/teile/linie.js", "js/teile/kurslinie.js", "js/teile/ebenen.js", "js/teile/haptik.js",
   "js/teile/funkenflug.js", "js/teile/ringschluss.js", "js/teile/praegung.js", "js/teile/streiflicht.js", "js/teile/zeitraffer.js", "js/teile/kachellicht.js",
   "js/ansichten/gemeinsam.js", "js/ansichten/heute.js", "js/ansichten/kaeufe.js", "js/ansichten/baum.js", "js/ansichten/zahlen.js", "js/ansichten/markt.js",
