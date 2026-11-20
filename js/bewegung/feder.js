@@ -36,7 +36,10 @@ const zeitfaktor = () => {
 function takt(t) {
   const dt = Math.min(0.05, Math.max(0, (t - zuletzt) / 1000)) * zeitfaktor();
   zuletzt = t;
-  for (const f of [...aktiv]) f.schritt(dt);
+  // Erst die Federn, die andere antreiben (Vorrang, z. B. der Komet, dem die Zahl folgt).
+  // Was sie dabei neu anstoßen, ist in der zweiten Runde schon dabei – im selben Bild, ohne Verzug.
+  for (const f of [...aktiv]) if (f.vorrang) f.schritt(dt);
+  for (const f of [...aktiv]) if (!f.vorrang) f.schritt(dt);
   // Kopie: Wer sich in seinem Aufruf neu anmeldet (weiterzeichnen), kommt erst im NÄCHSTEN Bild dran
   for (const f of [...beiBild]) f(t);
   bild = aktiv.size || beiBild.size ? requestAnimationFrame(takt) : 0;
@@ -58,7 +61,8 @@ export class Feder {
    *                       beiWert(wert, tempo) wird in jedem Bild gerufen,
    *                       genau = Ruhe-Schwelle (Einheit des Werts)
    */
-  constructor(wert = 0, { art = "raum", antwort, daempfung, beiWert = null, genau = 0.001 } = {}) {
+  constructor(wert = 0, { art = "raum", antwort, daempfung, beiWert = null, genau = 0.001, vorrang = false } = {}) {
+    this.vorrang = vorrang;
     this.x = wert; this.v = 0; this.z = wert;
     this.genau = genau;
     this.beiWert = beiWert;

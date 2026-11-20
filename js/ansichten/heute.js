@@ -5,6 +5,9 @@
 // Alles hier ist auf Bewegung gebaut:
 //   * Die große Zahl ist ein Zählwerk.
 //   * Die Linie fließt beim Zeitraumwechsel, der Punkt darunter federt mit.
+//   * Wechselst du Zeitraum oder Einheit, zählt die große Zahl mit dem Punkt
+//     mit, der die Linie abfährt. Erst wenn er im Jetzt ankommt, steht der
+//     heutige Wert da, und die Veränderung blendet darunter ein (B17).
 //   * Fährt der Finger über die Linie, reist die ganze Seite in die Zeit.
 //     Ein Tipp auf das Startdatum darunter fährt die Reise von selbst (B14).
 //   * Kommt ein Kauf dazu oder wird einer eingetragen, springt ein Funke
@@ -41,6 +44,7 @@ export function erstelleHeute(app) {
   let zeitraum = "monat";         // womit die Startseite beginnt: die letzten 30 Tage
   let einheit = "eur";            // "eur": Depotwert in Euro · "btc": Bestand in sats
   let reist = false;
+  let faehrt = false;             // B17: Die Zahl zählt gerade mit dem Kometen mit
   let ersteDaten = true;
   let signatur = "";
 
@@ -66,14 +70,18 @@ export function erstelleHeute(app) {
     for (const b of einheitKnoepfe) b.setAttribute("aria-pressed", String(b.dataset.wert === wert));
     zahl.teile = wert === "btc" ? ganzTeile(" sats") : euroTeile();
     zahl.beschreibung = wert === "btc" ? (t) => `Bestand ${t}` : (t) => `Depotwert ${t}`;
-    zeigeKopf();
-    zeichneLinie({ aufziehen: true });
+    wechsleMitFahrt();
     app.licht(0.8);
   }
 
   // ---- Linie ----
   const linieEl = h("div", { class: "linie", "data-eigene-geste": "" });
-  const lin = linie(linieEl, { beimScrubben: (info) => zeitreise(info), beiAnkunft: () => { app.licht(1); tick(8); }, beiStartdatum: () => reiseAnsehen() });
+  const lin = linie(linieEl, {
+    beimScrubben: (info) => zeitreise(info),
+    beiFahrt: ({ wert }) => { if (faehrt && !reist) zahl.setze(wert); },
+    beiAnkunft: () => { app.licht(1); tick(8); if (faehrt) fahrtEnde({ angekommen: true }); },
+    beiStartdatum: () => reiseAnsehen(),
+  });
 
   // ---- Zeitraum: vier Wörter, ein Punkt, der federnd hinüberspringt ----
   const marke = h("span", { class: "zeitraum-marke", "aria-hidden": "true" });
@@ -97,9 +105,44 @@ export function erstelleHeute(app) {
     tick(6);
     for (const b of knoepfe) b.setAttribute("aria-pressed", String(b.dataset.wert === wert));
     markeFeder.zu(markeZiel());
-    zeigeKopf();
-    zeichneLinie({ aufziehen: true });
+    wechsleMitFahrt();
     app.licht(0.7);
+  }
+
+  // -------------------------------------------------------------------
+  // B17 Mitzählen: Der Komet fährt die Linie ab, die Zahl zählt mit.
+  // Sie zeigt in jedem Bild den Wert an der Stelle des Punkts. Die Zeile
+  // mit der Veränderung tritt solange zurück und kommt erst danach wieder.
+  // -------------------------------------------------------------------
+  let zeileAus = null;            // laufendes Ausblenden der Zeile
+  let fahrtWache = 0;             // Sicherheitsnetz, falls die Ankunft ausbleibt
+
+  function wechsleMitFahrt() {
+    const s = z.summe;
+    const zahlBereit = s.anzahl && (einheit === "btc" || s.wert != null) && !reist;
+    if (!zahlBereit || wenigBewegung()) { zeigeKopf(); zeichneLinie({ aufziehen: true }); return; }
+    label.textContent = einheit === "btc" ? "Bestand" : "Depotwert";
+    if (!faehrt) {
+      zeileAus?.cancel();
+      zeileAus = zeile.animate([{ opacity: getComputedStyle(zeile).opacity }, { opacity: 0 }], { duration: 200, easing: "ease-out", fill: "forwards" });
+    }
+    faehrt = true;
+    zahl.eilig = false;
+    zahl.folgsam = true;
+    // Der Komet meldet sich ab jetzt in jedem Bild – beginnend mit dem Wert ganz links
+    if (!zeichneLinie({ aufziehen: true })) { fahrtEnde({ angekommen: false }); return; }
+    clearTimeout(fahrtWache);
+    fahrtWache = setTimeout(() => { if (faehrt) fahrtEnde({ angekommen: false }); }, 4500);
+  }
+
+  /** Ende der Fahrt: Die Zahl steht auf heute, die Veränderung blendet langsam ein. */
+  function fahrtEnde({ angekommen }) {
+    clearTimeout(fahrtWache);
+    faehrt = false;
+    zahl.folgsam = false;
+    const aus = zeileAus; zeileAus = null;
+    zeigeKopf({ einblenden: angekommen });
+    aus?.cancel();
   }
 
   // ---- Takt bis zum nächsten Kauf ----
@@ -147,8 +190,13 @@ export function erstelleHeute(app) {
 
   // -------------------------------------------------------------------
 
-  function zeigeKopf() {
-    if (reist) return;
+  /** einblenden: Die Zeile kommt langsam herein (nach dem Mitzählen, B17). */
+  function zeigeKopf({ einblenden = false } = {}) {
+    if (reist || faehrt) return;
+    const blende = () => {
+      if (!einblenden || wenigBewegung()) return;
+      zeile.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 950, delay: 140, easing: "cubic-bezier(.33, 0, .2, 1)", fill: "backwards" });
+    };
     const s = z.summe;
     label.textContent = einheit === "btc" ? "Bestand" : "Depotwert";
     zahl.eilig = false;
@@ -163,6 +211,7 @@ export function erstelleHeute(app) {
         h("span", { class: `veraenderung veraenderung--${dazu > 0 ? "plus" : "null"}` }, h("span", { class: "zahl" }, `+${sats(dazu)} sats`), h("span", { class: "veraenderung-prozent" }, `${btcFmt(s.btc)} BTC`)),
         h("span", { class: "held-zeitraum" }, `${anzahl(neuKaeufe, "Kauf", "Käufe")} ${ZEITRAEUME[zeitraum].satz}`));
       zeile.dataset.zeitraum = zeitraum;
+      blende();
       return;
     }
     if (s.wert == null) { zahl.setze(null); fuelle(zeile, skelett("11em")); return; }
@@ -171,27 +220,23 @@ export function erstelleHeute(app) {
     const r = zeitraum === "gesamt"
       ? { veraenderung: s.gv, prozent: s.gvProzent }
       : zeitraumErgebnis({ kaeufe: z.kaeufe, aktuellerKurs: z.aktuell?.kurs, jetzt: z.jetzt, startTs: d.startTs, kursZuBeginn: d.kursZuBeginn });
-    const vorher = zeile.dataset.zeitraum;
     fuelle(zeile,
       r ? veraenderung(r.veraenderung, r.prozent) : h("span", { class: "text-3" }, "Kurs zu Beginn wird geladen"),
       h("span", { class: "held-zeitraum" }, ZEITRAEUME[zeitraum].satz));
     zeile.dataset.zeitraum = zeitraum;
-    if (vorher && vorher !== zeitraum && !wenigBewegung()) {
-      [...zeile.children].forEach((k, i) => k.animate(
-        [{ opacity: 0, transform: "translate3d(0, 10px, 0)" }, { opacity: 1, transform: "none" }],
-        { duration: 520, delay: i * 70, easing: "cubic-bezier(.2,.9,.25,1)", fill: "backwards" }));
-    }
+    blende();
   }
 
   function zeichneLinie({ fliessen = true, aufziehen = false } = {}) {
     const s = z.summe;
-    if (!s.anzahl) { lin.zeige(null); return; }
+    if (!s.anzahl) { lin.zeige(null); return false; }
     const d = zeitraumDaten(z, zeitraum);
     let punkte = wertverlauf({ kaeufe: z.kaeufe, kurse: d.kurse, aktuellerKurs: z.aktuell?.kurs, jetzt: z.jetzt, von: d.startTs });
     // In sats: der Bestand als Treppe (er wächst nur mit jedem Kauf)
     if (einheit === "btc") punkte = punkte.map((p) => ({ ...p, euro: p.wert, wert: p.btc * 1e8, investiert: p.btc * 1e8 }));
-    lin.zeige(punkte, { fliessen, aufziehen, mitTreppe: einheit !== "btc" });
+    const fliegt = lin.zeige(punkte, { fliessen, aufziehen, mitTreppe: einheit !== "btc" });
     if (punkte.length > 1) lin.achsen(datumMonatKurz(datumBerlin(punkte[0].t)), "Jetzt");
+    return fliegt;
   }
 
   /** Bewegung B3: Die ganze Seite reist in den Moment unter dem Finger. */
@@ -202,6 +247,8 @@ export function erstelleHeute(app) {
       zeigeKopf();
       return;
     }
+    // Greift der Finger mitten in der Fahrt zu, übernimmt die Zeitreise die Zahl
+    if (faehrt) { clearTimeout(fahrtWache); faehrt = false; zahl.folgsam = false; zeileAus?.cancel(); zeileAus = null; }
     reist = true;
     const p = info.punkt;
     zahl.eilig = true;
