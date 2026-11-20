@@ -90,3 +90,16 @@
 
 /* ---- Abzeichen, die man antippen kann: Die Münze kommt wieder hervor (B12) ---- */
 button.abz { border-radius: 16px; }
+
+/* ---- Kachellicht (B18): Schein und Lichtkante, bewegt nur über transform und opacity ---- */
+.kachel-schein, .kachel-kante { position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform, opacity; }
+.kachel-schein {
+  z-index: 1; width: 110%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 228, 200, 0.15), rgba(var(--glut-rgb), 0.075) 38%, rgba(var(--glut-rgb), 0.02) 66%, rgba(var(--glut-rgb), 0) 100%);
+  mix-blend-mode: screen;
+}
+.kachel-kante {
+  z-index: 2; width: 64%; height: 1px;
+  background: linear-gradient(90deg, rgba(255, 236, 214, 0), rgba(255, 240, 222, 0.85) 50%, rgba(255, 236, 214, 0));
+  box-shadow: 0 0 10px 1px rgba(var(--glut-rgb), 0.35);
+}
