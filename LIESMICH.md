@@ -125,9 +125,10 @@ sich alles bewegt; daraus folgen Formen, Farben und Schrift. Das ganze Konzept s
   atmendem Licht. Der Nebel wird beim Start einmal im Hintergrund gerechnet und danach nur
   noch verschoben. So bleibt er glatt (keine Kästchen) und kostet beim Scrollen nichts.
   Hinter einem offenen Fenster oder im Hintergrund steht er still.
-* **Vorhang:** Beim Start ein kurzes Ladebild. Dein Sparjahr steht als Ring aus 52 Strichen
-  da, zwei Kometen kreisen darüber. Währenddessen wird alles vorbereitet, danach startet die
-  App ohne Ruckeln.
+* **Vorhang:** Beim Start ein kurzes Ladebild. Das App-Symbol erwacht zu deinem Sparjahr als
+  Ring aus 52 Strichen, zwei Kometen ernten deine Wochen. Am Ende zieht sich alles zu einem
+  Lichtpunkt zusammen, der zum Kometen auf der Linie wird. Währenddessen wird alles
+  vorbereitet, danach läuft die App ohne Ruckeln.
 * **Schrift:** Mona Sans. Die Zahlen stehen in der breiten Form, alle Ziffern sind gleich
   breit, damit sie wie ein Zählwerk rollen können.
 * Ist am Handy „Bewegung reduzieren“ eingeschaltet, steht alles still.
@@ -144,7 +145,7 @@ Vibrieren an/aus.
 |---|---|
 | `index.html` | Das Grundgerüst der Seite |
 | `GESTALTUNG.md` | Das Gestaltungskonzept: erst die Bewegungen, dann alles andere |
-| `js/vorhang.js` | Baut das Ladebild, noch bevor die App geladen ist |
+| `js/vorhang.js` | Baut das Ladebild, noch bevor die App geladen ist (Aussehen und Ablauf: `css/vorhang.css`) |
 | `css/` | `grund.css` (Farben, Schrift, Atmosphäre, Ladebild), `teile.css` (Bausteine), `ansichten.css` (Startseite und Fenster), `bewegung-neu.css` (Münze, Relief, Zeitraffer) |
 | `js/konfig.js` | **Die Eckdaten des Sparplans** (Sparrate, Kaufzeiten, Gebühren) |
 | `js/rechnen.js`, `js/kennzahlen.js`, `js/zeitraeume.js` | Alle Berechnungen. Hier entsteht jede Zahl |

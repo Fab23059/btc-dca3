@@ -2,8 +2,11 @@
 // nebel.js – Der Nebel hinter der App.
 //
 // Zwei Schichten Nebel, die gegeneinander treiben: hinten große, ruhige
-// Schwaden, vorn feinerer, hellerer Dunst. Darüber liegen Glut und
-// Vignette (reines CSS, siehe grund.css).
+// Schwaden, vorn feinerer, hellerer Dunst. Vom vorderen gibt es eine
+// angestrahlte Fassung, die genau mitläuft, aber nur dort zu sehen ist, wo
+// Licht ist (hinter der Zahl, rechts unten, am Horizont): So verfängt sich
+// das Licht im Nebel, und wenn die Glut aufflammt, leuchtet er mit auf.
+// Darüber liegen Glut und Vignette (reines CSS, siehe grund.css).
 //
 // Jede Schicht ist eine nahtlose Kachel, die beim Start einmal gerechnet
 // wird – in einem Hintergrund-Thread (nebel-werk.js), in voller
@@ -43,8 +46,10 @@ const GRUND = [9, 8, 7];
 // rechnet ihn beim Anzeigen glatt hoch). treiben: Bildschirmpunkte pro Sekunde (− = nach links).
 // scroll/zeit: wie weit die Schicht beim Scrollen bzw. bei der Zeitreise mitgeht.
 const SCHICHTEN = [
-  { art: "hinten", zelle: 1 / 1.6, dichte: 0.4, treiben: 6.5, scroll: 0.2, zeit: 0.12, saat: 20260608 },
-  { art: "vorn", zelle: 1 / 2.6, dichte: 0.45, treiben: -7.5, scroll: 0.34, zeit: 0.22, saat: 15 },
+  { art: "hinten", zelle: 1 / 1.6, dichte: 0.4, treiben: 6.5, scroll: 0.2, zeit: 0.12, saat: 20260608, takt: 0 },
+  { art: "vorn", zelle: 1 / 2.6, dichte: 0.45, treiben: -7.5, scroll: 0.34, zeit: 0.22, saat: 15, takt: 1 },
+  // Gleiche Lage, gleicher Takt wie "vorn" – nur angestrahlt (in der Lichtmaske)
+  { art: "licht", zelle: 1 / 2.6, dichte: 0.45, treiben: -7.5, scroll: 0.34, zeit: 0.22, saat: 15, takt: 1 },
 ];
 const HOECHSTENS = 320_000;    // Bildpunkte je Kachel – mehr sieht man nicht, es kostet nur Zeit
 
@@ -88,7 +93,14 @@ async function rechneHier(auftrag) {
 // Eine Schicht
 // ---------------------------------------------------------------------
 
-function baueSchicht(def, farben, still) {
+/**
+ * @param {object} def     eine Zeile aus SCHICHTEN
+ * @param {object} farben  Stimmung der Tageszeit
+ * @param {boolean} still  Bewegung reduzieren
+ * @param {number} phase   0 … 1: wo im Treiben die Schicht beginnt (gleiche Phase = gleiche Lage)
+ * @param {number} basis   gemeinsamer Startzeitpunkt aller Schichten (document.timeline)
+ */
+function baueSchicht(def, farben, still, phase, basis) {
   const bild = h("canvas", { class: "nebel-bild" });
   const trieb = h("div", { class: "nebel-trieb" }, bild);
   const ebene = h("div", { class: `nebel-ebene nebel-ebene--${def.art}` }, trieb);
@@ -134,12 +146,14 @@ function baueSchicht(def, farben, still) {
       // Treiben: genau eine Kachelbreite, dann von vorn – endlos und ohne Naht
       const von = def.treiben > 0 ? -kw : 0;
       const bis = def.treiben > 0 ? 0 : -kw;
+      const dauer = (kw / Math.abs(def.treiben)) * 1000;
       lauf = trieb.animate(
         [{ transform: `translate3d(${von.toFixed(2)}px, 0, 0)` }, { transform: `translate3d(${bis.toFixed(2)}px, 0, 0)` }],
-        { duration: (kw / Math.abs(def.treiben)) * 1000, iterations: Infinity, easing: "linear" },
+        { duration: dauer, iterations: Infinity, easing: "linear" },
       );
-      // Jeder Start beginnt woanders
-      lauf.currentTime = Math.random() * (kw / Math.abs(def.treiben)) * 1000;
+      // Jeder Start beginnt woanders. Schichten mit gleichem Takt bekommen dieselbe Startzeit –
+      // so laufen "vorn" und seine angestrahlte Fassung für immer deckungsgleich.
+      lauf.startTime = basis - phase * dauer;
     }
     return { vw, vh };
   }
@@ -164,8 +178,11 @@ export function baueNebel(behaelter) {
   const farben = STIMMUNG[zeit];
   behaelter.dataset.tageszeit = zeit;
   const still = wenigBewegung();
-  const schichten = SCHICHTEN.map((d) => baueSchicht(d, farben, still));
-  behaelter.replaceChildren(...schichten.map((s) => s.ebene));
+  const basis = document.timeline.currentTime ?? performance.now();
+  const phasen = [Math.random(), Math.random()];
+  const schichten = SCHICHTEN.map((d) => baueSchicht(d, farben, still, phasen[d.takt], basis));
+  const schein = h("div", { class: "nebel-schein" }, schichten[2].ebene);
+  behaelter.replaceChildren(schichten[0].ebene, schichten[1].ebene, schein);
   const vorn = schichten[1].ebene;
 
   const bereit = Promise.all(schichten.map((s) => s.rechne()))
@@ -192,10 +209,11 @@ export function baueNebel(behaelter) {
     ziehe({ scrollAnteil, zeitAnteil } = {}) {
       for (const s of schichten) s.ziehe(scrollAnteil, zeitAnteil);
     },
-    /** Energie 0 … 1: Der vordere Dunst fängt mehr Licht. Nur Deckkraft – kostet nichts. */
+    /** Energie 0 … 1: Flammt die Glut auf, leuchtet der angestrahlte Nebel mit. Nur Deckkraft – kostet nichts. */
     licht(e) {
       const x = Math.max(0, Math.min(1, e));
       vorn.style.opacity = (0.8 + 0.2 * x).toFixed(3);
+      schein.style.opacity = (0.5 + 0.5 * x).toFixed(3);
     },
   };
 }

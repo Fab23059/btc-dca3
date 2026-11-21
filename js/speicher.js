@@ -26,6 +26,7 @@ export const SCHLUESSEL = Object.freeze({
   kernGesehen: "dca3_kern_gesehen",     // so viele davon waren schon Kernholz
   zitat: "dca3_zitat",
   push: "dca3_push",                    // öffentlicher Teil der Push-Einrichtung
+  vorhang: "dca3_vorhang",              // Wochen für das Ladebild (damit der Ring im ersten Bild stimmt)
 });
 
 export const reiheSchluessel = (name) => `${SPEICHER_PRAEFIX}reihe_${name}`;

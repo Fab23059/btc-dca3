@@ -34,7 +34,8 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
 | B16 | **Kernholz** | Ringe, die länger als ein Jahr gehalten sind, dunkeln zu Kernholz nach. Kommt einer dazu, wandert die Grenze langsam nach außen. Bei der Zeitreise wandert sie mit zurück. | Feder ohne Nachschwingen (2,2 s) |
 | B17 | **Mitzählen** | Wechselst du Zeitraum oder Einheit, zählt die große Zahl mit dem Kometen mit: Sie zeigt in jedem Bild den Wert an seiner Stelle. Erst wenn er im Jetzt ankommt und aufblitzt, steht der heutige Wert da. Die Zeile mit der Veränderung tritt solange zurück und blendet danach langsam ein. Greift der Finger zu, übernimmt die Zeitreise. | dieselbe Feder wie der Komet (1,4 s, ohne Nachschwingen); Walzen straff (0,05 s, ohne Nachschwingen); der Komet rechnet in jedem Bild zuerst; Einblenden 1050 ms, nur Deckkraft |
 | B18 | **Kachellicht** | Die Kacheln der Startseite spiegeln eine Lichtquelle oben rechts: ein weicher Schein auf der Fläche und eine Lichtkante an der Oberkante. Kippst du das Handy, wandert das Licht. Rollst du die Seite, ziehen die Kacheln darunter durch. | zwei Federn aus neigung.js; je Bild höchstens eine Rechnung |
-| B19 | **Vorhang** | Beim Start ein kurzes Ladebild: ein Jahr Sparplan in 52 Strichen, oben die aktuelle Woche. Die Wochen, in denen gekauft wurde, glimmen nacheinander auf, in der Mitte steht, wie viele es sind. Zwei Kometen kreisen gegeneinander, ein warmer und ein kühler, leiserer. Wo sie sich treffen, blitzt ein Strich weiß auf. Weil ihre Takte nicht aufgehen, ist das jedes Mal woanders. Dann weitet sich der Ring, verlischt, und die Kacheln steigen auf. | reines CSS, nur Lage und Deckkraft (läuft auch, wenn die App nebenher rechnet); Runden 2,4 s und 3,9 s; mindestens 1,15 s ab Aufruf, höchstens 2,6 s Warten auf den Nebel |
+| B19 | **Vorhang** | Beim Start ein Ladebild in drei Teilen, gut zweieinhalb Sekunden. **Erwachen:** Es beginnt mit dem App-Symbol, genau so groß und an derselben Stelle wie auf dem Startbild, das Android vor jede installierte App setzt (das lässt sich nicht abschalten). Der Ring des Symbols weitet sich und wird ein Jahr Sparplan in 52 Strichen, oben die aktuelle Woche. Die Wochen mit Kauf glimmen auf, in der Mitte rollt die Zahl der Wochen herein wie ein Zählwerk. **Ernten:** Zwei Kometen kreisen gegeneinander, wo sie sich treffen, blitzt ein Strich auf. Zieht der warme über eine deiner Wochen, löst sich ein Funke und wird in einer Spirale zur Mitte gezogen. **Ringschluss:** Ein schneller letzter Umlauf zündet alle Striche, der Ring zieht sich zu einem Lichtpunkt zusammen. Der Grund wird durchsichtig, und der Punkt fliegt in einem Bogen an den Anfang der Linie. Dort ist er der Komet, der den Verlauf abfährt, während die Zahl mitzählt (B17). | reines CSS, nur Lage und Deckkraft; mindestens 1,55 s ab dem ersten Bild, dann Ringschluss 1,2 s; wartet auf Nebel, Schrift und den ersten Abruf (höchstens 3,4 s), damit danach nichts mehr dazwischenkommt; der Ring vom letzten Besuch steht schon im ersten Bild |
+| B20 | **Knall** | Zieht der Komet (oder der Zeitraffer) über einen Kauf, knallt der: ein kurzer Lichtblitz, zwei Druckwellen, Funken, die langsam bremsen und verglühen, ein feiner Tick. Der Punkt glüht gut eine Sekunde nach. Stehen die Käufe dicht, wird jeder Knall kleiner. | Wellen 0,85 s und 0,75 s, Nachglühen 1,3 s; 4–9 Funken, 0,6–1 s; Vibration 4 ms, höchstens alle 110 ms |
 
 **Regeln, die für alle Bewegungen gelten**
 
@@ -90,6 +91,10 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
   Warum: Auf manchen Handys rechnet die Grafikkarte im Shader mit zu wenigen Nachkommastellen.
   Das Rauschen zerfiel dort in Kästchen, und die Arbeit pro Bild bremste die ganze App. Im
   Emulator am Rechner war beides nicht zu sehen, weil der dort genauer rechnet.
+  Damit sich das Licht im Nebel verfängt, gibt es vom vorderen Nebel eine angestrahlte Fassung
+  (warm, helle Kanten). Sie treibt deckungsgleich mit, liegt aber unter einer festen Maske, die
+  nur dort durchlässt, wo Licht ist: hinter der Zahl, rechts unten, am Horizont. Flammt die Glut
+  auf, leuchtet sie mit.
   Die Farben folgen der Tageszeit (abends glühend orange, nachts kühl violett).
 * **Filmkorn** liegt hauchfein und ruhend über allem, auch über Fenstern, ein Korn je echtem
   Pixel. Es nimmt dem dunklen Nebel die letzten Farbstufen.
@@ -122,8 +127,12 @@ Lage und Deckkraft animiert werden, gilt weiter. Deshalb bleibt es flüssig.
   Werte, so wird das Layout pro Bild nur einmal berechnet.
 * **Zittern der Hand zählt nicht.** Die Totzone des Lagesensors ist doppelt so groß. Kleine
   Bewegungen wecken die Lichtfedern nicht mehr.
-* **Erst fertig, dann zeigen.** Hinter dem Vorhang wird die Startseite gebaut und gezeichnet.
-  Der Aufgang der Kacheln beginnt erst, wenn nichts anderes mehr zu tun ist.
+* **Erst fertig, dann zeigen.** Hinter dem Vorhang wird die Startseite gebaut und gezeichnet,
+  und der erste Abruf der Kurse läuft durch. Der erste Komet wartet am Start, bis der Punkt aus
+  dem Ladebild bei ihm landet (1.2.6).
+* **Aufgang auf der Grafikkarte.** Die Kacheln steigen seit 1.2.6 per Web-Animation auf. Die
+  Federkurve wird einmal vorab berechnet (linear()). Vorher hat JavaScript jedes Bild selbst
+  gesetzt, und die Kacheln wurden dabei neu gemalt, während der Komet fuhr.
 
 ## 4. Was wir aus der vorigen Fassung behalten haben – und was nicht
 

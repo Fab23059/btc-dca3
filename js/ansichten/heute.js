@@ -20,6 +20,7 @@ import { h, svg, fuelle, wenigBewegung } from "../dom.js";
 import { Ziffern } from "../bewegung/ziffern.js";
 import { Feder, imTakt, gummi, klemme } from "../bewegung/feder.js";
 import { linie } from "../teile/linie.js";
+import { federKurve } from "../bewegung/kurven.js";
 import { kachel } from "../teile/fenster.js";
 import { tick } from "../teile/haptik.js";
 import { funkenflug, stieben } from "../teile/funkenflug.js";
@@ -40,6 +41,9 @@ import { marktKopf } from "./markt.js";
 
 const TAG = 86_400_000;
 
+// Die Feder des Aufgangs (B8), einmal vorab als Kurve für die Grafikkarte ausgerechnet
+const FEDER_STEIGEN = federKurve({ antwort: 0.62, daempfung: 0.74 });
+
 export function erstelleHeute(app) {
   const z = app.zustand;
   let zeitraum = "monat";         // womit die Startseite beginnt: die letzten 30 Tage
@@ -47,6 +51,10 @@ export function erstelleHeute(app) {
   let reist = false;
   let faehrt = false;             // B17: Die Zahl zählt gerade mit dem Kometen mit
   let ersteDaten = true;
+  let vorhangOffen = false;      // erst danach darf der erste Komet fahren
+  let ersteFahrtAus = false;     // der erste Komet wurde für den Vorhang aufgehoben
+  let wartetAufLos = false;      // der Komet steht am Start und wartet auf den Punkt aus dem Ladebild
+  let steigtNoch = null;         // Teile, die beim Aufgehen des Vorhangs aufsteigen
   let signatur = "";
 
   // ---- Wert ----
@@ -118,10 +126,10 @@ export function erstelleHeute(app) {
   let zeileAus = null;            // laufendes Ausblenden der Zeile
   let fahrtWache = 0;             // Sicherheitsnetz, falls die Ankunft ausbleibt
 
-  function wechsleMitFahrt() {
+  function wechsleMitFahrt({ halten = false } = {}) {
     const s = z.summe;
     const zahlBereit = s.anzahl && (einheit === "btc" || s.wert != null) && !reist;
-    if (!zahlBereit || wenigBewegung()) { zeigeKopf(); zeichneLinie({ aufziehen: true }); return; }
+    if (!zahlBereit || wenigBewegung()) { zeigeKopf(); return zeichneLinie({ aufziehen: true, halten }); }
     label.textContent = einheit === "btc" ? "Bestand" : "Depotwert";
     if (!faehrt) {
       zeileAus?.cancel();
@@ -131,9 +139,10 @@ export function erstelleHeute(app) {
     zahl.eilig = false;
     zahl.folgsam = true;
     // Der Komet meldet sich ab jetzt in jedem Bild – beginnend mit dem Wert ganz links
-    if (!zeichneLinie({ aufziehen: true })) { fahrtEnde({ angekommen: false }); return; }
+    if (!zeichneLinie({ aufziehen: true, halten })) { fahrtEnde({ angekommen: false }); return false; }
     clearTimeout(fahrtWache);
-    fahrtWache = setTimeout(() => { if (faehrt) fahrtEnde({ angekommen: false }); }, 4500);
+    fahrtWache = setTimeout(() => { if (faehrt) fahrtEnde({ angekommen: false }); }, halten ? 9000 : 4500);
+    return true;
   }
 
   /** Ende der Fahrt: Die Zahl steht auf heute, die Veränderung blendet langsam ein. */
@@ -230,14 +239,14 @@ export function erstelleHeute(app) {
     blende();
   }
 
-  function zeichneLinie({ fliessen = true, aufziehen = false } = {}) {
+  function zeichneLinie({ fliessen = true, aufziehen = false, halten = false } = {}) {
     const s = z.summe;
     if (!s.anzahl) { lin.zeige(null); return false; }
     const d = zeitraumDaten(z, zeitraum);
     let punkte = wertverlauf({ kaeufe: z.kaeufe, kurse: d.kurse, aktuellerKurs: z.aktuell?.kurs, jetzt: z.jetzt, von: d.startTs });
     // In sats: der Bestand als Treppe (er wächst nur mit jedem Kauf)
     if (einheit === "btc") punkte = punkte.map((p) => ({ ...p, euro: p.wert, wert: p.btc * 1e8, investiert: p.btc * 1e8 }));
-    const fliegt = lin.zeige(punkte, { fliessen, aufziehen, mitTreppe: einheit !== "btc" });
+    const fliegt = lin.zeige(punkte, { fliessen, aufziehen, halten, mitTreppe: einheit !== "btc" });
     if (punkte.length > 1) lin.achsen(datumMonatKurz(datumBerlin(punkte[0].t)), "Jetzt");
     return fliegt;
   }
@@ -279,27 +288,30 @@ export function erstelleHeute(app) {
   /**
    * Bewegung B8: Beim ersten Mal steigen die Kacheln nacheinander auf – sobald der Vorhang
    * (das Ladebild) aufgeht. Bis dahin warten sie unsichtbar und fertig gezeichnet dahinter.
+   * Die Linie steigt nicht mit: Sie zeichnet gleich der Komet, und der Punkt aus dem Ladebild
+   * muss genau dort landen, wo er startet.
    */
   function aufgang() {
     if (wenigBewegung()) return;
-    const teile = [linieEl, zeitraumEl, takt, ...Object.values(kacheln).map((k) => k.el)];
-    for (const t of teile) t.style.opacity = "0";
+    steigtNoch = [zeitraumEl, takt, ...Object.values(kacheln).map((k) => k.el)];
+    for (const t of steigtNoch) t.style.opacity = "0";
     aufgangBis = performance.now() + 60_000;
-    Promise.resolve(app.vorhang).then(() => steigen(teile));
   }
-  function steigen(teile) {
-    aufgangBis = performance.now() + 2400;
+  /**
+   * Das Aufsteigen selbst: als Animation der Grafikkarte (Lage und Deckkraft), nicht mehr
+   * Bild für Bild aus JavaScript – so kostet es die Oberfläche nichts, während der Komet fährt.
+   * verzug: ab wann (ms). Die Kurve ist dieselbe Feder wie früher, vorab ausgerechnet.
+   */
+  function steigen(teile, verzug = 0) {
+    aufgangBis = performance.now() + verzug + 2200;
     teile.forEach((t, i) => {
       const weg = 90 + i * 12;
-      const f = new Feder(weg, { antwort: 0.62, daempfung: 0.74, genau: 0.05, beiWert: (y) => {
-        const a = klemme(1 - y / weg);
-        t.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0) scale(${(0.94 + 0.06 * a).toFixed(4)})`;
-        t.style.opacity = String(klemme(a * 1.4));
-      } });
-      setTimeout(() => {
-        if (t.classList.contains("kachel")) { t.classList.remove("glanz"); t.classList.add("glanz"); }
-        f.zu(0).then(() => { t.style.removeProperty("transform"); t.style.removeProperty("opacity"); });
-      }, 160 + i * 95);
+      const ab = verzug + i * 95;
+      t.animate([{ transform: `translate3d(0, ${weg}px, 0) scale(0.94)` }, { transform: "translate3d(0, 0, 0) scale(1)" }],
+        { duration: FEDER_STEIGEN.dauer, delay: ab, easing: FEDER_STEIGEN.kurve, fill: "backwards" });
+      t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 480, delay: ab, easing: "cubic-bezier(.3, .6, .3, 1)", fill: "backwards" });
+      t.style.removeProperty("opacity");
+      if (t.classList.contains("kachel")) setTimeout(() => { t.classList.remove("glanz"); t.classList.add("glanz"); }, ab);
     });
   }
 
@@ -455,7 +467,11 @@ export function erstelleHeute(app) {
     if (sig !== signatur && !reist) {
       const erste = ersteDaten && s.wert != null;
       signatur = sig;
-      zeichneLinie({ fliessen: !erste, aufziehen: erste });
+      if (erste && !vorhangOffen && !wenigBewegung()) {
+        // Hinter dem Ladebild: fertig zeichnen, aber der Komet fährt erst, wenn es weg ist
+        zeichneLinie({ fliessen: false });
+        ersteFahrtAus = true;
+      } else zeichneLinie({ fliessen: !erste, aufziehen: erste });
       if (erste) { ersteDaten = false; }
     }
   }
@@ -518,6 +534,26 @@ export function erstelleHeute(app) {
       if (feier) return;
       feier = { von: "kaeufe", montag, laeuft: false };
       plane();
+    },
+    /**
+     * Der Vorhang geht gleich auf: Der erste Komet stellt sich an den Start (die Zahl zeigt den
+     * Wert ganz links), die Kacheln bekommen ihr Aufsteigen (ab verzug ms). Gibt die Stelle
+     * zurück, an der der Komet wartet – dorthin fliegt der Punkt aus dem Ladebild.
+     */
+    vorStart({ verzug = 0 } = {}) {
+      vorhangOffen = true;
+      if (steigtNoch) { steigen(steigtNoch, verzug); steigtNoch = null; }
+      if (!ersteFahrtAus) return null;
+      ersteFahrtAus = false;
+      wartetAufLos = feier ? zeichneLinie({ aufziehen: true, halten: true }) : wechsleMitFahrt({ halten: true });
+      return wartetAufLos ? lin.startPunkt() : null;
+    },
+    /** Der Punkt ist gelandet: Der Komet fährt los. */
+    los() {
+      if (!wartetAufLos) return;
+      wartetAufLos = false;
+      lin.los({ landung: true });
+      if (faehrt) { clearTimeout(fahrtWache); fahrtWache = setTimeout(() => { if (faehrt) fahrtEnde({ angekommen: false }); }, 4500); }
     },
     /** Ruft f sofort – oder nach dem Funkenflug, falls gerade einer wartet oder läuft. */
     wennRuhig(f) { if (feier) nachFeier.push(f); else setTimeout(f, 300); },
