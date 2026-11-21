@@ -1,0 +1,229 @@
+/* =====================================================================
+   vorhang.css – Das Ladebild (B19).
+
+   Eine kleine Geschichte in drei Teilen, gut zweieinhalb Sekunden lang:
+
+   1. Erwachen. Es beginnt mit dem App-Symbol, genau so groß und an
+      derselben Stelle wie auf dem Startbild, das Android vor jede
+      installierte App setzt (das lässt sich nicht abschalten). Sein Ring
+      weitet sich und wird lebendig: ein Jahr Sparplan in 52 Strichen,
+      oben die aktuelle Woche. Die Wochen mit Kauf glimmen nacheinander
+      auf, in der Mitte rollt die Zahl der Wochen herein wie ein Zählwerk.
+
+   2. Ernten. Zwei Kometen kreisen gegeneinander, ein warmer und ein
+      kühler, leiserer. Wo sie sich treffen, blitzt ein Strich weiß auf;
+      weil ihre Takte nicht aufgehen, jedes Mal woanders. Wo der warme
+      über eine deiner Wochen zieht, löst sich ein Funke (ein paar Sats)
+      und wird in einer Spirale zur Mitte gezogen.
+
+   3. Ringschluss. Ein letzter, schneller Umlauf zündet alle Striche, der
+      Ring zieht sich zu einem einzigen Lichtpunkt zusammen. Der Grund
+      wird durchsichtig, der Punkt fliegt an den Anfang der Linie – und
+      ist dort genau der Komet, der dann deinen Verlauf abfährt (app.js).
+
+   Alles hier ist Lage und Deckkraft: Die Grafikkarte spielt es allein ab,
+   auch wenn die App nebenher noch rechnet.
+   ===================================================================== */
+
+.vorhang {
+  --ra: 2.4s;        /* eine Runde warmer Komet */
+  --rb: 3.9s;        /* eine Runde kühler Komet (gegenläufig) */
+  --radius: 86px;
+  position: fixed; inset: 0; z-index: 90;
+  display: grid; place-items: center;
+}
+.vorhang-grund { position: absolute; inset: 0; background: var(--grund); }
+.vorhang-grund::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 560px; height: 560px; margin: -280px 0 0 -280px;
+  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.15), rgba(var(--glut-rgb), 0.05) 42%, rgba(var(--glut-rgb), 0));
+  animation: vorhang-atmen 5.2s ease-in-out infinite alternate;
+  will-change: opacity, transform;
+}
+@keyframes vorhang-atmen {
+  from { opacity: 0.55; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1.04); }
+}
+
+/* ---- 1. Erwachen: Symbol und Ring wachsen im selben Takt (64 → 86 px Halbmesser) ---- */
+.vorhang-marke {
+  position: absolute; left: 50%; top: 50%; width: 240px; height: 240px; margin: -120px 0 0 -120px;
+  animation: marke-erwacht 0.95s cubic-bezier(.32, .6, .2, 1) 0.22s both;
+  will-change: transform, opacity;
+}
+@keyframes marke-erwacht {
+  from { opacity: 1; transform: scale(1); }
+  55% { opacity: 0; }
+  to { opacity: 0; transform: scale(1.344); }
+}
+.vorhang-buehne { position: relative; }
+.vorhang-ring {
+  position: relative; width: 208px; height: 208px;
+  animation: ring-erwacht 0.95s cubic-bezier(.32, .6, .2, 1) 0.22s both;
+  will-change: transform, opacity;
+}
+@keyframes ring-erwacht {
+  from { opacity: 0; transform: scale(0.744); }
+  45% { opacity: 1; }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Ein Strich je Woche. Sein Rahmen ist gedreht und an den Ring geschoben: lokal zeigt +y zur Mitte. */
+.strich {
+  position: absolute; left: 50%; top: 50%;
+  width: 3px; height: 15px; margin: -7.5px 0 0 -1.5px; border-radius: 2px;
+  background: rgba(255, 226, 190, 0.085);
+  transform: rotate(calc(var(--i) * 360deg / 52)) translateY(calc(var(--radius) * -1));
+}
+.strich::before, .strich::after, .strich-voll {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
+}
+/* Wochen mit Kauf: glimmen nacheinander auf, die älteste zuerst */
+.strich-voll { background: rgba(var(--glut-rgb), 0.38); }
+.strich.voll .strich-voll { animation: voll-glimmt 0.5s ease calc(0.45s + var(--k, 0) * 16ms) both; }
+@keyframes voll-glimmt { from { opacity: 0; } to { opacity: 1; } }
+.strich.jetzt .strich-voll { opacity: 1; background: rgba(255, 214, 172, 0.42); animation: jetzt-atmen 1.5s ease-in-out infinite alternate; will-change: opacity; }
+.strich.jetzt.voll .strich-voll { background: rgba(255, 214, 172, 0.8); }
+@keyframes jetzt-atmen { from { opacity: 0.35; } to { opacity: 1; } }
+
+/* ---- 2. Ernten ---- */
+/* Warmer Komet: der Strich zündet, wenn der Kopf darüberzieht, wächst kurz nach außen und verglimmt */
+.strich::before {
+  background: linear-gradient(to top, #FF8A2A, #FFE2C2);
+  transform-origin: 50% 100%;
+  animation: komet-a var(--ra) linear infinite;
+  animation-delay: calc(var(--i) * var(--ra) / 52 - var(--ra));
+  will-change: opacity, transform;
+}
+@keyframes komet-a {
+  0% { opacity: 1; transform: scaleY(1.5); }
+  4% { opacity: 0.92; transform: scaleY(1.32); }
+  12% { opacity: 0.58; transform: scaleY(1.1); }
+  24% { opacity: 0.26; transform: scaleY(1); }
+  40%, 100% { opacity: 0; transform: scaleY(1); }
+}
+/* Kühler Komet: gegenläufig, kürzerer Schweif, wächst nach innen */
+.strich::after {
+  background: linear-gradient(to bottom, #D9D2FF, #8F86D8);
+  transform-origin: 50% 0;
+  animation: komet-b var(--rb) linear infinite;
+  animation-delay: calc(var(--i) * var(--rb) / -52);
+  will-change: opacity, transform;
+}
+@keyframes komet-b {
+  0% { opacity: 0.8; transform: scaleY(1.45); }
+  6% { opacity: 0.5; transform: scaleY(1.15); }
+  20%, 100% { opacity: 0; transform: scaleY(1); }
+}
+/* Sats: Zieht der warme Komet über eine Woche mit Kauf, löst sich ein Funke und wird in einer
+   Spirale zur Mitte gezogen. Er dreht sich um die Ringmitte mit (Drehpunkt dort) und fällt dabei
+   nach innen. Läuft für alle Striche im selben Takt wie der Komet; sichtbar nur bei den vollen. */
+.strich-sat {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%;
+  background: #FFEAD4; box-shadow: 0 0 5px 2px rgba(var(--glut-rgb), 0.75);
+  transform-origin: 50% calc(50% + var(--radius));
+  visibility: hidden; opacity: 0;
+  animation: sat var(--ra) linear infinite;
+  animation-delay: calc(var(--i) * var(--ra) / 52 - var(--ra));
+  will-change: transform, opacity;
+}
+.strich.voll .strich-sat { visibility: visible; }
+@keyframes sat {
+  0% { opacity: 0; transform: rotate(0deg) translateY(0) scale(1); animation-timing-function: cubic-bezier(.5, 0, .8, .5); }
+  3% { opacity: 1; }
+  24% { opacity: 0.8; }
+  32% { opacity: 0; transform: rotate(46deg) translateY(calc(var(--radius) - 30px)) scale(0.35); }
+  100% { opacity: 0; transform: rotate(46deg) translateY(calc(var(--radius) - 30px)) scale(0.35); }
+}
+/* Die Köpfe: ein Lichtpunkt je Komet, genau im Takt seiner Striche */
+.vorhang-kopf { position: absolute; inset: 0; will-change: transform; transition: opacity 0.18s ease; }
+.vorhang-kopf::before { content: ""; position: absolute; left: 50%; top: 50%; border-radius: 50%; }
+.vorhang-kopf--a { animation: kreisen var(--ra) linear infinite; }
+.vorhang-kopf--a::before {
+  width: 7px; height: 7px; margin: calc(var(--radius) * -1 - 3.5px) 0 0 -3.5px;
+  background: #FFF2E4; box-shadow: 0 0 10px 3px rgba(var(--glut-rgb), 0.85), 0 0 26px 8px rgba(var(--glut-rgb), 0.3);
+}
+.vorhang-kopf--b { animation: kreisen-zurueck var(--rb) linear infinite; }
+.vorhang-kopf--b::before {
+  width: 5px; height: 5px; margin: calc(var(--radius) * -1 - 2.5px) 0 0 -2.5px;
+  background: #EEEBFF; box-shadow: 0 0 9px 2px rgba(170, 160, 255, 0.6);
+}
+@keyframes kreisen { to { transform: rotate(360deg); } }
+@keyframes kreisen-zurueck { to { transform: rotate(-360deg); } }
+
+/* Die Mitte: Zahl der Wochen, die Ziffern rollen herein wie ein Zählwerk (wie die große Zahl der App) */
+.vorhang-mitte {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 4px;
+  opacity: 0;
+}
+.vorhang.hat-zahl .vorhang-mitte { animation: zahl-kommt 0.7s cubic-bezier(.2, .8, .2, 1) 0.72s both; }
+@keyframes zahl-kommt { from { opacity: 0; transform: translate3d(0, 5px, 0); } to { opacity: 1; transform: none; } }
+.vorhang-zahl {
+  display: inline-flex; height: 1em; overflow: hidden;
+  font-size: 40px; line-height: 1; font-weight: 480; font-stretch: 125%; letter-spacing: -0.045em;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+.vz { display: block; height: 1em; overflow: hidden; }
+.vz-band {
+  display: block;
+  animation: vz-rollen 1.3s cubic-bezier(.16, 1.16, .3, 1) calc(0.68s + var(--n) * 0.12s) both;
+  will-change: transform;
+}
+.vz-band > span { display: block; height: 1em; }
+@keyframes vz-rollen { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, calc(var(--ziel) * -1em), 0); } }
+.vorhang-wort { font-size: 13px; font-weight: 520; color: var(--text-2); }
+
+/* ---- 3. Ringschluss ---- */
+.vorhang-flug, .vorhang-flug-x, .vorhang-flug-y { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.vorhang-flug-x, .vorhang-flug-y { left: 0; top: 0; will-change: transform; }
+/* Der Punkt sieht aus wie der Kopf des Kometen auf der Linie: heller Kern, warmer Hof */
+.vorhang-funke {
+  position: absolute; left: -4.5px; top: -4.5px; width: 9px; height: 9px; border-radius: 50%;
+  background: #FFEBD6; opacity: 0;
+}
+.vorhang-funke::before {
+  content: ""; position: absolute; left: -22.5px; top: -22.5px; width: 54px; height: 54px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--glut-rgb), 0.6), rgba(var(--glut-rgb), 0));
+}
+.vorhang-funke--spur { transform: scale(0.75); }
+.vorhang-funke--spur::before { opacity: 0.5; }
+
+.vorhang.schluss { pointer-events: none; }
+.vorhang.schluss .vorhang-kopf { opacity: 0; }
+.vorhang.schluss .strich-sat { visibility: hidden; }
+.vorhang.schluss .strich::after { animation: none; }
+/* Ein letzter, schneller Umlauf zündet alle Striche */
+.vorhang.schluss .strich::before {
+  animation: schluss-lauf 0.42s cubic-bezier(.2, .7, .3, 1) calc(var(--i) * 0.3s / 52) both;
+}
+@keyframes schluss-lauf {
+  from { opacity: 0; transform: scaleY(1); }
+  30% { opacity: 1; transform: scaleY(1.6); }
+  to { opacity: 0.9; transform: scaleY(1.15); }
+}
+.vorhang.schluss .vorhang-mitte { animation: mitte-weg 0.26s ease-in 0.2s both; }
+@keyframes mitte-weg { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.86); } }
+/* … und der Ring zieht sich zu einem Punkt zusammen */
+.vorhang.schluss .vorhang-buehne { animation: sammeln 0.42s cubic-bezier(.65, 0, .35, 1) 0.34s both; will-change: transform, opacity; }
+@keyframes sammeln {
+  from { opacity: 1; transform: scale(1); }
+  75% { opacity: 0.85; }
+  to { opacity: 0; transform: scale(0.06); }
+}
+.vorhang.schluss .vorhang-funke { animation: funke-kommt 0.34s cubic-bezier(.2, .8, .2, 1) 0.34s both; }
+.vorhang.schluss .vorhang-funke--spur { animation: spur-kommt 0.34s cubic-bezier(.2, .8, .2, 1) 0.4s both; }
+@keyframes funke-kommt { from { opacity: 0; transform: scale(3.2); } to { opacity: 1; transform: scale(1); } }
+@keyframes spur-kommt { from { opacity: 0; transform: scale(2); } to { opacity: var(--spur, 0.4); transform: scale(0.75); } }
+/* Der Grund wird durchsichtig, dahinter wartet die App */
+.vorhang.schluss .vorhang-grund { animation: grund-weg 0.5s ease 0.55s both; }
+@keyframes grund-weg { from { opacity: 1; } to { opacity: 0; } }
+.vorhang.schluss .vorhang-marke { visibility: hidden; }
+.vorhang.weg { display: none; }
+
+/* Wer "Bewegung reduzieren" eingestellt hat: ein ruhiger Ring, der gleich wieder geht */
+@media (prefers-reduced-motion: reduce) {
+  .vorhang .strich::before, .vorhang .strich::after, .vorhang-kopf, .strich-sat, .vorhang-grund::before { animation: none !important; opacity: 0; }
+  .vorhang-grund::before { opacity: 0.8; }
+  .vorhang-marke, .vorhang-flug { display: none; }
+  .vorhang-ring, .strich.voll .strich-voll, .vorhang.hat-zahl .vorhang-mitte, .vz-band { animation-delay: 0s !important; }
+}

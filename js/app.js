@@ -303,8 +303,10 @@ function effekte(an) {
 // Ladebild (Vorhang)
 // ---------------------------------------------------------------------
 const vorhangEl = $("#vorhang");
-const VORHANG_MIN_MS = 1250;   // ab dem ersten Bild des Vorhangs: Erwachen (1,2 s) und ein Blick auf die Kometen
-const VORHANG_MAX_MS = 2600;   // ab Start der App: länger wartet niemand, auch nicht auf den Nebel
+const VORHANG_MIN_MS = 1550;   // ab dem ersten Bild des Vorhangs: Erwachen (1,2 s), dann ein Blick aufs Ernten
+const VORHANG_MAX_MS = 3400;   // ab Start der App: länger wartet niemand (Nebel, Schrift, erster Abruf)
+// Der Ringschluss (passt zu vorhang.css): ab wann der Punkt fliegt, wie lange, ab wann die Kacheln steigen
+const SCHLUSS = { flugAb: 640, flug: 580, steigenAb: 700 };
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const naechstesBild = () => new Promise((ok) => requestAnimationFrame(() => ok()));
 
@@ -352,26 +354,58 @@ function fuelleVorhang() {
   });
   striche.forEach((s, nr) => { if (!soll.has(nr)) s.classList.remove("voll"); });
   striche[0].classList.add("jetzt");          // diese Woche atmet – gekauft oder noch nicht
-  if (stand.zahl) {
-    $("#vorhang-zahl").textContent = String(stand.zahl);
-    $("#vorhang-wort").textContent = stand.zahl === 1 ? "Woche" : "Wochen";
-    vorhangEl.classList.add("hat-zahl");
-  }
+  if (stand.zahl) vorhangEl.zeigeZahl?.(stand.zahl);
   merkeRing(stand);
 }
 
-/** Hebt den Vorhang, sobald Nebel, Schrift und erste Ansicht fertig sind (und er kurz zu sehen war). */
+/**
+ * Hebt den Vorhang, sobald Nebel, Schrift, erste Ansicht und erster Abruf fertig sind (und er
+ * eine Weile zu sehen war). Dann der Ringschluss: Der Ring zieht sich zu einem Punkt zusammen,
+ * der Grund wird durchsichtig, und der Punkt fliegt genau an die Stelle, an der der erste Komet
+ * wartet. Wo er aufsetzt, fährt der Komet los – es ist derselbe Punkt.
+ */
 async function hebeVorhang(warten) {
-  if (!vorhangEl) { vorhangAuf(); return; }
+  if (!vorhangEl) { heute.vorStart(); heute.los(); vorhangAuf(); return; }
   const still = wenigBewegung();
   const start = Number(vorhangEl.dataset.start) || 0;
   const frist = still ? 0 : Math.max(0, start + VORHANG_MIN_MS - performance.now());
   await Promise.race([Promise.all([...warten, pause(frist)]), pause(VORHANG_MAX_MS)]);
   // Zwei Bilder Luft: Die erste Ansicht ist gezeichnet, bevor der Vorhang sich bewegt
   await naechstesBild(); await naechstesBild();
-  vorhangEl.classList.add("geht");
+  if (still) { heute.vorStart(); vorhangEl.remove(); heute.los(); vorhangAuf(); return; }
+
+  // Der Komet stellt sich an den Start, die Kacheln bekommen ihr Aufsteigen (läuft auf der Grafikkarte)
+  const ziel = heute.vorStart({ verzug: SCHLUSS.steigenAb });
+  await naechstesBild();
+  vorhangEl.classList.add("schluss");
+  await fliegeZumStart(ziel);
+  // Gelandet: Der Komet übernimmt. Der Punkt des Vorhangs bleibt noch ein Bild lang liegen –
+  // genau über dem Kopf des Kometen –, damit nie ein leeres Bild dazwischen ist.
+  heute.los();
+  await naechstesBild(); await naechstesBild();
+  vorhangEl.classList.add("weg");
   vorhangAuf();
-  setTimeout(() => vorhangEl.remove(), still ? 50 : 900);
+  setTimeout(() => vorhangEl.remove(), 3000);
+}
+
+/** Der Punkt (mit drei Nachbildern) fliegt von der Mitte an den Start der Linie – in einem Bogen. */
+function fliegeZumStart(ziel) {
+  const huellen = [...vorhangEl.querySelectorAll(".vorhang-flug-x")];
+  if (!ziel || !huellen.length) {
+    // Noch keine Linie: Der Punkt verlischt in der Mitte
+    return pause(SCHLUSS.flugAb).then(() => huellen[0]?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, fill: "forwards" }).finished);
+  }
+  const dx = ziel.x - innerWidth / 2;
+  const dy = ziel.y - innerHeight / 2;
+  // Waagerecht erst zögernd, senkrecht gleich zügig: Der Punkt taucht ab und schwingt dann hinüber
+  const laeufe = huellen.map((x, i) => {
+    const ab = SCHLUSS.flugAb + i * 34;
+    x.animate([{ transform: "translate3d(0, 0, 0)" }, { transform: `translate3d(${dx.toFixed(1)}px, 0, 0)` }],
+      { duration: SCHLUSS.flug, delay: ab, easing: "cubic-bezier(.55, 0, .3, 1)", fill: "both" });
+    return x.firstElementChild.animate([{ transform: "translate3d(0, 0, 0)" }, { transform: `translate3d(0, ${dy.toFixed(1)}px, 0)` }],
+      { duration: SCHLUSS.flug, delay: ab, easing: "cubic-bezier(.3, 0, .2, 1)", fill: "both" });
+  });
+  return laeufe[0].finished;
 }
 
 // ---------------------------------------------------------------------
@@ -407,7 +441,12 @@ function start() {
 
   rendern({ ersteMal: true });
   document.documentElement.dataset.bereit = "1";
-  hebeVorhang([nebel?.bereit, document.fonts?.ready].filter(Boolean)).catch(() => vorhangAuf());
+  // Der erste Abruf läuft noch hinter dem Vorhang – so kommt nichts Neues dazwischen, wenn der Komet fährt
+  const ersterAbruf = aktualisieren();
+  hebeVorhang([nebel?.bereit, document.fonts?.ready, ersterAbruf].filter(Boolean)).catch((e) => {
+    console.error("Vorhang:", e);
+    vorhangEl?.remove(); heute?.los(); vorhangAuf();
+  });
 
   const b = zustand.abgleich;
   const erstmalig = Boolean(b?.erstmalig);   // wird beim Prüfen der Meilensteine zurückgesetzt – vorher merken
@@ -418,7 +457,6 @@ function start() {
       : `${anzahl(n, "neuer Kauf", "neue Käufe")} übernommen${n <= 2 ? ` (${b.uebernommen.map(datumMonatKurz).join(", ")})` : ""}`, { art: "erfolg", dauer: 6000 }), 1400));
   }
 
-  aktualisieren();
   setInterval(kursTick, 30_000);
   setInterval(() => aktualisieren(), 10 * 60_000);
   document.addEventListener("visibilitychange", () => {

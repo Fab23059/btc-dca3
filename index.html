@@ -24,6 +24,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preload" href="fonts/mona-sans.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/grund.css">
+<link rel="stylesheet" href="css/vorhang.css">
 <link rel="stylesheet" href="css/teile.css">
 <link rel="stylesheet" href="css/ansichten.css">
 <link rel="stylesheet" href="css/bewegung-neu.css">
@@ -38,8 +39,10 @@
 </div>
 <div class="korn" aria-hidden="true"></div>
 
-<!-- Ladebild: das App-Symbol erwacht zu einem Jahr in 52 Strichen mit zwei Kometen. Bleibt, bis Nebel und erste Ansicht fertig sind. -->
+<!-- Ladebild (B19): Das App-Symbol erwacht zu einem Jahr in 52 Strichen, zwei Kometen ernten deine
+     Wochen, am Ende zieht sich alles zu dem Punkt zusammen, der danach die Linie abfährt. -->
 <div class="vorhang" id="vorhang" aria-hidden="true">
+  <div class="vorhang-grund"></div>
   <!-- Das App-Symbol, genau so groß wie auf dem Startbild von Android: Daraus erwacht der Ring -->
   <svg class="vorhang-marke" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="240" height="240" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="marke-gold" x1="0.2" y1="1" x2="0.55" y2="0">
@@ -113,6 +116,7 @@
       </div>
     </div>
   </div>
+  <div class="vorhang-flug" id="vorhang-flug"></div>
 </div>
 <script src="js/vorhang.js"></script>
 

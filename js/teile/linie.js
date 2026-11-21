@@ -11,8 +11,9 @@
 //   B8  Bei jedem Zeitraumwechsel fährt ein Komet die Linie von links
 //       nach rechts ab: Schweif, Funken, die Käufe zünden im Vorbeiflug,
 //       im Jetzt läuft eine Lichtwelle aus.
-//   B20 Jeder Kauf, den der Komet (oder der Zeitraffer) erreicht, knallt
-//       ganz leise: eine kleine Druckwelle, ein paar Funken, ein Tick.
+//   B20 Jeder Kauf, den der Komet (oder der Zeitraffer) erreicht, knallt:
+//       ein Lichtblitz, zwei Druckwellen, Funken, die langsam verglühen,
+//       ein Tick – und der Punkt glüht noch eine gute Sekunde nach.
 //   B17 Dabei meldet er in jedem Bild den Wert an seiner Stelle, damit die
 //       große Zahl mitzählen kann (beiFahrt).
 //   R6  Licht aus Bewegung: Der Zeiger leuchtet stärker, je schneller
@@ -82,15 +83,15 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
   }
   /** Abstand der Käufe auf der Linie: Stehen sie dicht, knallt jeder leiser und kleiner. */
   const dichte = () => klemme(((B - RECHTS) / Math.max(1, marken.length)) / 30, 0.35, 1);
-  /** Ein paar Funken in alle Richtungen – weniger, wenn die Käufe dicht stehen. */
+  /** Funken in alle Richtungen – weniger, wenn die Käufe dicht stehen. Sie bremsen sanft und verglühen langsam. */
   function knall(px, py) {
     const d = dichte();
-    const n = d > 0.85 ? 7 : d > 0.45 ? 4 : 3;
+    const n = d > 0.85 ? 9 : d > 0.45 ? 6 : 4;
     const dreh = Math.random() * Math.PI * 2;
     for (let i = 0; i < n; i++) {
-      const w = dreh + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
-      const v = (50 + Math.random() * 65) * (0.55 + 0.45 * d);
-      funken.push({ x: px, y: py, vx: Math.cos(w) * v, vy: Math.sin(w) * v - 18, leben: 0.32 + Math.random() * 0.24, alt: 0, r: 0.6 + Math.random() * 0.7, schwer: 60, zaeh: 4.5 });
+      const w = dreh + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+      const v = (60 + Math.random() * 80) * (0.6 + 0.4 * d);
+      funken.push({ x: px, y: py, vx: Math.cos(w) * v, vy: Math.sin(w) * v - 22, leben: 0.6 + Math.random() * 0.45, alt: 0, r: 0.7 + Math.random() * 0.8, schwer: 38, zaeh: 3.2 });
     }
   }
 
@@ -103,6 +104,16 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
     const t = t0 + (t1 - t0) * a;
     beiFahrt({ wert: wertBei(punkte, t, "wert"), t, anteil: a });
   };
+  let wartet = false;                               // Komet steht am Start und wartet auf los()
+  let aufschlag = 0;                                // Zeitpunkt der Landung (Welle am Anfang)
+  function fahreLos() {
+    wartet = false;
+    aufzug.zu(1).then(() => {
+      if (aufzug.wert < 0.999) return;            // unterbrochen (neuer Lauf)
+      blitz.springe(0); blitz.zu(1).then(() => { blitzWert = 0; malen(); });
+      beiAnkunft();
+    });
+  }
   const aufzug = new Feder(1, { antwort: 1.4, daempfung: 1, genau: 0.001, vorrang: true, beiWert: (x) => { meldeFahrt(x); malen(); } });
   const blitz = new Feder(0, { antwort: 1.1, daempfung: 1, genau: 0.002, beiWert: (x) => { blitzWert = x; malen(); } });
   const zeiger = new Feder(0, { art: "zeiger", genau: 0.05, beiWert: (x) => { scrub = x; melde(); malen(); } });
@@ -214,28 +225,59 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
       if (m.spalte > bis || m.spalte < 0 || m.spalte >= N) continue;
       if (m.zuend < 0) { if (faehrt) zuende(m, jetzt); else m.zuend = jetzt - 2000; }
       const alter = (jetzt - m.zuend) / 1000;
-      const pop = alter < 0.6 ? 1 + 1.6 * Math.exp(-alter * 7) * Math.sin(Math.min(Math.PI, alter * 9)) : 1;
+      const pop = alter < 1 ? 1 + 2 * Math.exp(-alter * 4.2) * Math.sin(Math.min(Math.PI, alter * 7)) : 1;
       const zukunft = s != null && m.spalte > s;
-      const py = d.ys[m.spalte];
-      if (alter < 0.6) {
-        const halo = ctx.createRadialGradient(x(m.spalte), py, 0, x(m.spalte), py, 14);
-        halo.addColorStop(0, `rgba(${GLUT}, ${0.6 * (1 - alter / 0.6)})`); halo.addColorStop(1, `rgba(${GLUT}, 0)`);
-        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x(m.spalte), py, 14, 0, Math.PI * 2); ctx.fill();
+      const px = x(m.spalte); const py = d.ys[m.spalte];
+      const dd = dichte();
+      // B20 Nachglühen: ein warmer Hof, der gut eine Sekunde braucht, um zu verlöschen
+      if (alter < 1.3) {
+        const q = alter / 1.3; const r = 8 + 14 * dd;
+        const halo = ctx.createRadialGradient(px, py, 0, px, py, r);
+        halo.addColorStop(0, `rgba(255, 214, 170, ${(0.7 * (1 - q) ** 1.7).toFixed(3)})`);
+        halo.addColorStop(0.35, `rgba(${GLUT}, ${(0.4 * (1 - q) ** 1.5).toFixed(3)})`);
+        halo.addColorStop(1, `rgba(${GLUT}, 0)`);
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
       }
-      // B20: Druckwelle – ein dünner Ring, der schnell aufgeht und verlischt
-      if (m.knall) { m.knall = false; knall(x(m.spalte), py); }
-      if (alter < 0.5 && !wenigBewegung()) {
-        const q = alter / 0.5; const auf = 1 - (1 - q) ** 3; const dd = dichte();
-        ctx.strokeStyle = `rgba(255, 222, 188, ${((0.4 + 0.3 * dd) * (1 - q) ** 1.5).toFixed(3)})`;
-        ctx.lineWidth = 0.4 + 1.2 * (1 - q);
-        ctx.beginPath(); ctx.arc(x(m.spalte), py, 2.5 + 12 * dd * auf, 0, Math.PI * 2); ctx.stroke();
+      if (m.knall) { m.knall = false; knall(px, py); }
+      if (alter < 0.9 && !wenigBewegung()) {
+        ctx.globalCompositeOperation = "lighter";
+        // Lichtblitz im ersten Augenblick
+        if (alter < 0.14) {
+          const b = 1 - alter / 0.14;
+          ctx.fillStyle = `rgba(255, 244, 230, ${(0.85 * b).toFixed(3)})`;
+          ctx.beginPath(); ctx.arc(px, py, 2 + 3.5 * dd * (1 - b * 0.4), 0, Math.PI * 2); ctx.fill();
+        }
+        // Zwei Druckwellen: eine kräftige, eine zarte hinterher
+        const welle = (start, dauer, weite, staerke, breite) => {
+          const q = (alter - start) / dauer;
+          if (q <= 0 || q >= 1) return;
+          const auf = 1 - (1 - q) ** 3;
+          ctx.strokeStyle = `rgba(255, 222, 188, ${(staerke * (1 - q) ** 1.6).toFixed(3)})`;
+          ctx.lineWidth = 0.4 + breite * (1 - q);
+          ctx.beginPath(); ctx.arc(px, py, 2.5 + weite * auf, 0, Math.PI * 2); ctx.stroke();
+        };
+        welle(0, 0.85, 5 + 15 * dd, 0.5 + 0.35 * dd, 1.8);
+        welle(0.12, 0.75, 3 + 9 * dd, 0.3 + 0.25 * dd, 1);
+        ctx.globalCompositeOperation = "source-over";
       }
       ctx.fillStyle = zukunft ? "rgba(255, 227, 196, 0.25)" : "rgba(255, 233, 210, 0.92)";
-      ctx.beginPath(); ctx.arc(x(m.spalte), py, 1.9 * pop, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, 1.9 * pop, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Komet beim Aufziehen: langer Schweif, heller Kopf, Funken
-    if (faehrt) {
+    // Landung (B19): Der Punkt aus dem Ladebild setzt am Anfang der Linie auf – eine Welle
+    if (aufschlag && !wenigBewegung()) {
+      const q = (jetzt - aufschlag) / 700;
+      if (q >= 1) aufschlag = 0;
+      else {
+        ctx.strokeStyle = `rgba(255, 226, 196, ${(0.6 * (1 - q) ** 1.6).toFixed(3)})`;
+        ctx.lineWidth = 0.5 + 1.6 * (1 - q);
+        ctx.beginPath(); ctx.arc(x(0), d.ys[0], 4 + 22 * (1 - (1 - q) ** 3), 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    // Komet beim Aufziehen: langer Schweif, heller Kopf, Funken. Wartet er noch (das Ladebild
+    // bringt gleich den Punkt), bleibt die Stelle leer.
+    if (faehrt && !wartet) {
       const schweif = Math.min(bis, 110);
       const kx = x(bis); const ky = d.ys[bis];
       const sg = ctx.createLinearGradient(x(bis - schweif), 0, kx, 0);
@@ -296,8 +338,8 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
     kopf.classList.toggle("ist-sichtbar", !faehrt && s == null);
 
     // Solange etwas glüht oder fliegt: weiterzeichnen
-    const glueht = marken.some((m) => m.zuend >= 0 && jetzt - m.zuend < 650);
-    if (funken.length || glueht) malen();
+    const glueht = marken.some((m) => m.zuend >= 0 && jetzt - m.zuend < 1350);
+    if (funken.length || glueht || aufschlag) malen();
     else bildZeit = 0;
   }
 
@@ -356,7 +398,7 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
      * Neue Daten zeigen. fliessen: Linie fließt von der alten Form; aufziehen: von links einzeichnen.
      * Gibt true zurück, wenn ein Komet losfährt (dann folgen beiFahrt und am Ende beiAnkunft).
      */
-    zeige(daten, { fliessen = true, aufziehen = false, mitTreppe = true } = {}) {
+    zeige(daten, { fliessen = true, aufziehen = false, halten = false, mitTreppe = true } = {}) {
       if (!B) mass();
       treppe = mitTreppe;
       leer = !daten || daten.length < 2;
@@ -374,15 +416,28 @@ export function linie(behaelter, { beimScrubben = () => {}, beiAnkunft = () => {
         funken.length = 0;
         aufzug.springe(0);
         blitz.springe(0);
-        aufzug.zu(1).then(() => {
-          if (aufzug.wert < 0.999) return;            // unterbrochen (neuer Lauf)
-          blitz.springe(0); blitz.zu(1).then(() => { blitzWert = 0; malen(); });
-          beiAnkunft();
-        });
+        // halten: Der Komet steht am Start bereit und fährt erst bei los()
+        if (halten) { wartet = true; malen(); return true; }
+        fahreLos();
         return true;
       }
       malen();
       return false;
+    },
+    /** Den wartenden Kometen losschicken (siehe zeige({ halten })). landung: mit Welle und Funken. */
+    los({ landung = false } = {}) {
+      if (!wartet) return;
+      if (landung && !wenigBewegung() && neu) {
+        aufschlag = performance.now();
+        knall(x(0), neu.ys[0]);
+      }
+      fahreLos();
+    },
+    /** Wo der Komet startet – in Bildschirmpunkten (für den Flug aus dem Ladebild). */
+    startPunkt() {
+      if (leer || !neu || !B) return null;
+      const r = leinwand.getBoundingClientRect();
+      return { x: r.left + x(1), y: r.top + neu.ys[1] };
     },
     achsen(links, rechts) {
       achseL.textContent = links; achseR.textContent = rechts;
